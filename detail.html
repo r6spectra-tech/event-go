@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>活動詳情</title>
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+
+<div class="topbar">
+  <div>
+    <span class="eyebrow">Itinerary</span>
+    <h1 id="pageTitle">活動詳情</h1>
+  </div>
+</div>
+
+<div class="detail-wrap" id="content">
+  <div class="loading">載入中…</div>
+</div>
+
+<script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+<script src="assets/main.js"></script>
+<script>
+function videoBlock(a){
+  if(a.youtubeId){
+    return `
+    <span class="section-label">活動簡介</span>
+    <div class="video-wrap">
+      <iframe src="https://www.youtube.com/embed/${a.youtubeId}" allowfullscreen loading="lazy"></iframe>
+    </div>`;
+  }
+  if(a.igUrl){
+    return `
+    <span class="section-label">推薦影片</span>
+    <a class="btn btn-ghost btn-block" href="${a.igUrl}" target="_blank" rel="noopener">在 Instagram 上觀看 →</a>`;
+  }
+  return "";
+}
+
+function joinBlock(a){
+  if(!a.isFull){
+    return `
+    <p class="join-note">目前已報名 ${a.joined} / ${a.capacity} 人，尚有名額。</p>
+    ${a.groupUrl ? `<a class="btn btn-teal btn-block" href="${a.groupUrl}" target="_blank" rel="noopener">加入揪團群組</a>`
+                 : `<p class="join-note">主辦人尚未提供群組連結。</p>`}`;
+  }
+  return `
+    <p class="join-note">此活動人數已滿（${a.joined}/${a.capacity}），可加入候補名單排隊，遞補時將由主辦人通知。</p>
+    ${a.waitlistUrl ? `<a class="btn btn-stamp btn-block" href="${a.waitlistUrl}" target="_blank" rel="noopener">加入候補名單</a>`
+                    : `<p class="join-note">主辦人尚未提供候補連結，請透過下方 LINE 聯繫。</p>`}`;
+}
+
+function render(a){
+  document.getElementById("pageTitle").textContent = a.title;
+  document.title = a.title;
+  document.getElementById("content").innerHTML = `
+    ${a.cover ? `<img class="hero-img" src="${a.cover}" alt="${a.title}">` : ""}
+    <p class="detail-title">${a.title}</p>
+    <p class="detail-meta">${a.area}｜${a.date}${a.price ? `｜NT$ ${a.price}` : ""}</p>
+
+    <span class="section-label">活動行程</span>
+    <ul class="itinerary-list">
+      ${a.itinerary.length ? a.itinerary.map(step=>`<li>${step}</li>`).join("") : "<li>行程資訊準備中</li>"}
+    </ul>
+
+    ${videoBlock(a)}
+
+    <div class="footer-card">
+      <div class="organizer-row">
+        <div class="organizer-avatar"></div>
+        <div>
+          <strong>${a.organizerName}</strong><br>
+          <span style="font-size:0.8rem;color:#777;">活動主辦人</span>
+        </div>
+      </div>
+      ${a.organizerLineUrl ? `<a class="btn btn-ghost btn-block" href="${a.organizerLineUrl}" target="_blank" rel="noopener">加主辦人 LINE 好友</a>` : ""}
+      <div style="margin-top:16px;">
+        ${joinBlock(a)}
+      </div>
+    </div>
+
+    <div class="actions" style="padding:20px 0 0;">
+      <button class="btn btn-primary" id="shareBtn">分享這個行程</button>
+    </div>
+  `;
+  document.getElementById("shareBtn").addEventListener("click", ()=> shareOne(a));
+}
+
+async function main(){
+  await ensureLiff().catch(()=>{});
+  const id = new URLSearchParams(location.search).get("id");
+  if(!id){
+    document.getElementById("content").innerHTML = `<div class="empty">缺少活動 id</div>`;
+    return;
+  }
+  try{
+    const a = await getActivityById(id);
+    if(!a){
+      document.getElementById("content").innerHTML = `<div class="empty">找不到這個活動</div>`;
+      return;
+    }
+    render(a);
+  }catch(e){
+    console.error(e);
+    document.getElementById("content").innerHTML = `<div class="empty">活動資料讀取失敗</div>`;
+  }
+}
+
+main();
+</script>
+</body>
+</html>
