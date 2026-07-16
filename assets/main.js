@@ -5,7 +5,7 @@ const CONFIG = {
   LIFF_ID: "YOUR_LIFF_ID",              // LINE Developers > LIFF > ID
   SHEET_ID: "11VaDkoWogfx_DxZg2XuMQPwLY4o9Zl9nNUQmCUBuBCk",     // 試算表網址中 /d/ 與 /edit 之間那段
   SHEET_NAME: "activities",             // 分頁名稱
-  SITE_URL: "https://yourname.github.io/your-repo", // GitHub Pages 網址（無結尾斜線）
+  SITE_URL: "https://r6spectra-tech.github.io/event-go", // GitHub Pages 網址（無結尾斜線）
   MAX_SHARE_ITEMS: 5,                   // liff.shareTargetPicker 一次最多可帶 5 則訊息
   MAX_CAROUSEL_BUBBLES: 12,             // 單一 flex carousel 最多 12 張卡片
 };
