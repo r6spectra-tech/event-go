@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>旅行揪團・活動列表</title>
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+
+<div class="topbar">
+  <div>
+    <span class="eyebrow">Boarding List</span>
+    <h1>旅行揪團活動</h1>
+  </div>
+</div>
+
+<div class="share-bar">
+  已選 <span id="selCount">0</span> / <span id="selMax">5</span>（liff.shareTargetPicker 一次最多可分享 5 則訊息）
+  <button class="btn-teal" id="shareSelectedBtn" disabled>分享所選</button>
+</div>
+
+<div id="grid" class="grid">
+  <div class="loading">載入活動中…</div>
+</div>
+
+<script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+<script src="assets/main.js"></script>
+<script>
+const selected = new Map(); // id -> activity
+
+function statusHtml(a){
+  return a.isFull
+    ? `<span class="status full">候補中 ${a.joined}/${a.capacity}</span>`
+    : `<span class="status open">尚可報名 ${a.joined}/${a.capacity}</span>`;
+}
+
+function cardHtml(a){
+  return `
+  <div class="ticket" data-id="${a.id}">
+    ${a.isFull ? `<div class="stamp">已額滿・候補中</div>` : ""}
+    ${a.cover ? `<img class="cover" src="${a.cover}" alt="${a.title}">` : ""}
+    <div class="main">
+      <p class="title">${a.title}</p>
+      <p class="meta">${a.area}｜${a.date}</p>
+      ${a.price ? `<p class="price">NT$ ${a.price}</p>` : ""}
+    </div>
+    <div class="perforation"></div>
+    <div class="stub">
+      ${statusHtml(a)}
+      <span>#${a.id}</span>
+    </div>
+    <div class="select-row">
+      <label><input type="checkbox" class="pick" data-id="${a.id}"> 加入分享清單</label>
+    </div>
+    <div class="actions">
+      <a class="btn btn-ghost" href="detail.html?id=${encodeURIComponent(a.id)}">活動詳情</a>
+      <button class="btn btn-primary shareOneBtn" data-id="${a.id}">分享</button>
+    </div>
+  </div>`;
+}
+
+function updateShareBar(){
+  document.getElementById("selCount").textContent = selected.size;
+  document.getElementById("shareSelectedBtn").disabled = selected.size === 0;
+}
+
+async function main(){
+  await ensureLiff().catch(()=>{});
+  let activities = [];
+  try{
+    activities = await fetchActivities();
+  }catch(e){
+    document.getElementById("grid").innerHTML = `<div class="empty">活動資料讀取失敗，請確認 Google Sheet 設定。</div>`;
+    console.error(e);
+    return;
+  }
+  const grid = document.getElementById("grid");
+  if(!activities.length){
+    grid.innerHTML = `<div class="empty">目前尚無活動</div>`;
+    return;
+  }
+  grid.innerHTML = activities.map(cardHtml).join("");
+
+  grid.querySelectorAll(".shareOneBtn").forEach(btn=>{
+    btn.addEventListener("click", ()=>{
+      const a = activities.find(x=>x.id===btn.dataset.id);
+      shareOne(a);
+    });
+  });
+
+  grid.querySelectorAll(".pick").forEach(cb=>{
+    cb.addEventListener("change", ()=>{
+      const a = activities.find(x=>x.id===cb.dataset.id);
+      if(cb.checked){
+        if(selected.size >= CONFIG.MAX_SHARE_ITEMS){
+          cb.checked = false;
+          alert(`一次最多只能分享 ${CONFIG.MAX_SHARE_ITEMS} 個活動（LINE shareTargetPicker 限制）`);
+          return;
+        }
+        selected.set(a.id, a);
+      }else{
+        selected.delete(a.id);
+      }
+      updateShareBar();
+    });
+  });
+
+  document.getElementById("shareSelectedBtn").addEventListener("click", ()=>{
+    shareMany(Array.from(selected.values()));
+  });
+}
+
+main();
+</script>
+</body>
+</html>
