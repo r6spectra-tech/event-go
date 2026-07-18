@@ -62,6 +62,8 @@ function render(a){
     <p class="detail-title">${a.title}</p>
     <p class="detail-meta">${a.area}｜${a.date}${a.price ? `｜NT$ ${a.price}` : ""}</p>
 
+    ${a.notes ? `<span class="section-label">備註</span><div class="notes-box">${a.notes.split("\n").map(l=>`<p>${l}</p>`).join("")}</div>` : ""}
+
     <span class="section-label">活動行程</span>
     <ul class="itinerary-list">
       ${a.itinerary.length ? a.itinerary.map(step=>`<li>${step}</li>`).join("") : "<li>行程資訊準備中</li>"}
