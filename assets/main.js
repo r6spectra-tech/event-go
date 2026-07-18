@@ -4,7 +4,7 @@
    前端開頁時用 action=config 向 GAS 要。
    ============================================================ */
 const CONFIG = {
-  API_BASE: "https://script.google.com/macros/s/AKfycbwykjsyZB9JEQsFHDKUJfT5ki4Gh27i5jxVLaLko_zS2MLk7Uv5vSqvz5fxkPgVMPXgOw/exec",
+  API_BASE: "https://script.google.com/macros/s/YOUR_DEPLOYMENT_ID/exec",
   MAX_SHARE_ITEMS: 5,        // liff.shareTargetPicker 一次最多可帶 5 則訊息
   MAX_CAROUSEL_BUBBLES: 12,  // 單一 flex carousel 最多 12 張卡片
 };
@@ -426,6 +426,18 @@ async function adminCreateActivity(fields, requestedBy) {
 
 async function adminUpdateActivity(fields, requestedBy) {
   return apiPost("updateActivity", { ...fields, requestedBy });
+}
+
+async function adminGetWaitlistCount(activityId, requestedBy) {
+  return apiGet("waitlistCount", { activityId, requestedBy });
+}
+
+async function fetchOrganizerPresets() {
+  return apiGet("organizerPresets");
+}
+
+async function addOrganizerPreset(name, lineUrl, requestedBy) {
+  return apiPost("addOrganizerPreset", { name, lineUrl, requestedBy });
 }
 
 async function adminGetManagers(requestedBy) {
