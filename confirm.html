@@ -73,6 +73,24 @@ async function main(){
       el.innerHTML = `<p>找不到這個活動</p>`;
       return;
     }
+
+    const { status } = await getMyWaitlistStatus(activityId);
+    if(status === "joined"){
+      el.innerHTML = `
+        <p class="big">您已加入這個活動</p>
+        <p>「${activity.title}」</p>
+        ${activity.groupUrl
+          ? `<a class="btn btn-teal btn-block" style="margin-top:14px" href="${activity.groupUrl}" target="_blank" rel="noopener">加入揪團群組 →</a>`
+          : ""}`;
+      return;
+    }
+    if(status === "cancelled"){
+      el.innerHTML = `
+        <p class="big">您已回覆過：不加入</p>
+        <p>「${activity.title}」您先前已選擇取消，如果想更改決定，請直接聯繫主辦人。</p>`;
+      return;
+    }
+
     renderQuestion(activity);
   }catch(e){
     console.error(e);
