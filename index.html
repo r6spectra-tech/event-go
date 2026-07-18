@@ -25,6 +25,20 @@
   <div class="loading">載入活動中…</div>
 </div>
 
+<div id="pinSetupModal" class="modal-overlay" style="display:none;">
+  <div class="modal-card">
+    <p class="big">設定管理密碼</p>
+    <p class="join-note">請設定一組 4 位數字密碼，之後每次進入管理頁都要用這組密碼解鎖（5 分鐘沒動作會自動鎖定）。</p>
+    <input type="password" inputmode="numeric" pattern="[0-9]*" maxlength="4" id="pinSetupInput" class="pin-input" placeholder="••••">
+    <input type="password" inputmode="numeric" pattern="[0-9]*" maxlength="4" id="pinSetupConfirm" class="pin-input" placeholder="再輸入一次" style="margin-top:10px;">
+    <p class="pin-error" id="pinSetupError"></p>
+    <div class="confirm-actions">
+      <button class="btn btn-ghost" style="flex:1" id="pinSetupCancel">取消</button>
+      <button class="btn btn-teal" style="flex:1" id="pinSetupSubmit">送出申請</button>
+    </div>
+  </div>
+</div>
+
 <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
 <script src="assets/main.js"></script>
 <script>
@@ -80,20 +94,40 @@ async function setupManagerArea(){
       area.innerHTML = `<span style="font-size:0.75rem;color:#E7C77A;">管理者申請審核中…</span>`;
     }else{
       area.innerHTML = `<button class="btn btn-ghost" id="applyManagerBtn" style="color:#F6F1E4;border-color:#F6F1E4;">申請管理</button>`;
-      document.getElementById("applyManagerBtn").addEventListener("click", async ()=>{
-        try{
-          const res = await applyManager();
-          area.innerHTML = res.status === "approved"
-            ? `<a class="btn btn-teal" href="admin/waitlist.html">活動管理</a>`
-            : `<span style="font-size:0.75rem;color:#E7C77A;">已送出申請，請等待審核</span>`;
-        }catch(e){
-          alert("申請失敗：" + e.message);
-        }
+      document.getElementById("applyManagerBtn").addEventListener("click", ()=>{
+        openPinSetupModal(area);
       });
     }
   }catch(e){
     console.warn("管理者狀態載入失敗", e);
   }
+}
+
+function openPinSetupModal(area){
+  const modal = document.getElementById("pinSetupModal");
+  const pinInput = document.getElementById("pinSetupInput");
+  const confirmInput = document.getElementById("pinSetupConfirm");
+  const errEl = document.getElementById("pinSetupError");
+  pinInput.value = ""; confirmInput.value = ""; errEl.textContent = "";
+  modal.style.display = "flex";
+
+  document.getElementById("pinSetupCancel").onclick = () => { modal.style.display = "none"; };
+
+  document.getElementById("pinSetupSubmit").onclick = async () => {
+    const pin = pinInput.value.trim();
+    const confirm_ = confirmInput.value.trim();
+    if(!/^\d{4}$/.test(pin)){ errEl.textContent = "請輸入 4 位數字"; return; }
+    if(pin !== confirm_){ errEl.textContent = "兩次輸入的密碼不一致"; return; }
+    try{
+      const res = await applyManager(pin);
+      modal.style.display = "none";
+      area.innerHTML = res.status === "approved"
+        ? `<a class="btn btn-teal" href="admin/waitlist.html">活動管理</a>`
+        : `<span style="font-size:0.75rem;color:#E7C77A;">已送出申請，請等待審核</span>`;
+    }catch(e){
+      errEl.textContent = e.message;
+    }
+  };
 }
 
 async function main(){
