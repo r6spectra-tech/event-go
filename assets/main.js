@@ -4,7 +4,7 @@
    前端開頁時用 action=config 向 GAS 要。
    ============================================================ */
 const CONFIG = {
-  API_BASE: "https://script.google.com/macros/s/AKfycbwykjsyZB9JEQsFHDKUJfT5ki4Gh27i5jxVLaLko_zS2MLk7Uv5vSqvz5fxkPgVMPXgOw/exec",
+  API_BASE: "https://script.google.com/macros/s/YOUR_DEPLOYMENT_ID/exec",
   MAX_SHARE_ITEMS: 5,        // liff.shareTargetPicker 一次最多可帶 5 則訊息
   MAX_CAROUSEL_BUBBLES: 12,  // 單一 flex carousel 最多 12 張卡片
 };
@@ -115,16 +115,24 @@ function extractYoutubeId(url) {
    LIFF：開頁一律先登入，取得 LINE userId
    ============================================================ */
 let liffReady = false;
+let liffInitPromise = null;
 
 async function ensureLiff() {
   if (!window.liff) return false;
-  if (!RUNTIME.liffId) await loadConfig();
+  if (liffReady) return true;
+  if (!liffInitPromise) {
+    liffInitPromise = (async () => {
+      if (!RUNTIME.liffId) await loadConfig();
+      await liff.init({ liffId: RUNTIME.liffId });
+      liffReady = true;
+    })();
+  }
   try {
-    await liff.init({ liffId: RUNTIME.liffId });
-    liffReady = true;
+    await liffInitPromise;
     return true;
   } catch (e) {
     console.error("LIFF init failed", e);
+    liffInitPromise = null; // 讓之後還能重試
     return false;
   }
 }
@@ -149,12 +157,10 @@ function detailUrl(activity) {
   return `https://liff.line.me/${RUNTIME.liffId}/detail.html?id=${encodeURIComponent(activity.id)}`;
 }
 
-function shareUrl(activity) {
-  return `https://liff.line.me/${RUNTIME.liffId}/share.html?id=${encodeURIComponent(activity.id)}`;
-}
-
 // 注意：flex 訊息一旦送出，文字內容無法再更改，所以這裡只放「活動人數」這種固定資訊，
 // 不放「目前已報名 X 人」這種會隨時間變動、送出後就會過時的內容。
+// footer 只放「活動詳情」一個按鈕，分享要到 LIFF 頁面（detail.html / share.html）裡進行，
+// 不在 flex 訊息本身放分享按鈕。
 function buildBubble(activity) {
   return {
     type: "bubble",
@@ -174,13 +180,10 @@ function buildBubble(activity) {
     },
     footer: {
       type: "box",
-      layout: "horizontal",
-      spacing: "sm",
+      layout: "vertical",
       contents: [
-        { type: "button", style: "secondary", height: "sm",
-          action: { type: "uri", label: "活動詳情", uri: detailUrl(activity) } },
         { type: "button", style: "primary", color: "#17233D", height: "sm",
-          action: { type: "uri", label: "分享活動", uri: shareUrl(activity) } },
+          action: { type: "uri", label: "活動詳情", uri: detailUrl(activity) } },
       ],
     },
   };
