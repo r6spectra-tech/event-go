@@ -4,7 +4,7 @@
    前端開頁時用 action=config 向 GAS 要。
    ============================================================ */
 const CONFIG = {
-  API_BASE: "https://script.google.com/macros/s/AKfycbwykjsyZB9JEQsFHDKUJfT5ki4Gh27i5jxVLaLko_zS2MLk7Uv5vSqvz5fxkPgVMPXgOw/exec",
+  API_BASE: "https://script.google.com/macros/s/YOUR_DEPLOYMENT_ID/exec",
   MAX_SHARE_ITEMS: 5,        // liff.shareTargetPicker 一次最多可帶 5 則訊息
   MAX_CAROUSEL_BUBBLES: 12,  // 單一 flex carousel 最多 12 張卡片
 };
@@ -64,6 +64,7 @@ function normalizeActivity(raw) {
     cover: raw.cover || raw.cover_image || "",
     area: raw.area || "",
     date: raw.date || raw.date_text || "",
+    eventDate: raw.eventDate || raw.event_date || "",
     price: raw.price || "",
     capacity,
     joined,
@@ -141,13 +142,16 @@ async function requireLogin() {
    Flex Message 產生器（分享用）
    ============================================================ */
 function detailUrl(activity) {
-  return `${RUNTIME.siteUrl}/detail.html?id=${encodeURIComponent(activity.id)}`;
+  return `https://liff.line.me/${RUNTIME.liffId}/detail.html?id=${encodeURIComponent(activity.id)}`;
 }
 
+function shareUrl(activity) {
+  return `https://liff.line.me/${RUNTIME.liffId}/share.html?id=${encodeURIComponent(activity.id)}`;
+}
+
+// 注意：flex 訊息一旦送出，文字內容無法再更改，所以這裡只放「活動人數」這種固定資訊，
+// 不放「目前已報名 X 人」這種會隨時間變動、送出後就會過時的內容。
 function buildBubble(activity) {
-  const statusText = activity.isFull
-    ? `候補中・已報名 ${activity.joined}/${activity.capacity}`
-    : `尚可報名・${activity.joined}/${activity.capacity} 人`;
   return {
     type: "bubble",
     hero: activity.cover
@@ -161,8 +165,7 @@ function buildBubble(activity) {
         { type: "text", text: activity.title, weight: "bold", size: "lg", wrap: true },
         { type: "text", text: `${activity.area}｜${activity.date}`, size: "sm", color: "#8a8a8a", wrap: true },
         activity.price ? { type: "text", text: `NT$ ${activity.price}`, size: "md", color: "#2F7A72", weight: "bold" } : null,
-        { type: "separator", margin: "md" },
-        { type: "text", text: statusText, size: "xs", color: activity.isFull ? "#D8572A" : "#2F7A72", margin: "md" },
+        activity.capacity ? { type: "text", text: `活動人數：${activity.capacity} 人`, size: "xs", color: "#666666", margin: "md" } : null,
       ].filter(Boolean),
     },
     footer: {
@@ -170,8 +173,10 @@ function buildBubble(activity) {
       layout: "horizontal",
       spacing: "sm",
       contents: [
-        { type: "button", style: "primary", color: "#17233D", height: "sm",
+        { type: "button", style: "secondary", height: "sm",
           action: { type: "uri", label: "活動詳情", uri: detailUrl(activity) } },
+        { type: "button", style: "primary", color: "#17233D", height: "sm",
+          action: { type: "uri", label: "分享活動", uri: shareUrl(activity) } },
       ],
     },
   };
@@ -228,6 +233,24 @@ async function confirmWaitlistDecision(activityId, decision) {
   return apiPost("confirm", { activityId, userId, decision });
 }
 
+// confirm.html 用：開頁時先檢查這個人對這個活動是否已經回覆過，避免重複詢問
+async function getMyWaitlistStatus(activityId) {
+  const { userId } = await requireLogin();
+  return apiGet("waitlistStatus", { activityId, userId });
+}
+
+/* ============================================================
+   管理者申請 / 檢查（一般使用者）
+   ============================================================ */
+async function applyManager() {
+  const { userId, displayName } = await requireLogin();
+  return apiPost("applyManager", { userId, displayName });
+}
+
+async function checkIsManager(userId) {
+  return apiGet("isManager", { userId });
+}
+
 /* ============================================================
    後台（主辦人）用：帶 admin token
    ============================================================ */
@@ -250,4 +273,12 @@ async function adminNotify(activityId, userId) {
 
 async function adminCreateActivity(fields) {
   return apiPost("createActivity", { ...fields, token: getAdminToken() });
+}
+
+async function adminGetManagers() {
+  return apiGet("managers", { token: getAdminToken() });
+}
+
+async function adminDecideManager(userId, decision) {
+  return apiPost("decideManager", { userId, decision, token: getAdminToken() });
 }
