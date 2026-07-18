@@ -22,45 +22,34 @@
 <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
 <script src="assets/main.js"></script>
 <script>
+// YouTube / Google Map 都用同一種「文字 chip，點了才跳轉」的呈現方式，多筆就並排、超出邊界自動換行
+function chipRow(items, icon){
+  if(!items.length) return "";
+  return `<div class="chip-row">
+    ${items.map(item => `<a class="chip-link" href="${item.url}" target="_blank" rel="noopener">${icon} ${item.label}</a>`).join("")}
+  </div>`;
+}
+
 function videoBlock(a){
   if(!a.youtubeItems.length) return "";
-  return `
-    <span class="section-label">活動影片</span>
-    ${a.youtubeItems.map(item=>{
-      const vid = extractYoutubeId(item.url);
-      return `
-      <div class="media-item">
-        <p class="media-label">${item.label}</p>
-        ${vid
-          ? `<div class="video-wrap"><iframe src="https://www.youtube.com/embed/${vid}" allowfullscreen loading="lazy"></iframe></div>`
-          : `<a class="btn btn-ghost btn-block" href="${item.url}" target="_blank" rel="noopener">開啟影片 →</a>`}
-      </div>`;
-    }).join("")}
-  `;
+  return `<span class="section-label">活動影片</span>${chipRow(a.youtubeItems, "▶")}`;
 }
 
 function mapBlock(a){
   if(!a.mapItems.length) return "";
-  return `
-    <span class="section-label">地點 / Google Map</span>
-    <div class="map-list">
-      ${a.mapItems.map(item=>`
-        <a class="btn btn-ghost btn-block map-link" href="${item.url}" target="_blank" rel="noopener">📍 ${item.label}</a>
-      `).join("")}
-    </div>
-  `;
+  return `<span class="section-label">地點 / Google Map</span>${chipRow(a.mapItems, "📍")}`;
 }
 
 function joinBlock(a){
   if(!a.isFull){
     return `
     <p class="join-note">目前已報名 ${a.joined} / ${a.capacity} 人，尚有名額。</p>
-    ${a.groupUrl ? `<a class="btn btn-teal btn-block" href="${a.groupUrl}" target="_blank" rel="noopener">加入揪團群組</a>`
-                 : `<p class="join-note">主辦人尚未提供群組連結。</p>`}`;
+    <button class="btn btn-teal btn-block" id="joinBtn">參加活動</button>
+    <div id="joinResult" style="margin-top:10px;"></div>`;
   }
   return `
     <p class="join-note">此活動人數已滿（${a.joined}/${a.capacity}），可加入候補名單排隊。有名額釋出時，
-    主辦人會透過 LINE 通知您，請留意訊息並點擊回覆。</p>
+    主辦人會透過 LINE 通知您，請於通知後 24 小時內回覆，逾時視為放棄名額。</p>
     <button class="btn btn-stamp btn-block" id="waitlistBtn">加入候補名單</button>
     <p class="join-note" id="waitlistStatus"></p>`;
 }
@@ -101,6 +90,30 @@ function render(a){
   `;
   document.getElementById("shareBtn").addEventListener("click", ()=> shareOne(a));
 
+  const joinBtn = document.getElementById("joinBtn");
+  if(joinBtn){
+    joinBtn.addEventListener("click", async ()=>{
+      joinBtn.disabled = true;
+      joinBtn.textContent = "處理中…";
+      const resultEl = document.getElementById("joinResult");
+      try{
+        const res = await joinActivity(a.id);
+        joinBtn.style.display = "none";
+        resultEl.innerHTML = `
+          <p class="join-note">${res.already ? "您已經參加這個活動了！" : "已為您報名這個活動！"}</p>
+          ${res.groupUrl
+            ? `<a class="btn btn-teal btn-block" href="${res.groupUrl}" target="_blank" rel="noopener">加入揪團群組 →</a>`
+            : `<p class="join-note">主辦人尚未提供群組連結，請透過主辦人 LINE 聯繫。</p>`}
+        `;
+      }catch(e){
+        console.error(e);
+        resultEl.innerHTML = `<p class="join-note">報名失敗：${e.message}</p>`;
+        joinBtn.disabled = false;
+        joinBtn.textContent = "參加活動";
+      }
+    });
+  }
+
   const waitlistBtn = document.getElementById("waitlistBtn");
   if(waitlistBtn){
     waitlistBtn.addEventListener("click", async ()=>{
@@ -111,7 +124,7 @@ function render(a){
         const res = await joinWaitlist(a.id);
         statusEl.textContent = res.already
           ? "您已經在候補名單中，請耐心等候通知。"
-          : "已加入候補名單！有名額釋出時，主辦人會用 LINE 通知您。";
+          : "已加入候補名單！有名額釋出時，主辦人會用 LINE 通知您（通知後請於 24 小時內回覆）。";
         waitlistBtn.textContent = "已加入候補";
       }catch(e){
         console.error(e);
@@ -124,11 +137,11 @@ function render(a){
 }
 
 async function main(){
-  // 開啟本頁一律先登入 LINE，取得 userId（候補功能需要識別使用者）
+  // 開啟本頁一律先登入 LINE，取得 userId（候補/參加/進站記錄都需要識別使用者）
   try{
     await requireLogin();
   }catch(e){
-    console.warn("LINE 登入未完成，部分功能（候補）將無法使用", e);
+    console.warn("LINE 登入未完成，部分功能將無法使用", e);
   }
 
   const id = new URLSearchParams(location.search).get("id");
@@ -143,6 +156,7 @@ async function main(){
       return;
     }
     render(a);
+    recordVisit(a.id); // 記錄「這個人打開過這個活動詳情頁」，不需要等它完成
   }catch(e){
     console.error(e);
     document.getElementById("content").innerHTML = `<div class="empty">活動資料讀取失敗</div>`;
