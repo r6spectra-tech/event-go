@@ -15,8 +15,12 @@
   </div>
 </div>
 
-<div class="admin-wrap" id="app">
-  <div class="loading">載入中…</div>
+<div class="admin-wrap">
+  <div class="nav-links">
+    <a class="btn btn-ghost" href="../index.html">← 回列表頁</a>
+    <a class="btn btn-ghost" id="backToDetailLink" style="display:none;" href="#">回本活動詳情頁 →</a>
+  </div>
+  <div id="app"><div class="loading">載入中…</div></div>
 </div>
 
 <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
@@ -24,6 +28,7 @@
 <script>
 const statusLabel = { waiting:"排隊中", notified:"已通知，等待回覆", joined:"已加入", cancelled:"已取消", expired:"已逾期（24hr 未回覆）" };
 let currentProfile = null;
+let allActivities = [];
 
 function isExpired(eventDate){
   if(!eventDate) return false;
@@ -49,19 +54,40 @@ function rowHtml(entry){
   </div>`;
 }
 
-async function loadActivityOptions(select){
+async function loadActivityOptions(preselectId){
+  const select = document.getElementById("activitySelect");
   try{
-    const activities = await fetchActivities();
-    const active = activities.filter(a => !isExpired(a.eventDate));
-    if(!active.length){
+    allActivities = await fetchActivities();
+    let list = allActivities.filter(a => !isExpired(a.eventDate));
+    // 如果是從活動詳情頁的候補連結帶 id 過來，就算該活動已過期也要能選到
+    if(preselectId && !list.some(a => a.id === preselectId)){
+      const found = allActivities.find(a => a.id === preselectId);
+      if(found) list = [found, ...list];
+    }
+    if(!list.length){
       select.innerHTML = `<option value="">（沒有未過期的活動）</option>`;
       return;
     }
     select.innerHTML = `<option value="">請選擇活動…</option>` +
-      active.map(a => `<option value="${a.id}">${a.id} - ${a.title}（${a.date}）</option>`).join("");
+      list.map(a => `<option value="${a.id}">${a.id} - ${a.title}（${a.date}）</option>`).join("");
+    if(preselectId){
+      select.value = preselectId;
+      onActivityChange(preselectId);
+    }
   }catch(e){
     select.innerHTML = `<option value="">活動列表載入失敗</option>`;
   }
+}
+
+function onActivityChange(activityId){
+  const backLink = document.getElementById("backToDetailLink");
+  if(activityId){
+    backLink.href = `../detail.html?id=${encodeURIComponent(activityId)}`;
+    backLink.style.display = "inline-block";
+  }else{
+    backLink.style.display = "none";
+  }
+  loadWaitlist(activityId);
 }
 
 async function loadWaitlist(activityId){
@@ -110,8 +136,9 @@ function renderContent(profile){
     </div>
   `;
   const select = document.getElementById("activitySelect");
-  loadActivityOptions(select);
-  select.addEventListener("change", ()=> loadWaitlist(select.value));
+  const preselectId = new URLSearchParams(location.search).get("id");
+  loadActivityOptions(preselectId);
+  select.addEventListener("change", ()=> onActivityChange(select.value));
 }
 
 guardManagerPage(document.getElementById("app"), renderContent);
