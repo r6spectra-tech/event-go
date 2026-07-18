@@ -70,6 +70,10 @@ const formHtml = `
   <div class="panel">
     <p class="panel-title">行程與連結</p>
     <div class="field">
+      <label>備註（顯示在詳情頁行程之上，可留空）</label>
+      <textarea id="notes" placeholder="例如：請自備泳具、活動當天若下雨則順延一週"></textarea>
+    </div>
+    <div class="field">
       <label>行程（每一天用 || 分隔）</label>
       <textarea id="itinerary" placeholder="Day1 集合出發，前往太魯閣||Day2 早起賞日出，中午賦歸"></textarea>
     </div>
@@ -96,6 +100,11 @@ const formHtml = `
       <input id="organizer_line_url" placeholder="https://line.me/ti/p/xxxxxxx">
     </div>
     <div class="field">
+      <label>常用主辦人</label>
+      <div class="chip-row" id="organizerPresetList"></div>
+      <button class="btn btn-ghost btn-block" id="savePresetBtn" style="margin-top:10px;">把上面填的名稱＋連結存成常用</button>
+    </div>
+    <div class="field">
       <label>揪團群組連結</label>
       <input id="group_url" placeholder="https://line.me/ti/g2/xxxxxxx">
     </div>
@@ -106,7 +115,7 @@ const formHtml = `
 `;
 
 const fieldIds = ["id","title","cover_image","area","date_text","event_date","price","capacity",
-  "itinerary","youtube_links","map_links","organizer_name","organizer_line_url","group_url"];
+  "notes","itinerary","youtube_links","map_links","organizer_name","organizer_line_url","group_url"];
 
 async function renderCoverPicker(){
   const picker = document.getElementById("coverPicker");
@@ -128,6 +137,28 @@ async function renderCoverPicker(){
   }
 }
 
+async function renderOrganizerPresets(){
+  const listEl = document.getElementById("organizerPresetList");
+  listEl.innerHTML = `<span class="join-note">載入中…</span>`;
+  try{
+    const presets = await fetchOrganizerPresets();
+    if(!presets.length){
+      listEl.innerHTML = `<span class="join-note">還沒有常用主辦人，填好上面欄位後可以按下方按鈕新增</span>`;
+      return;
+    }
+    listEl.innerHTML = presets.map((p,i) => `<span class="chip-link presetChip" data-i="${i}" style="cursor:pointer;">👤 ${p.name || p.lineUrl}</span>`).join("");
+    listEl.querySelectorAll(".presetChip").forEach(chip=>{
+      chip.addEventListener("click", ()=>{
+        const p = presets[Number(chip.dataset.i)];
+        document.getElementById("organizer_name").value = p.name;
+        document.getElementById("organizer_line_url").value = p.lineUrl;
+      });
+    });
+  }catch(e){
+    listEl.innerHTML = `<span class="join-note">載入失敗</span>`;
+  }
+}
+
 function renderContent(profile){
   currentProfile = profile;
   const app = document.getElementById("app");
@@ -135,7 +166,20 @@ function renderContent(profile){
 
   fetchNextActivityId().then(id => { document.getElementById("id").value = id; }).catch(()=>{});
   renderCoverPicker();
+  renderOrganizerPresets();
   document.getElementById("reshuffleCoverBtn").addEventListener("click", renderCoverPicker);
+
+  document.getElementById("savePresetBtn").addEventListener("click", async ()=>{
+    const name = document.getElementById("organizer_name").value.trim();
+    const lineUrl = document.getElementById("organizer_line_url").value.trim();
+    if(!name && !lineUrl){ alert("請先填主辦人名稱或連結再存成常用"); return; }
+    try{
+      await addOrganizerPreset(name, lineUrl, currentProfile.userId);
+      renderOrganizerPresets();
+    }catch(e){
+      alert("新增常用失敗：" + e.message);
+    }
+  });
 
   document.getElementById("submitBtn").addEventListener("click", async ()=>{
     const msg = document.getElementById("msg");
@@ -151,8 +195,10 @@ function renderContent(profile){
     btn.disabled = true; btn.textContent = "建立中…";
     msg.textContent = "";
     try{
-      await adminCreateActivity(fields, currentProfile.userId);
-      msg.textContent = "✅ 活動已建立，可以到列表頁查看。";
+      const res = await adminCreateActivity(fields, currentProfile.userId);
+      msg.textContent = res.unmapped && res.unmapped.length
+        ? `⚠️ 活動已建立，但這些欄位在 Sheet 裡找不到對應欄名、沒有存進去：${res.unmapped.join("、")}（請檢查 activities 分頁的表頭）`
+        : "✅ 活動已建立，可以到列表頁查看。";
       fieldIds.forEach(id => document.getElementById(id).value = "");
       fetchNextActivityId().then(id => { document.getElementById("id").value = id; }).catch(()=>{});
       renderCoverPicker();
