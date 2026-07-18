@@ -69,9 +69,13 @@ function normalizeActivity(raw) {
     capacity,
     joined,
     isFull: capacity > 0 && joined >= capacity,
+    notes: raw.notes || "",
     itinerary: parseItinerary(raw.itinerary),
+    itineraryRaw: raw.itinerary || "",
     youtubeItems: parseLabeledLines(raw.youtubeLinks || raw.youtube_links),
+    youtubeLinksRaw: raw.youtubeLinks || raw.youtube_links || "",
     mapItems: parseLabeledLines(raw.mapLinks || raw.map_links),
+    mapLinksRaw: raw.mapLinks || raw.map_links || "",
     organizerName: raw.organizerName || raw.organizer_name || "主辦人",
     organizerLineUrl: raw.organizerLineUrl || raw.organizer_line_url || "",
     groupUrl: raw.groupUrl || raw.group_url || "",
@@ -199,17 +203,25 @@ async function shareOne(activity) {
   } catch (e) { console.error(e); }
 }
 
+// 選 2~5 個活動一起分享：包成「一則」flex 訊息、裡面是可以左右滑動的 carousel，
+// 而不是送出好幾則各自獨立的訊息。
 async function shareMany(activities) {
   const list = activities.slice(0, CONFIG.MAX_SHARE_ITEMS);
+  if (list.length < 2) {
+    alert("請至少選擇 2 個活動再一起分享");
+    return;
+  }
   const ok = await ensureLiff();
   if (!ok || !liff.isApiAvailable("shareTargetPicker")) {
     alert("目前環境不支援 LINE 分享。");
     return;
   }
-  const messages = list.map(a => ({
-    type: "flex", altText: `【推薦行程】${a.title}`, contents: buildBubble(a),
-  }));
-  try { await liff.shareTargetPicker(messages); } catch (e) { console.error(e); }
+  const carousel = { type: "carousel", contents: list.map(a => buildBubble(a)) };
+  try {
+    await liff.shareTargetPicker([
+      { type: "flex", altText: `【推薦行程】共 ${list.length} 個活動`, contents: carousel },
+    ]);
+  } catch (e) { console.error(e); }
 }
 
 function copyLink(url) {
@@ -393,18 +405,10 @@ function startAutoLockWatcher(mountEl, userId, onExpire) {
 }
 
 /* ============================================================
-   後台（管理者）用：一般管理動作用「自己的 userId」授權，
-   只有審核管理者名單（managers）還是用最上層擁有者的 ADMIN_TOKEN
+   後台（管理者）用：一律用「已核准管理者自己的 userId」授權，
+   不再有共用的擁有者密碼。第一個管理者要由你直接在 Google Sheet 的
+   managers 分頁手動新增一列、status 填 approved 來「開國」。
    ============================================================ */
-function getAdminToken() {
-  let t = sessionStorage.getItem("adminToken");
-  if (!t) {
-    t = prompt("請輸入擁有者密碼（ADMIN_TOKEN，只有審核管理者名單需要）：") || "";
-    sessionStorage.setItem("adminToken", t);
-  }
-  return t;
-}
-
 async function adminGetWaitlist(activityId, requestedBy) {
   return apiGet("waitlist", { activityId, requestedBy });
 }
@@ -417,10 +421,14 @@ async function adminCreateActivity(fields, requestedBy) {
   return apiPost("createActivity", { ...fields, requestedBy });
 }
 
-async function adminGetManagers() {
-  return apiGet("managers", { token: getAdminToken() });
+async function adminUpdateActivity(fields, requestedBy) {
+  return apiPost("updateActivity", { ...fields, requestedBy });
 }
 
-async function adminDecideManager(userId, decision) {
-  return apiPost("decideManager", { userId, decision, token: getAdminToken() });
+async function adminGetManagers(requestedBy) {
+  return apiGet("managers", { requestedBy });
+}
+
+async function adminDecideManager(userId, decision, requestedBy) {
+  return apiPost("decideManager", { userId, decision, requestedBy });
 }
