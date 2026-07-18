@@ -15,102 +15,157 @@
   </div>
 </div>
 
-<div class="admin-wrap">
-  <div class="field">
-    <label>活動代碼 id（唯一值）</label>
-    <input id="id" placeholder="例如 trip002">
-  </div>
-  <div class="field">
-    <label>活動名稱</label>
-    <input id="title">
-  </div>
-  <div class="field">
-    <label>封面圖網址</label>
-    <input id="cover_image" placeholder="https://...">
-  </div>
-  <div class="field">
-    <label>地區</label>
-    <input id="area" placeholder="例如 花蓮">
-  </div>
-  <div class="field">
-    <label>日期文字（顯示用）</label>
-    <input id="date_text" placeholder="例如 10/18(六)-10/19(日)">
-  </div>
-  <div class="field">
-    <label>活動日期（yyyy-mm-dd，僅用來判斷是否過期，不會顯示給使用者看）</label>
-    <input id="event_date" type="date">
-  </div>
-  <div class="field">
-    <label>價格</label>
-    <input id="price" type="number" placeholder="2980">
-  </div>
-  <div class="field">
-    <label>總名額</label>
-    <input id="capacity" type="number" placeholder="20">
-  </div>
-  <div class="field">
-    <label>行程（每一天用 || 分隔）</label>
-    <textarea id="itinerary" placeholder="Day1 集合出發，前往太魯閣||Day2 早起賞日出，中午賦歸"></textarea>
-  </div>
-  <div class="field">
-    <label>YouTube 連結（可多行，每行：說明文字 網址）</label>
-    <textarea id="youtube_links" placeholder="行前說明會 https://youtu.be/xxxx
-去年花絮 https://youtu.be/yyyy"></textarea>
-    <small>每行一部影片，說明文字與網址中間留空白即可，順序不拘。</small>
-  </div>
-  <div class="field">
-    <label>Google Map 連結（可多行，每行：說明文字 網址）</label>
-    <textarea id="map_links" placeholder="集合地點 https://maps.app.goo.gl/xxxx
-午餐地點 https://maps.app.goo.gl/yyyy"></textarea>
-  </div>
-  <div class="field">
-    <label>主辦人名稱</label>
-    <input id="organizer_name">
-  </div>
-  <div class="field">
-    <label>主辦人 LINE 加好友連結</label>
-    <input id="organizer_line_url" placeholder="https://line.me/ti/p/xxxxxxx">
-  </div>
-  <div class="field">
-    <label>揪團群組連結</label>
-    <input id="group_url" placeholder="https://line.me/ti/g2/xxxxxxx">
-  </div>
-
-  <button class="btn btn-primary btn-block" id="submitBtn">建立活動</button>
-  <p id="msg" class="join-note"></p>
+<div class="admin-wrap" id="app">
+  <div class="loading">載入中…</div>
 </div>
 
 <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
 <script src="../assets/main.js"></script>
 <script>
+let currentProfile = null;
+
+const formHtml = `
+  <div class="panel">
+    <p class="panel-title">基本資訊 <span class="tag">Auto ID</span></p>
+    <div class="field">
+      <label>活動代碼（自動產生，可自行修改）</label>
+      <input id="id" placeholder="載入中…">
+    </div>
+    <div class="field">
+      <label>活動名稱</label>
+      <input id="title">
+    </div>
+    <div class="field">
+      <label>地區</label>
+      <input id="area" placeholder="例如 花蓮">
+    </div>
+    <div class="field">
+      <label>日期文字（顯示用）</label>
+      <input id="date_text" placeholder="例如 10/18(六)-10/19(日)">
+    </div>
+    <div class="field">
+      <label>活動日期（yyyy-mm-dd，僅用來判斷是否過期）</label>
+      <input id="event_date" type="date">
+    </div>
+    <div class="field">
+      <label>價格</label>
+      <input id="price" type="number" placeholder="2980">
+    </div>
+    <div class="field">
+      <label>總名額</label>
+      <input id="capacity" type="number" placeholder="20">
+    </div>
+  </div>
+
+  <div class="panel">
+    <p class="panel-title">封面圖片</p>
+    <div class="field">
+      <label>封面圖網址</label>
+      <input id="cover_image" placeholder="https://... 或從下方圖庫點選">
+    </div>
+    <div class="cover-picker" id="coverPicker"></div>
+    <button class="btn btn-ghost btn-block" id="reshuffleCoverBtn" style="margin-top:10px;">換一批</button>
+  </div>
+
+  <div class="panel">
+    <p class="panel-title">行程與連結</p>
+    <div class="field">
+      <label>行程（每一天用 || 分隔）</label>
+      <textarea id="itinerary" placeholder="Day1 集合出發，前往太魯閣||Day2 早起賞日出，中午賦歸"></textarea>
+    </div>
+    <div class="field">
+      <label>YouTube 連結（可多行，每行：說明文字 網址）</label>
+      <textarea id="youtube_links" placeholder="行前說明會 https://youtu.be/xxxx
+去年花絮 https://youtu.be/yyyy"></textarea>
+    </div>
+    <div class="field">
+      <label>Google Map 連結（可多行，每行：說明文字 網址）</label>
+      <textarea id="map_links" placeholder="集合地點 https://maps.app.goo.gl/xxxx
+午餐地點 https://maps.app.goo.gl/yyyy"></textarea>
+    </div>
+  </div>
+
+  <div class="panel">
+    <p class="panel-title">主辦資訊</p>
+    <div class="field">
+      <label>主辦人名稱</label>
+      <input id="organizer_name">
+    </div>
+    <div class="field">
+      <label>主辦人 LINE 加好友連結</label>
+      <input id="organizer_line_url" placeholder="https://line.me/ti/p/xxxxxxx">
+    </div>
+    <div class="field">
+      <label>揪團群組連結</label>
+      <input id="group_url" placeholder="https://line.me/ti/g2/xxxxxxx">
+    </div>
+  </div>
+
+  <button class="btn btn-primary btn-block" id="submitBtn">建立活動</button>
+  <p id="msg" class="join-note"></p>
+`;
+
 const fieldIds = ["id","title","cover_image","area","date_text","event_date","price","capacity",
   "itinerary","youtube_links","map_links","organizer_name","organizer_line_url","group_url"];
 
-document.getElementById("submitBtn").addEventListener("click", async ()=>{
-  const msg = document.getElementById("msg");
-  const fields = {};
-  fieldIds.forEach(id => fields[id] = document.getElementById(id).value.trim());
-
-  if(!fields.id || !fields.title){
-    msg.textContent = "請至少填寫活動代碼與名稱";
-    return;
-  }
-
-  const btn = document.getElementById("submitBtn");
-  btn.disabled = true; btn.textContent = "建立中…";
-  msg.textContent = "";
+async function renderCoverPicker(){
+  const picker = document.getElementById("coverPicker");
+  picker.innerHTML = `<span class="join-note">載入圖庫中…</span>`;
   try{
-    await ensureLiff();
-    await adminCreateActivity(fields);
-    msg.textContent = "✅ 活動已建立，可以到列表頁查看。";
-    fieldIds.forEach(id => document.getElementById(id).value = "");
+    const all = await fetchCoverImages();
+    if(!all.length){ picker.innerHTML = `<span class="join-note">圖庫是空的（cover-image 分頁沒有圖片網址）</span>`; return; }
+    const sample = pickRandom(all, 3);
+    picker.innerHTML = sample.map(url => `<img class="cover-thumb" src="${url}" data-url="${url}">`).join("");
+    picker.querySelectorAll(".cover-thumb").forEach(img=>{
+      img.addEventListener("click", ()=>{
+        document.getElementById("cover_image").value = img.dataset.url;
+        picker.querySelectorAll(".cover-thumb").forEach(i=>i.classList.remove("selected"));
+        img.classList.add("selected");
+      });
+    });
   }catch(e){
-    console.error(e);
-    msg.textContent = "❌ 建立失敗：" + e.message;
-  }finally{
-    btn.disabled = false; btn.textContent = "建立活動";
+    picker.innerHTML = `<span class="join-note">圖庫載入失敗</span>`;
   }
-});
+}
+
+function renderContent(profile){
+  currentProfile = profile;
+  const app = document.getElementById("app");
+  app.innerHTML = formHtml;
+
+  fetchNextActivityId().then(id => { document.getElementById("id").value = id; }).catch(()=>{});
+  renderCoverPicker();
+  document.getElementById("reshuffleCoverBtn").addEventListener("click", renderCoverPicker);
+
+  document.getElementById("submitBtn").addEventListener("click", async ()=>{
+    const msg = document.getElementById("msg");
+    const fields = {};
+    fieldIds.forEach(id => fields[id] = document.getElementById(id).value.trim());
+
+    if(!fields.id || !fields.title){
+      msg.textContent = "請至少填寫活動代碼與名稱";
+      return;
+    }
+
+    const btn = document.getElementById("submitBtn");
+    btn.disabled = true; btn.textContent = "建立中…";
+    msg.textContent = "";
+    try{
+      await adminCreateActivity(fields, currentProfile.userId);
+      msg.textContent = "✅ 活動已建立，可以到列表頁查看。";
+      fieldIds.forEach(id => document.getElementById(id).value = "");
+      fetchNextActivityId().then(id => { document.getElementById("id").value = id; }).catch(()=>{});
+      renderCoverPicker();
+    }catch(e){
+      console.error(e);
+      msg.textContent = "❌ 建立失敗：" + e.message;
+    }finally{
+      btn.disabled = false; btn.textContent = "建立活動";
+    }
+  });
+}
+
+guardManagerPage(document.getElementById("app"), renderContent);
 </script>
 </body>
 </html>
