@@ -17,7 +17,7 @@
 </div>
 
 <div class="share-bar">
-  已選 <span id="selCount">0</span> / <span id="selMax">5</span>（liff.shareTargetPicker 一次最多可分享 5 則訊息）
+  已選 <span id="selCount">0</span> / <span id="selMax">5</span>（選 2~5 個活動，會包成一則可左右滑動的訊息分享）
   <button class="btn-teal" id="shareSelectedBtn" disabled>分享所選</button>
 </div>
 
@@ -77,7 +77,7 @@ function cardHtml(a){
 
 function updateShareBar(){
   document.getElementById("selCount").textContent = selected.size;
-  document.getElementById("shareSelectedBtn").disabled = selected.size === 0;
+  document.getElementById("shareSelectedBtn").disabled = selected.size < 2;
 }
 
 async function setupManagerArea(){
@@ -89,7 +89,12 @@ async function setupManagerArea(){
     const { status } = await checkIsManager(profile.userId);
 
     if(status === "approved"){
-      area.innerHTML = `<a class="btn btn-teal" href="admin/waitlist.html">活動管理</a>`;
+      area.innerHTML = `
+        <a class="btn btn-ghost manager-link" href="admin/new-activity.html">新增活動</a>
+        <a class="btn btn-ghost manager-link" href="admin/edit-activity.html">編輯活動</a>
+        <a class="btn btn-ghost manager-link" href="admin/waitlist.html">候補管理</a>
+        <a class="btn btn-ghost manager-link" href="admin/managers.html">管理申請</a>
+      `;
     }else if(status === "pending"){
       area.innerHTML = `<span style="font-size:0.75rem;color:#E7C77A;">管理者申請審核中…</span>`;
     }else{
@@ -122,7 +127,10 @@ function openPinSetupModal(area){
       const res = await applyManager(pin);
       modal.style.display = "none";
       area.innerHTML = res.status === "approved"
-        ? `<a class="btn btn-teal" href="admin/waitlist.html">活動管理</a>`
+        ? `<a class="btn btn-ghost manager-link" href="admin/new-activity.html">新增活動</a>
+           <a class="btn btn-ghost manager-link" href="admin/edit-activity.html">編輯活動</a>
+           <a class="btn btn-ghost manager-link" href="admin/waitlist.html">候補管理</a>
+           <a class="btn btn-ghost manager-link" href="admin/managers.html">管理申請</a>`
         : `<span style="font-size:0.75rem;color:#E7C77A;">已送出申請，請等待審核</span>`;
     }catch(e){
       errEl.textContent = e.message;
