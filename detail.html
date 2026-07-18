@@ -59,6 +59,7 @@ function render(a){
   document.title = a.title;
   document.getElementById("content").innerHTML = `
     ${a.cover ? `<img class="hero-img" src="${a.cover}" alt="${a.title}">` : ""}
+    <div id="managerToolbar"></div>
     <p class="detail-title">${a.title}</p>
     <p class="detail-meta">${a.area}｜${a.date}${a.price ? `｜NT$ ${a.price}` : ""}</p>
 
@@ -138,10 +139,32 @@ function render(a){
   }
 }
 
+async function loadManagerToolbar(a, userId){
+  const box = document.getElementById("managerToolbar");
+  if(!box) return;
+  try{
+    const { status } = await checkIsManager(userId);
+    if(status !== "approved") return;
+    box.innerHTML = `
+      <div class="manager-toolbar">
+        <a class="btn btn-ghost" href="admin/edit-activity.html?id=${encodeURIComponent(a.id)}">✏️ 編輯此活動</a>
+        <a class="btn btn-ghost" id="waitlistCountLink" href="admin/waitlist.html?id=${encodeURIComponent(a.id)}">候補 … 人</a>
+      </div>
+    `;
+    try{
+      const { count } = await adminGetWaitlistCount(a.id, userId);
+      document.getElementById("waitlistCountLink").textContent = `候補 ${count} 人 →`;
+    }catch(e){ console.warn("候補人數載入失敗", e); }
+  }catch(e){
+    console.warn("管理者狀態載入失敗", e);
+  }
+}
+
 async function main(){
   // 開啟本頁一律先登入 LINE，取得 userId（候補/參加/進站記錄都需要識別使用者）
+  let profile = null;
   try{
-    await requireLogin();
+    profile = await requireLogin();
   }catch(e){
     console.warn("LINE 登入未完成，部分功能將無法使用", e);
   }
@@ -159,6 +182,7 @@ async function main(){
     }
     render(a);
     recordVisit(a.id); // 記錄「這個人打開過這個活動詳情頁」，不需要等它完成
+    if(profile) loadManagerToolbar(a, profile.userId);
   }catch(e){
     console.error(e);
     document.getElementById("content").innerHTML = `<div class="empty">活動資料讀取失敗</div>`;
