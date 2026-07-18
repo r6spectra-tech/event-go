@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>分享活動</title>
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+
+<div class="topbar">
+  <div>
+    <span class="eyebrow">Share</span>
+    <h1>分享這個活動</h1>
+  </div>
+</div>
+
+<div class="confirm-card" id="content">載入中…</div>
+
+<script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+<script src="assets/main.js"></script>
+<script>
+const el = document.getElementById("content");
+
+function render(a){
+  el.innerHTML = `
+    ${a.cover ? `<img src="${a.cover}" style="width:100%;border-radius:10px;margin-bottom:14px;">` : ""}
+    <p class="big">${a.title}</p>
+    <p>${a.area}｜${a.date}</p>
+    <button class="btn btn-teal btn-block" style="margin-top:16px" id="shareBtn">分享給朋友 / 群組</button>
+    <a class="btn btn-ghost btn-block" style="margin-top:10px" href="detail.html?id=${encodeURIComponent(a.id)}">查看活動詳情</a>
+  `;
+  document.getElementById("shareBtn").addEventListener("click", ()=> shareOne(a));
+}
+
+async function main(){
+  const id = new URLSearchParams(location.search).get("id");
+  if(!id){ el.innerHTML = "<p>缺少活動編號</p>"; return; }
+  try{
+    await ensureLiff();
+    const a = await getActivityById(id);
+    if(!a){ el.innerHTML = "<p>找不到這個活動</p>"; return; }
+    render(a);
+  }catch(e){
+    console.error(e);
+    el.innerHTML = "<p>讀取失敗，請稍後再試。</p>";
+  }
+}
+
+main();
+</script>
+</body>
+</html>
