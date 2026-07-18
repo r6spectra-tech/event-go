@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>編輯活動</title>
+<link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+
+<div class="topbar">
+  <div>
+    <span class="eyebrow">Managers Only</span>
+    <h1>編輯活動</h1>
+  </div>
+</div>
+
+<div class="admin-wrap" id="app">
+  <div class="loading">載入中…</div>
+</div>
+
+<script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+<script src="../assets/main.js"></script>
+<script>
+let currentProfile = null;
+let activityMap = {};
+
+const fieldIds = ["title","cover_image","area","date_text","event_date","price","capacity",
+  "notes","itinerary","youtube_links","map_links","organizer_name","organizer_line_url","group_url"];
+
+const formHtml = `
+  <div class="panel">
+    <p class="panel-title">選擇要編輯的活動</p>
+    <div class="field">
+      <select id="activitySelect"><option value="">載入中…</option></select>
+    </div>
+  </div>
+
+  <div id="editForm" style="display:none;">
+    <div class="panel">
+      <p class="panel-title">基本資訊</p>
+      <div class="field"><label>活動代碼（不可修改）</label><input id="idDisplay" disabled></div>
+      <div class="field"><label>活動名稱</label><input id="title"></div>
+      <div class="field"><label>地區</label><input id="area"></div>
+      <div class="field"><label>日期文字（顯示用）</label><input id="date_text"></div>
+      <div class="field"><label>活動日期（yyyy-mm-dd，判斷過期用）</label><input id="event_date" type="date"></div>
+      <div class="field"><label>價格</label><input id="price" type="number"></div>
+      <div class="field"><label>總名額</label><input id="capacity" type="number"></div>
+    </div>
+
+    <div class="panel">
+      <p class="panel-title">封面圖片</p>
+      <div class="field"><label>封面圖網址</label><input id="cover_image"></div>
+      <div class="cover-picker" id="coverPicker"></div>
+      <button class="btn btn-ghost btn-block" id="reshuffleCoverBtn" style="margin-top:10px;">換一批建議圖</button>
+    </div>
+
+    <div class="panel">
+      <p class="panel-title">行程與連結</p>
+      <div class="field"><label>備註（顯示在詳情頁行程之上）</label><textarea id="notes"></textarea></div>
+      <div class="field"><label>行程（每一天用 || 分隔）</label><textarea id="itinerary"></textarea></div>
+      <div class="field"><label>YouTube 連結（可多行，每行：說明文字 網址）</label><textarea id="youtube_links"></textarea></div>
+      <div class="field"><label>Google Map 連結（可多行，每行：說明文字 網址）</label><textarea id="map_links"></textarea></div>
+    </div>
+
+    <div class="panel">
+      <p class="panel-title">主辦資訊</p>
+      <div class="field"><label>主辦人名稱</label><input id="organizer_name"></div>
+      <div class="field"><label>主辦人 LINE 加好友連結</label><input id="organizer_line_url"></div>
+      <div class="field"><label>揪團群組連結</label><input id="group_url"></div>
+    </div>
+
+    <button class="btn btn-primary btn-block" id="submitBtn">儲存變更</button>
+    <p id="msg" class="join-note"></p>
+  </div>
+`;
+
+async function renderCoverPicker(){
+  const picker = document.getElementById("coverPicker");
+  picker.innerHTML = `<span class="join-note">載入圖庫中…</span>`;
+  try{
+    const all = await fetchCoverImages();
+    if(!all.length){ picker.innerHTML = `<span class="join-note">圖庫是空的</span>`; return; }
+    const sample = pickRandom(all, 3);
+    picker.innerHTML = sample.map(url => `<img class="cover-thumb" src="${url}" data-url="${url}">`).join("");
+    picker.querySelectorAll(".cover-thumb").forEach(img=>{
+      img.addEventListener("click", ()=>{ document.getElementById("cover_image").value = img.dataset.url; });
+    });
+  }catch(e){
+    picker.innerHTML = `<span class="join-note">圖庫載入失敗</span>`;
+  }
+}
+
+function fillForm(a){
+  document.getElementById("idDisplay").value = a.id;
+  document.getElementById("title").value = a.title || "";
+  document.getElementById("area").value = a.area || "";
+  document.getElementById("date_text").value = a.date || "";
+  document.getElementById("event_date").value = a.eventDate || "";
+  document.getElementById("price").value = a.price || "";
+  document.getElementById("capacity").value = a.capacity || "";
+  document.getElementById("cover_image").value = a.cover || "";
+  document.getElementById("notes").value = a.notes || "";
+  // itinerary/youtube/map 要還原成「原始文字」格式，不是解析後的物件，所以直接用原始欄位
+  document.getElementById("itinerary").value = (a.itineraryRaw !== undefined ? a.itineraryRaw : a.itinerary.join("||"));
+  document.getElementById("youtube_links").value = a.youtubeLinksRaw || "";
+  document.getElementById("map_links").value = a.mapLinksRaw || "";
+  document.getElementById("organizer_name").value = a.organizerName || "";
+  document.getElementById("organizer_line_url").value = a.organizerLineUrl || "";
+  document.getElementById("group_url").value = a.groupUrl || "";
+}
+
+async function loadActivityOptions(){
+  const select = document.getElementById("activitySelect");
+  try{
+    const activities = await fetchActivities();
+    activityMap = Object.fromEntries(activities.map(a => [a.id, a]));
+    select.innerHTML = `<option value="">請選擇活動…</option>` +
+      activities.map(a => `<option value="${a.id}">${a.id} - ${a.title}（${a.date}）</option>`).join("");
+  }catch(e){
+    select.innerHTML = `<option value="">活動列表載入失敗</option>`;
+  }
+}
+
+function renderContent(profile){
+  currentProfile = profile;
+  const app = document.getElementById("app");
+  app.innerHTML = formHtml;
+  loadActivityOptions();
+
+  document.getElementById("activitySelect").addEventListener("change", async (e)=>{
+    const id = e.target.value;
+    const editForm = document.getElementById("editForm");
+    if(!id){ editForm.style.display = "none"; return; }
+    editForm.style.display = "block";
+    fillForm(activityMap[id]);
+    renderCoverPicker();
+  });
+
+  document.getElementById("reshuffleCoverBtn").addEventListener("click", renderCoverPicker);
+
+  document.getElementById("submitBtn").addEventListener("click", async ()=>{
+    const id = document.getElementById("activitySelect").value;
+    if(!id) return;
+    const msg = document.getElementById("msg");
+    const fields = { id };
+    fieldIds.forEach(fid => fields[fid] = document.getElementById(fid).value.trim());
+
+    const btn = document.getElementById("submitBtn");
+    btn.disabled = true; btn.textContent = "儲存中…";
+    msg.textContent = "";
+    try{
+      await adminUpdateActivity(fields, currentProfile.userId);
+      msg.textContent = "✅ 已儲存變更";
+      loadActivityOptions();
+    }catch(e){
+      console.error(e);
+      msg.textContent = "❌ 儲存失敗：" + e.message;
+    }finally{
+      btn.disabled = false; btn.textContent = "儲存變更";
+    }
+  });
+}
+
+guardManagerPage(document.getElementById("app"), renderContent);
+</script>
+</body>
+</html>
