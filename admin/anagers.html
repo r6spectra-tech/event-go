@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>管理者審核</title>
+<link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+
+<div class="topbar">
+  <div>
+    <span class="eyebrow">Owner Only</span>
+    <h1>管理者審核</h1>
+  </div>
+</div>
+
+<div class="admin-wrap">
+  <button class="btn btn-primary btn-block" id="loadBtn">載入申請名單</button>
+  <div id="list" style="margin-top:20px;"></div>
+</div>
+
+<script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+<script src="../assets/main.js"></script>
+<script>
+const statusLabel = { pending:"待審核", approved:"已核准", rejected:"已拒絕" };
+
+function rowHtml(m){
+  const showActions = m.status === "pending";
+  return `
+  <div class="waitlist-row">
+    <div>
+      <div class="name">${m.displayName || "(未提供名稱)"}</div>
+      <div class="meta">userId: ${m.userId.slice(0,12)}…｜申請時間: ${m.appliedAt}</div>
+    </div>
+    <div style="display:flex;align-items:center;gap:8px;">
+      <span class="badge ${m.status}">${statusLabel[m.status] || m.status}</span>
+      ${showActions ? `
+        <button class="btn btn-teal approveBtn" data-user="${m.userId}">批准</button>
+        <button class="btn btn-stamp rejectBtn" data-user="${m.userId}">拒絕</button>
+      ` : ""}
+    </div>
+  </div>`;
+}
+
+async function load(){
+  const listEl = document.getElementById("list");
+  listEl.innerHTML = `<div class="loading">載入中…</div>`;
+  try{
+    await ensureLiff();
+    const managers = await adminGetManagers();
+    if(!managers.length){
+      listEl.innerHTML = `<div class="empty">目前沒有申請紀錄</div>`;
+      return;
+    }
+    // 待審核的排前面
+    managers.sort((a,b)=> (a.status==="pending"?0:1) - (b.status==="pending"?0:1));
+    listEl.innerHTML = managers.map(rowHtml).join("");
+
+    listEl.querySelectorAll(".approveBtn").forEach(btn=>{
+      btn.addEventListener("click", ()=> decide(btn.dataset.user, "approved"));
+    });
+    listEl.querySelectorAll(".rejectBtn").forEach(btn=>{
+      btn.addEventListener("click", ()=> decide(btn.dataset.user, "rejected"));
+    });
+  }catch(e){
+    console.error(e);
+    listEl.innerHTML = `<div class="empty">讀取失敗：${e.message}</div>`;
+  }
+}
+
+async function decide(userId, decision){
+  try{
+    await adminDecideManager(userId, decision);
+    load();
+  }catch(e){
+    alert("處理失敗：" + e.message);
+  }
+}
+
+document.getElementById("loadBtn").addEventListener("click", load);
+</script>
+</body>
+</html>
