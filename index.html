@@ -11,7 +11,7 @@
 <div class="topbar">
   <div>
     <span class="eyebrow">Boarding List</span>
-    <h1>旅行揪團活動</h1>
+    <h1 id="appTitle" class="clickable-title">旅行揪團活動 <span class="share-hint">📤</span></h1>
   </div>
   <div id="managerArea"></div>
 </div>
@@ -141,6 +141,10 @@ function openPinSetupModal(area){
 async function main(){
   setupManagerArea();
   await ensureLiff().catch(()=>{});
+
+  document.getElementById("appTitle").addEventListener("click", ()=>{
+    shareApp("揪你一起去玩！", "點開看看最近有哪些揪團行程，晚了要候補囉 →");
+  });
   let activities = [];
   try{
     activities = await fetchActivities();
