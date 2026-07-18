@@ -23,19 +23,32 @@
 <script src="assets/main.js"></script>
 <script>
 function videoBlock(a){
-  if(a.youtubeId){
-    return `
-    <span class="section-label">活動簡介</span>
-    <div class="video-wrap">
-      <iframe src="https://www.youtube.com/embed/${a.youtubeId}" allowfullscreen loading="lazy"></iframe>
-    </div>`;
-  }
-  if(a.igUrl){
-    return `
-    <span class="section-label">推薦影片</span>
-    <a class="btn btn-ghost btn-block" href="${a.igUrl}" target="_blank" rel="noopener">在 Instagram 上觀看 →</a>`;
-  }
-  return "";
+  if(!a.youtubeItems.length) return "";
+  return `
+    <span class="section-label">活動影片</span>
+    ${a.youtubeItems.map(item=>{
+      const vid = extractYoutubeId(item.url);
+      return `
+      <div class="media-item">
+        <p class="media-label">${item.label}</p>
+        ${vid
+          ? `<div class="video-wrap"><iframe src="https://www.youtube.com/embed/${vid}" allowfullscreen loading="lazy"></iframe></div>`
+          : `<a class="btn btn-ghost btn-block" href="${item.url}" target="_blank" rel="noopener">開啟影片 →</a>`}
+      </div>`;
+    }).join("")}
+  `;
+}
+
+function mapBlock(a){
+  if(!a.mapItems.length) return "";
+  return `
+    <span class="section-label">地點 / Google Map</span>
+    <div class="map-list">
+      ${a.mapItems.map(item=>`
+        <a class="btn btn-ghost btn-block map-link" href="${item.url}" target="_blank" rel="noopener">📍 ${item.label}</a>
+      `).join("")}
+    </div>
+  `;
 }
 
 function joinBlock(a){
@@ -46,9 +59,10 @@ function joinBlock(a){
                  : `<p class="join-note">主辦人尚未提供群組連結。</p>`}`;
   }
   return `
-    <p class="join-note">此活動人數已滿（${a.joined}/${a.capacity}），可加入候補名單排隊，遞補時將由主辦人通知。</p>
-    ${a.waitlistUrl ? `<a class="btn btn-stamp btn-block" href="${a.waitlistUrl}" target="_blank" rel="noopener">加入候補名單</a>`
-                    : `<p class="join-note">主辦人尚未提供候補連結，請透過下方 LINE 聯繫。</p>`}`;
+    <p class="join-note">此活動人數已滿（${a.joined}/${a.capacity}），可加入候補名單排隊。有名額釋出時，
+    主辦人會透過 LINE 通知您，請留意訊息並點擊回覆。</p>
+    <button class="btn btn-stamp btn-block" id="waitlistBtn">加入候補名單</button>
+    <p class="join-note" id="waitlistStatus"></p>`;
 }
 
 function render(a){
@@ -65,6 +79,7 @@ function render(a){
     </ul>
 
     ${videoBlock(a)}
+    ${mapBlock(a)}
 
     <div class="footer-card">
       <div class="organizer-row">
@@ -85,10 +100,37 @@ function render(a){
     </div>
   `;
   document.getElementById("shareBtn").addEventListener("click", ()=> shareOne(a));
+
+  const waitlistBtn = document.getElementById("waitlistBtn");
+  if(waitlistBtn){
+    waitlistBtn.addEventListener("click", async ()=>{
+      waitlistBtn.disabled = true;
+      waitlistBtn.textContent = "處理中…";
+      const statusEl = document.getElementById("waitlistStatus");
+      try{
+        const res = await joinWaitlist(a.id);
+        statusEl.textContent = res.already
+          ? "您已經在候補名單中，請耐心等候通知。"
+          : "已加入候補名單！有名額釋出時，主辦人會用 LINE 通知您。";
+        waitlistBtn.textContent = "已加入候補";
+      }catch(e){
+        console.error(e);
+        statusEl.textContent = "加入候補失敗，請稍後再試或聯繫主辦人。";
+        waitlistBtn.disabled = false;
+        waitlistBtn.textContent = "加入候補名單";
+      }
+    });
+  }
 }
 
 async function main(){
-  await ensureLiff().catch(()=>{});
+  // 開啟本頁一律先登入 LINE，取得 userId（候補功能需要識別使用者）
+  try{
+    await requireLogin();
+  }catch(e){
+    console.warn("LINE 登入未完成，部分功能（候補）將無法使用", e);
+  }
+
   const id = new URLSearchParams(location.search).get("id");
   if(!id){
     document.getElementById("content").innerHTML = `<div class="empty">缺少活動 id</div>`;
