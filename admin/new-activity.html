@@ -33,8 +33,12 @@
     <input id="area" placeholder="例如 花蓮">
   </div>
   <div class="field">
-    <label>日期文字</label>
+    <label>日期文字（顯示用）</label>
     <input id="date_text" placeholder="例如 10/18(六)-10/19(日)">
+  </div>
+  <div class="field">
+    <label>活動日期（yyyy-mm-dd，僅用來判斷是否過期，不會顯示給使用者看）</label>
+    <input id="event_date" type="date">
   </div>
   <div class="field">
     <label>價格</label>
@@ -79,7 +83,7 @@
 <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
 <script src="../assets/main.js"></script>
 <script>
-const fieldIds = ["id","title","cover_image","area","date_text","price","capacity",
+const fieldIds = ["id","title","cover_image","area","date_text","event_date","price","capacity",
   "itinerary","youtube_links","map_links","organizer_name","organizer_line_url","group_url"];
 
 document.getElementById("submitBtn").addEventListener("click", async ()=>{
