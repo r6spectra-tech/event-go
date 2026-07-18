@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>候補名單管理</title>
+<link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+
+<div class="topbar">
+  <div>
+    <span class="eyebrow">Organizer Only</span>
+    <h1>候補名單管理</h1>
+  </div>
+</div>
+
+<div class="admin-wrap">
+  <div class="field">
+    <label>活動代碼（Sheet 裡的 id）</label>
+    <input id="activityId" placeholder="例如 trip001">
+  </div>
+  <button class="btn btn-primary btn-block" id="loadBtn">載入候補名單</button>
+
+  <div id="list" style="margin-top:20px;"></div>
+</div>
+
+<script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+<script src="../assets/main.js"></script>
+<script>
+const badgeLabel = { waiting:"排隊中", notified:"已通知，等待回覆", joined:"已加入", cancelled:"已取消" };
+
+function rowHtml(entry){
+  const canNotify = entry.status === "waiting" || entry.status === "notified";
+  return `
+  <div class="waitlist-row">
+    <div>
+      <div class="name">${entry.displayName || "(未提供名稱)"}</div>
+      <div class="meta">userId: ${entry.userId.slice(0,10)}…｜排隊時間: ${entry.createdAt}</div>
+    </div>
+    <div style="display:flex;align-items:center;gap:8px;">
+      <span class="badge ${entry.status}">${badgeLabel[entry.status] || entry.status}</span>
+      ${canNotify ? `<button class="btn btn-teal notifyBtn" data-user="${entry.userId}">傳 LINE 通知</button>` : ""}
+    </div>
+  </div>`;
+}
+
+async function load(){
+  const activityId = document.getElementById("activityId").value.trim();
+  if(!activityId) return;
+  const listEl = document.getElementById("list");
+  listEl.innerHTML = `<div class="loading">載入中…</div>`;
+  try{
+    await ensureLiff();
+    const entries = await adminGetWaitlist(activityId);
+    if(!entries.length){
+      listEl.innerHTML = `<div class="empty">目前沒有候補名單</div>`;
+      return;
+    }
+    listEl.innerHTML = entries.map(rowHtml).join("");
+    listEl.querySelectorAll(".notifyBtn").forEach(btn=>{
+      btn.addEventListener("click", async ()=>{
+        btn.disabled = true; btn.textContent = "通知中…";
+        try{
+          await adminNotify(activityId, btn.dataset.user);
+          btn.textContent = "已送出通知";
+        }catch(e){
+          console.error(e);
+          alert("通知失敗：" + e.message);
+          btn.disabled = false; btn.textContent = "傳 LINE 通知";
+        }
+      });
+    });
+  }catch(e){
+    console.error(e);
+    listEl.innerHTML = `<div class="empty">讀取失敗：${e.message}</div>`;
+  }
+}
+
+document.getElementById("loadBtn").addEventListener("click", load);
+</script>
+</body>
+</html>
