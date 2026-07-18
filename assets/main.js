@@ -192,6 +192,39 @@ function buildBubble(activity) {
 /* ============================================================
    LIFF 分享
    ============================================================ */
+// 分享「整個網站」用的通用 flex（首頁標題點擊觸發），不綁定任何單一活動
+async function shareApp(title, subtitle) {
+  const ok = await ensureLiff();
+  if (!ok || !liff.isApiAvailable("shareTargetPicker")) {
+    alert("目前環境不支援 LINE 分享，改為複製連結。");
+    copyLink(`https://liff.line.me/${RUNTIME.liffId}`);
+    return;
+  }
+  const bubble = {
+    type: "bubble",
+    body: {
+      type: "box",
+      layout: "vertical",
+      spacing: "md",
+      contents: [
+        { type: "text", text: title, weight: "bold", size: "xl", wrap: true },
+        { type: "text", text: subtitle, size: "sm", color: "#8a8a8a", wrap: true, margin: "md" },
+      ],
+    },
+    footer: {
+      type: "box",
+      layout: "vertical",
+      contents: [
+        { type: "button", style: "primary", color: "#17233D",
+          action: { type: "uri", label: "查看所有活動", uri: `https://liff.line.me/${RUNTIME.liffId}` } },
+      ],
+    },
+  };
+  try {
+    await liff.shareTargetPicker([{ type: "flex", altText: title, contents: bubble }]);
+  } catch (e) { console.error(e); }
+}
+
 async function shareOne(activity) {
   const ok = await ensureLiff();
   if (!ok || !liff.isApiAvailable("shareTargetPicker")) {
@@ -220,9 +253,11 @@ async function shareMany(activities) {
     return;
   }
   const carousel = { type: "carousel", contents: list.map(a => buildBubble(a)) };
+  const dateList = list.map(a => a.date).filter(Boolean).join("、");
+  const altText = dateList ? `【推薦行程】${dateList}` : `【推薦行程】共 ${list.length} 個活動`;
   try {
     await liff.shareTargetPicker([
-      { type: "flex", altText: `【推薦行程】共 ${list.length} 個活動`, contents: carousel },
+      { type: "flex", altText, contents: carousel },
     ]);
   } catch (e) { console.error(e); }
 }
