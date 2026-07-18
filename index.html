@@ -13,6 +13,7 @@
     <span class="eyebrow">Boarding List</span>
     <h1>旅行揪團活動</h1>
   </div>
+  <div id="managerArea"></div>
 </div>
 
 <div class="share-bar">
@@ -65,7 +66,38 @@ function updateShareBar(){
   document.getElementById("shareSelectedBtn").disabled = selected.size === 0;
 }
 
+async function setupManagerArea(){
+  const area = document.getElementById("managerArea");
+  try{
+    const ok = await ensureLiff();
+    if(!ok || !liff.isLoggedIn()) return; // 外部瀏覽器或未登入時，不顯示管理相關按鈕
+    const profile = await liff.getProfile();
+    const { status } = await checkIsManager(profile.userId);
+
+    if(status === "approved"){
+      area.innerHTML = `<a class="btn btn-teal" href="admin/waitlist.html">活動管理</a>`;
+    }else if(status === "pending"){
+      area.innerHTML = `<span style="font-size:0.75rem;color:#E7C77A;">管理者申請審核中…</span>`;
+    }else{
+      area.innerHTML = `<button class="btn btn-ghost" id="applyManagerBtn" style="color:#F6F1E4;border-color:#F6F1E4;">申請管理</button>`;
+      document.getElementById("applyManagerBtn").addEventListener("click", async ()=>{
+        try{
+          const res = await applyManager();
+          area.innerHTML = res.status === "approved"
+            ? `<a class="btn btn-teal" href="admin/waitlist.html">活動管理</a>`
+            : `<span style="font-size:0.75rem;color:#E7C77A;">已送出申請，請等待審核</span>`;
+        }catch(e){
+          alert("申請失敗：" + e.message);
+        }
+      });
+    }
+  }catch(e){
+    console.warn("管理者狀態載入失敗", e);
+  }
+}
+
 async function main(){
+  setupManagerArea();
   await ensureLiff().catch(()=>{});
   let activities = [];
   try{
