@@ -100,9 +100,13 @@ function fillForm(a){
   document.getElementById("title").value = a.title || "";
   document.getElementById("area").value = a.area || "";
   document.getElementById("date_text").value = a.date || "";
-  document.getElementById("event_date").value = a.eventDate || "";
-  document.getElementById("price").value = a.price || "";
-  document.getElementById("capacity").value = a.capacity || "";
+  // <input type="date"> 只接受精確的 yyyy-MM-dd；Google Sheet 常把日期存成含時間的 ISO 字串
+  // （例如 2026-08-07T16:00:00.000Z），直接賦值會被瀏覽器悄悄拒絕、欄位變空白，所以先截斷成前 10 碼。
+  document.getElementById("event_date").value = String(a.eventDate || "").slice(0, 10);
+  // <input type="number"> 一樣是嚴格格式，只要混到非數字字元（例如全形空格、貨幣符號）就會被拒絕，
+  // 先過濾掉非數字/小數點的字元再賦值。
+  document.getElementById("price").value = String(a.price || "").replace(/[^\d.]/g, "");
+  document.getElementById("capacity").value = String(a.capacity || "").replace(/[^\d.]/g, "");
   document.getElementById("cover_image").value = a.cover || "";
   document.getElementById("notes").value = a.notes || "";
   document.getElementById("itinerary").value = (a.itineraryRaw !== undefined ? a.itineraryRaw : a.itinerary.join("||"));
