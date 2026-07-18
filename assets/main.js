@@ -240,11 +240,46 @@ async function getMyWaitlistStatus(activityId) {
 }
 
 /* ============================================================
+   詳情頁：進站記錄 / 直接參加 / 輔助資料
+   ============================================================ */
+async function recordVisit(activityId) {
+  try {
+    const { userId, displayName } = await requireLogin();
+    return await apiPost("recordVisit", { activityId, userId, displayName });
+  } catch (e) {
+    console.warn("recordVisit 略過（未登入或環境不支援）", e);
+  }
+}
+
+async function joinActivity(activityId) {
+  const { userId, displayName } = await requireLogin();
+  return apiPost("joinActivity", { activityId, userId, displayName });
+}
+
+async function fetchNextActivityId() {
+  const res = await apiGet("nextActivityId");
+  return res.id;
+}
+
+async function fetchCoverImages() {
+  return apiGet("coverImages");
+}
+
+function pickRandom(arr, n) {
+  const copy = [...arr];
+  const out = [];
+  while (copy.length && out.length < n) {
+    out.push(copy.splice(Math.floor(Math.random() * copy.length), 1)[0]);
+  }
+  return out;
+}
+
+/* ============================================================
    管理者申請 / 檢查（一般使用者）
    ============================================================ */
-async function applyManager() {
+async function applyManager(pin) {
   const { userId, displayName } = await requireLogin();
-  return apiPost("applyManager", { userId, displayName });
+  return apiPost("applyManager", { userId, displayName, pin });
 }
 
 async function checkIsManager(userId) {
@@ -252,27 +287,134 @@ async function checkIsManager(userId) {
 }
 
 /* ============================================================
-   後台（主辦人）用：帶 admin token
+   管理者 PIN 登入（每個管理者用自己的 4 碼密碼，5 分鐘無操作自動鎖定）
+   ============================================================ */
+const MANAGER_SESSION_MS = 5 * 60 * 1000;
+
+function managerSessionKey(userId) {
+  return `managerUnlockedAt:${userId}`;
+}
+
+function isManagerSessionValid(userId) {
+  const t = Number(sessionStorage.getItem(managerSessionKey(userId)) || 0);
+  return t && Date.now() - t < MANAGER_SESSION_MS;
+}
+
+function markManagerSessionUnlocked(userId) {
+  sessionStorage.setItem(managerSessionKey(userId), String(Date.now()));
+}
+
+function clearManagerSession(userId) {
+  sessionStorage.removeItem(managerSessionKey(userId));
+}
+
+async function verifyManagerPin(userId, pin) {
+  return apiPost("verifyManagerPin", { userId, pin });
+}
+
+// 在指定容器畫出 4 碼 PIN 輸入畫面，驗證成功後呼叫 onSuccess()
+function renderPinLock(mountEl, userId, onSuccess) {
+  mountEl.innerHTML = `
+    <div class="pin-lock">
+      <p class="pin-icon">🔒</p>
+      <p class="big">請輸入管理密碼</p>
+      <p class="join-note">4 位數字，申請管理時設定的那組密碼</p>
+      <input type="password" inputmode="numeric" pattern="[0-9]*" maxlength="4" id="pinInput" class="pin-input" placeholder="••••" autocomplete="off">
+      <button class="btn btn-teal btn-block" id="pinSubmit" style="margin-top:14px;">解鎖</button>
+      <p class="pin-error" id="pinError"></p>
+    </div>
+  `;
+  const input = mountEl.querySelector("#pinInput");
+  const submit = async () => {
+    const pin = input.value.trim();
+    const errEl = mountEl.querySelector("#pinError");
+    errEl.textContent = "";
+    if (!/^\d{4}$/.test(pin)) { errEl.textContent = "請輸入 4 位數字"; return; }
+    try {
+      await verifyManagerPin(userId, pin);
+      markManagerSessionUnlocked(userId);
+      onSuccess();
+    } catch (e) {
+      errEl.textContent = e.message;
+      input.value = "";
+      input.focus();
+    }
+  };
+  mountEl.querySelector("#pinSubmit").addEventListener("click", submit);
+  input.addEventListener("keydown", e => { if (e.key === "Enter") submit(); });
+  input.focus();
+}
+
+// 管理頁共用的守門邏輯：確認登入 → 確認是核准管理者 → PIN 解鎖（5 分鐘內免重複輸入）
+// renderContent(profile) 會在通過驗證後被呼叫，負責畫出實際的後台內容
+async function guardManagerPage(mountEl, renderContent) {
+  mountEl.innerHTML = `<div class="loading">驗證身分中…</div>`;
+  let profile;
+  try {
+    profile = await requireLogin();
+  } catch (e) {
+    mountEl.innerHTML = `<div class="empty">需要 LINE 登入才能使用這個頁面</div>`;
+    return;
+  }
+
+  let managerStatus;
+  try {
+    managerStatus = (await checkIsManager(profile.userId)).status;
+  } catch (e) {
+    mountEl.innerHTML = `<div class="empty">讀取權限失敗：${e.message}</div>`;
+    return;
+  }
+  if (managerStatus !== "approved") {
+    mountEl.innerHTML = `<div class="empty">此帳號沒有管理權限。請先到活動列表頁按「申請管理」，等待核准後再回來。</div>`;
+    return;
+  }
+
+  const lockAndShow = () => renderPinLock(mountEl, profile.userId, () => {
+    renderContent(profile);
+    startAutoLockWatcher(mountEl, profile.userId, lockAndShow);
+  });
+
+  if (isManagerSessionValid(profile.userId)) {
+    renderContent(profile);
+    startAutoLockWatcher(mountEl, profile.userId, lockAndShow);
+  } else {
+    lockAndShow();
+  }
+}
+
+function startAutoLockWatcher(mountEl, userId, onExpire) {
+  if (mountEl._lockWatcher) clearInterval(mountEl._lockWatcher);
+  mountEl._lockWatcher = setInterval(() => {
+    if (!isManagerSessionValid(userId)) {
+      clearInterval(mountEl._lockWatcher);
+      onExpire();
+    }
+  }, 10000);
+}
+
+/* ============================================================
+   後台（管理者）用：一般管理動作用「自己的 userId」授權，
+   只有審核管理者名單（managers）還是用最上層擁有者的 ADMIN_TOKEN
    ============================================================ */
 function getAdminToken() {
   let t = sessionStorage.getItem("adminToken");
   if (!t) {
-    t = prompt("請輸入主辦人後台密碼（ADMIN_TOKEN）：") || "";
+    t = prompt("請輸入擁有者密碼（ADMIN_TOKEN，只有審核管理者名單需要）：") || "";
     sessionStorage.setItem("adminToken", t);
   }
   return t;
 }
 
-async function adminGetWaitlist(activityId) {
-  return apiGet("waitlist", { activityId, token: getAdminToken() });
+async function adminGetWaitlist(activityId, requestedBy) {
+  return apiGet("waitlist", { activityId, requestedBy });
 }
 
-async function adminNotify(activityId, userId) {
-  return apiPost("notify", { activityId, userId, token: getAdminToken() });
+async function adminNotify(activityId, targetUserId, requestedBy) {
+  return apiPost("notify", { activityId, targetUserId, requestedBy });
 }
 
-async function adminCreateActivity(fields) {
-  return apiPost("createActivity", { ...fields, token: getAdminToken() });
+async function adminCreateActivity(fields, requestedBy) {
+  return apiPost("createActivity", { ...fields, requestedBy });
 }
 
 async function adminGetManagers() {
