@@ -17,7 +17,13 @@
 
 <div class="admin-wrap">
   <div class="field">
-    <label>活動代碼（Sheet 裡的 id）</label>
+    <label>選擇活動（僅列出未過期的活動）</label>
+    <select id="activitySelect">
+      <option value="">載入中…</option>
+    </select>
+  </div>
+  <div class="field">
+    <label>或直接輸入活動代碼</label>
     <input id="activityId" placeholder="例如 trip001">
   </div>
   <button class="btn btn-primary btn-block" id="loadBtn">載入候補名單</button>
@@ -43,6 +49,38 @@ function rowHtml(entry){
       ${canNotify ? `<button class="btn btn-teal notifyBtn" data-user="${entry.userId}">傳 LINE 通知</button>` : ""}
     </div>
   </div>`;
+}
+
+function isExpired(eventDate){
+  if(!eventDate) return false; // 沒填 event_date 就視為不過期，一律列出
+  const d = new Date(eventDate);
+  if(isNaN(d)) return false;
+  const today = new Date();
+  today.setHours(0,0,0,0);
+  return d < today;
+}
+
+async function loadActivityOptions(){
+  const select = document.getElementById("activitySelect");
+  try{
+    const activities = await fetchActivities();
+    const active = activities.filter(a => !isExpired(a.eventDate));
+    if(!active.length){
+      select.innerHTML = `<option value="">（沒有未過期的活動）</option>`;
+      return;
+    }
+    select.innerHTML = `<option value="">請選擇活動…</option>` +
+      active.map(a => `<option value="${a.id}">${a.id} - ${a.title}（${a.date}）</option>`).join("");
+    select.addEventListener("change", ()=>{
+      if(select.value){
+        document.getElementById("activityId").value = select.value;
+        load();
+      }
+    });
+  }catch(e){
+    console.error(e);
+    select.innerHTML = `<option value="">活動列表載入失敗</option>`;
+  }
 }
 
 async function load(){
@@ -78,6 +116,7 @@ async function load(){
 }
 
 document.getElementById("loadBtn").addEventListener("click", load);
+loadActivityOptions();
 </script>
 </body>
 </html>
