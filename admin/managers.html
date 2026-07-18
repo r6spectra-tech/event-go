@@ -10,20 +10,20 @@
 
 <div class="topbar">
   <div>
-    <span class="eyebrow">Owner Only</span>
+    <span class="eyebrow">Managers Only</span>
     <h1>管理者審核</h1>
   </div>
 </div>
 
-<div class="admin-wrap">
-  <button class="btn btn-primary btn-block" id="loadBtn">載入申請名單</button>
-  <div id="list" style="margin-top:20px;"></div>
+<div class="admin-wrap" id="app">
+  <div class="loading">載入中…</div>
 </div>
 
 <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
 <script src="../assets/main.js"></script>
 <script>
 const statusLabel = { pending:"待審核", approved:"已核准", rejected:"已拒絕" };
+let currentProfile = null;
 
 function rowHtml(m){
   const showActions = m.status === "pending";
@@ -47,13 +47,11 @@ async function load(){
   const listEl = document.getElementById("list");
   listEl.innerHTML = `<div class="loading">載入中…</div>`;
   try{
-    await ensureLiff();
-    const managers = await adminGetManagers();
+    const managers = await adminGetManagers(currentProfile.userId);
     if(!managers.length){
       listEl.innerHTML = `<div class="empty">目前沒有申請紀錄</div>`;
       return;
     }
-    // 待審核的排前面
     managers.sort((a,b)=> (a.status==="pending"?0:1) - (b.status==="pending"?0:1));
     listEl.innerHTML = managers.map(rowHtml).join("");
 
@@ -71,14 +69,28 @@ async function load(){
 
 async function decide(userId, decision){
   try{
-    await adminDecideManager(userId, decision);
+    await adminDecideManager(userId, decision, currentProfile.userId);
     load();
   }catch(e){
     alert("處理失敗：" + e.message);
   }
 }
 
-document.getElementById("loadBtn").addEventListener("click", load);
+function renderContent(profile){
+  currentProfile = profile;
+  const app = document.getElementById("app");
+  app.innerHTML = `
+    <div class="panel">
+      <p class="panel-title">管理者申請名單</p>
+      <button class="btn btn-primary btn-block" id="loadBtn">重新整理</button>
+      <div id="list" style="margin-top:16px;"></div>
+    </div>
+  `;
+  document.getElementById("loadBtn").addEventListener("click", load);
+  load();
+}
+
+guardManagerPage(document.getElementById("app"), renderContent);
 </script>
 </body>
 </html>
