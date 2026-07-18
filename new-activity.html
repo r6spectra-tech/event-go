@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>新增活動</title>
+<link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+
+<div class="topbar">
+  <div>
+    <span class="eyebrow">Organizer Only</span>
+    <h1>新增活動</h1>
+  </div>
+</div>
+
+<div class="admin-wrap">
+  <div class="field">
+    <label>活動代碼 id（唯一值）</label>
+    <input id="id" placeholder="例如 trip002">
+  </div>
+  <div class="field">
+    <label>活動名稱</label>
+    <input id="title">
+  </div>
+  <div class="field">
+    <label>封面圖網址</label>
+    <input id="cover_image" placeholder="https://...">
+  </div>
+  <div class="field">
+    <label>地區</label>
+    <input id="area" placeholder="例如 花蓮">
+  </div>
+  <div class="field">
+    <label>日期文字</label>
+    <input id="date_text" placeholder="例如 10/18(六)-10/19(日)">
+  </div>
+  <div class="field">
+    <label>價格</label>
+    <input id="price" type="number" placeholder="2980">
+  </div>
+  <div class="field">
+    <label>總名額</label>
+    <input id="capacity" type="number" placeholder="20">
+  </div>
+  <div class="field">
+    <label>行程（每一天用 || 分隔）</label>
+    <textarea id="itinerary" placeholder="Day1 集合出發，前往太魯閣||Day2 早起賞日出，中午賦歸"></textarea>
+  </div>
+  <div class="field">
+    <label>YouTube 連結（可多行，每行：說明文字 網址）</label>
+    <textarea id="youtube_links" placeholder="行前說明會 https://youtu.be/xxxx
+去年花絮 https://youtu.be/yyyy"></textarea>
+    <small>每行一部影片，說明文字與網址中間留空白即可，順序不拘。</small>
+  </div>
+  <div class="field">
+    <label>Google Map 連結（可多行，每行：說明文字 網址）</label>
+    <textarea id="map_links" placeholder="集合地點 https://maps.app.goo.gl/xxxx
+午餐地點 https://maps.app.goo.gl/yyyy"></textarea>
+  </div>
+  <div class="field">
+    <label>主辦人名稱</label>
+    <input id="organizer_name">
+  </div>
+  <div class="field">
+    <label>主辦人 LINE 加好友連結</label>
+    <input id="organizer_line_url" placeholder="https://line.me/ti/p/xxxxxxx">
+  </div>
+  <div class="field">
+    <label>揪團群組連結</label>
+    <input id="group_url" placeholder="https://line.me/ti/g2/xxxxxxx">
+  </div>
+
+  <button class="btn btn-primary btn-block" id="submitBtn">建立活動</button>
+  <p id="msg" class="join-note"></p>
+</div>
+
+<script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+<script src="../assets/main.js"></script>
+<script>
+const fieldIds = ["id","title","cover_image","area","date_text","price","capacity",
+  "itinerary","youtube_links","map_links","organizer_name","organizer_line_url","group_url"];
+
+document.getElementById("submitBtn").addEventListener("click", async ()=>{
+  const msg = document.getElementById("msg");
+  const fields = {};
+  fieldIds.forEach(id => fields[id] = document.getElementById(id).value.trim());
+
+  if(!fields.id || !fields.title){
+    msg.textContent = "請至少填寫活動代碼與名稱";
+    return;
+  }
+
+  const btn = document.getElementById("submitBtn");
+  btn.disabled = true; btn.textContent = "建立中…";
+  msg.textContent = "";
+  try{
+    await ensureLiff();
+    await adminCreateActivity(fields);
+    msg.textContent = "✅ 活動已建立，可以到列表頁查看。";
+    fieldIds.forEach(id => document.getElementById(id).value = "");
+  }catch(e){
+    console.error(e);
+    msg.textContent = "❌ 建立失敗：" + e.message;
+  }finally{
+    btn.disabled = false; btn.textContent = "建立活動";
+  }
+});
+</script>
+</body>
+</html>
