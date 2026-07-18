@@ -38,6 +38,11 @@ a{color:inherit;}
   font-family:'IBM Plex Mono', monospace; font-size: 0.65rem; letter-spacing:0.14em;
   color: var(--sand); text-transform:uppercase; display:block; margin-bottom:2px;
 }
+#managerArea{ display:flex; flex-wrap:wrap; gap:6px; justify-content:flex-end; max-width:55%; }
+.manager-link{
+  color:#F6F1E4 !important; border-color:#F6F1E4 !important;
+  font-size:0.78rem; padding:6px 10px;
+}
 
 .share-bar{
   display:flex; align-items:center; gap:10px;
@@ -154,6 +159,12 @@ button, .btn{
   content:""; position:absolute; left:-6px; top:9px; width:10px; height:10px;
   border-radius:50%; background: var(--teal);
 }
+.notes-box{
+  background: rgba(231,199,122,0.18); border-left:3px solid var(--sand);
+  border-radius:8px; padding:10px 14px; margin-bottom:6px;
+}
+.notes-box p{ margin:0 0 4px; font-size:0.9rem; line-height:1.5; }
+.notes-box p:last-child{ margin-bottom:0; }
 .video-wrap{ position:relative; width:100%; aspect-ratio:16/9; border-radius:12px; overflow:hidden; background:#000; }
 .video-wrap iframe{ width:100%; height:100%; border:0; }
 
@@ -166,3 +177,103 @@ button, .btn{
 .join-note{ font-size:0.82rem; color:#777; margin: 8px 0 12px; }
 
 .empty, .loading{ padding: 60px 20px; text-align:center; color:#888; font-family:'IBM Plex Mono', monospace; }
+
+/* ---- multi youtube / map items ---- */
+.media-item{ margin-bottom: 16px; }
+.media-label{ font-size:0.85rem; font-weight:600; margin: 0 0 6px; }
+.map-list{ display:flex; flex-direction:column; gap:8px; }
+.map-link{ text-align:left; }
+
+/* ---- admin pages ---- */
+.admin-wrap{ max-width: 640px; margin:0 auto; padding: 20px; }
+.field{ margin-bottom: 14px; display:flex; flex-direction:column; gap:6px; }
+.field label{ font-size:0.8rem; font-weight:600; color:#555; }
+.field input, .field textarea{
+  font-family:'Inter', sans-serif; font-size:0.9rem;
+  border:1.5px solid var(--line); border-radius:8px; padding:9px 10px;
+  background:#fff; color: var(--ink);
+}
+.field textarea{ min-height:70px; font-family:'IBM Plex Mono', monospace; font-size:0.8rem; }
+.field small{ color:#888; font-size:0.72rem; }
+
+.waitlist-row{
+  display:flex; align-items:center; justify-content:space-between; gap:10px;
+  background:#fff; border-radius:10px; padding:12px 14px; margin-bottom:10px;
+  box-shadow: 0 6px 16px rgba(23,35,61,0.06);
+}
+.waitlist-row .name{ font-weight:600; }
+.waitlist-row .meta{ font-size:0.75rem; color:#888; font-family:'IBM Plex Mono', monospace; }
+.badge{ padding:2px 8px; border-radius:20px; font-size:0.7rem; font-weight:600; }
+.badge.waiting{ background:rgba(231,199,122,0.3); color:#8a6d1d; }
+.badge.notified{ background:rgba(47,122,114,0.15); color:var(--teal); }
+.badge.joined{ background:rgba(47,122,114,0.25); color:var(--teal); }
+.badge.cancelled{ background:rgba(216,87,42,0.12); color:var(--stamp); }
+
+.confirm-card{
+  max-width: 480px; margin: 40px auto; background:#fff; border-radius:16px;
+  padding:28px 24px; box-shadow: 0 10px 24px rgba(23,35,61,0.1); text-align:center;
+}
+.confirm-card .big{ font-family:'Fraunces', serif; font-size:1.3rem; font-weight:700; margin-bottom:10px; }
+.confirm-actions{ display:flex; gap:10px; margin-top:18px; }
+
+/* ---- Modal ---- */
+.modal-overlay{
+  position:fixed; inset:0; background:rgba(23,35,61,0.55);
+  display:flex; align-items:center; justify-content:center; z-index:50; padding:20px;
+}
+.modal-card{
+  background:#fff; border-radius:16px; padding:26px 22px; max-width:360px; width:100%;
+  text-align:center; box-shadow: 0 20px 40px rgba(0,0,0,0.25);
+}
+
+/* ---- PIN 鎖屏 ---- */
+.pin-lock{ text-align:center; padding: 10px 0; }
+.pin-icon{ font-size:2rem; margin:0 0 4px; }
+.pin-input{
+  width: 140px; margin: 14px auto 0; display:block;
+  font-family:'IBM Plex Mono', monospace; font-size:1.6rem; letter-spacing:0.6em;
+  text-align:center; border:1.5px solid var(--line); border-radius:10px; padding:10px 0 10px 0.6em;
+  background:#fff; color:var(--ink);
+}
+.pin-error{ color: var(--stamp); font-size:0.8rem; min-height:1.2em; margin-top:8px; }
+
+/* ---- 並排連結 chip（youtube / map 共用）---- */
+.chip-row{ display:flex; flex-wrap:wrap; gap:10px; margin-bottom:4px; }
+.chip-link{
+  display:inline-flex; align-items:center; gap:6px;
+  background: rgba(231,199,122,0.28); border:1.5px solid var(--sand); border-radius:999px;
+  padding:8px 16px; font-size:0.85rem; font-weight:600; color:var(--ink);
+  text-decoration:none; max-width:100%;
+}
+.chip-link:hover{ border-color: var(--teal); background: rgba(47,122,114,0.14); color: var(--teal); }
+
+/* ---- 封面圖片選擇器 ---- */
+.cover-picker{ display:flex; gap:8px; flex-wrap:wrap; margin-top:8px; }
+.cover-thumb{
+  width:150px; height:150px; border-radius:8px; object-fit:cover; cursor:pointer;
+  border:2px solid transparent; transition: border-color 0.15s;
+}
+.cover-thumb:hover{ border-color: var(--sand); }
+.cover-thumb.selected{ border-color: var(--teal); }
+
+/* ---- 活動下拉選單風格 ---- */
+.field select{
+  font-family:'Inter', sans-serif; font-size:0.9rem;
+  border:1.5px solid var(--line); border-radius:8px; padding:9px 10px;
+  background:#fff; color: var(--ink);
+}
+
+/* ---- 後台頁面通用面板 ---- */
+.panel{
+  background:#fff; border-radius:14px; padding:20px;
+  box-shadow: 0 8px 20px rgba(23,35,61,0.08); margin-bottom:18px;
+}
+.panel-title{
+  font-family:'Fraunces', serif; font-weight:700; font-size:1.05rem; margin: 0 0 14px;
+  display:flex; align-items:center; gap:8px;
+}
+.panel-title .tag{
+  font-family:'IBM Plex Mono', monospace; font-size:0.65rem; letter-spacing:0.1em;
+  background: var(--sand); color: var(--ink); padding:2px 8px; border-radius:10px;
+  text-transform:uppercase;
+}
