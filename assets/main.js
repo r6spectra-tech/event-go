@@ -4,7 +4,7 @@
    前端開頁時用 action=config 向 GAS 要。
    ============================================================ */
 const CONFIG = {
-  API_BASE: "https://script.google.com/macros/s/YOUR_DEPLOYMENT_ID/exec",
+  API_BASE: "https://script.google.com/macros/library/d/1WpRsuM6PX7k88mFLr_TdYWq69ST0B_V0w5TTSDPRr30Cg5vrjUzt1sfe/4",
   MAX_SHARE_ITEMS: 5,        // liff.shareTargetPicker 一次最多可帶 5 則訊息
   MAX_CAROUSEL_BUBBLES: 12,  // 單一 flex carousel 最多 12 張卡片
 };
