@@ -184,7 +184,11 @@ async function main(){
       return;
     }
     render(a);
-    recordVisit(a.id); // 記錄「這個人打開過這個活動詳情頁」，不需要等它完成
+    // 如果是點了別人分享的連結進來（網址帶 refId/refName），記錄下來給「閱讀記錄」頁用
+    const params = new URLSearchParams(location.search);
+    const refUserId = params.get("refId");
+    const refDisplayName = params.get("refName");
+    recordVisit(a.id, refUserId ? { refUserId, refDisplayName } : null);
     if(profile) loadManagerToolbar(a, profile.userId);
   }catch(e){
     console.error(e);
