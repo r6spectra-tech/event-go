@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>閱讀記錄</title>
+<link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+
+<div class="topbar">
+  <div>
+    <span class="eyebrow">Managers Only</span>
+    <h1>閱讀記錄</h1>
+  </div>
+</div>
+
+<div class="admin-wrap">
+  <div class="nav-links">
+    <a class="btn btn-ghost" href="../index.html">← 回列表頁</a>
+  </div>
+  <div id="app"><div class="loading">載入中…</div></div>
+</div>
+
+<script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+<script src="../assets/main.js"></script>
+<script>
+let currentProfile = null;
+
+const actionVerb = { joined: "參加", waitlisted: "候補", shared: "分享" };
+
+function lineHtml(e){
+  const name = e.displayName || "(未知使用者)";
+  let verb;
+  if(e.action === "open"){
+    verb = e.refDisplayName ? `打開了 <b>${e.refDisplayName}</b> 分享的` : "打開了";
+  }else{
+    verb = actionVerb[e.action] || e.action;
+  }
+  return `<div class="log-line">
+    <span class="log-time">${e.timestamp}</span>
+    <span class="log-body"><b>${name}</b> ${verb} ${e.activityDate} ${e.activityTitle} 活動頁</span>
+  </div>`;
+}
+
+async function loadLog(){
+  const listEl = document.getElementById("logList");
+  listEl.innerHTML = `<div class="loading">載入中…</div>`;
+  try{
+    const log = await adminGetVisitLog(currentProfile.userId);
+    if(!log.length){
+      listEl.innerHTML = `<div class="empty">目前還沒有任何記錄</div>`;
+      return;
+    }
+    listEl.innerHTML = log.map(lineHtml).join("");
+  }catch(e){
+    console.error(e);
+    listEl.innerHTML = `<div class="empty">讀取失敗：${e.message}</div>`;
+  }
+}
+
+function renderContent(profile){
+  currentProfile = profile;
+  const app = document.getElementById("app");
+  app.innerHTML = `
+    <div class="panel">
+      <p class="panel-title">所有活動的瀏覽／參加／候補／分享紀錄 <span class="tag">最新在上</span></p>
+      <button class="btn btn-ghost btn-block" id="refreshBtn">重新整理</button>
+      <div id="logList" style="margin-top:14px;"></div>
+    </div>
+  `;
+  document.getElementById("refreshBtn").addEventListener("click", loadLog);
+  loadLog();
+}
+
+guardManagerPage(document.getElementById("app"), renderContent);
+</script>
+</body>
+</html>
