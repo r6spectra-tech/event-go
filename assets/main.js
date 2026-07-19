@@ -4,7 +4,7 @@
    前端開頁時用 action=config 向 GAS 要。
    ============================================================ */
 const CONFIG = {
-  API_BASE: "https://script.google.com/macros/s/AKfycbwykjsyZB9JEQsFHDKUJfT5ki4Gh27i5jxVLaLko_zS2MLk7Uv5vSqvz5fxkPgVMPXgOw/exec",
+  API_BASE: "https://script.google.com/macros/s/YOUR_DEPLOYMENT_ID/exec",
   MAX_SHARE_ITEMS: 5,        // liff.shareTargetPicker 一次最多可帶 5 則訊息
   MAX_CAROUSEL_BUBBLES: 12,  // 單一 flex carousel 最多 12 張卡片
 };
@@ -69,6 +69,7 @@ function normalizeActivity(raw) {
     capacity,
     joined,
     isFull: capacity > 0 && joined >= capacity,
+    waitlistOpen: raw.waitlistOpen !== false,
     notes: raw.notes || "",
     itinerary: parseItinerary(raw.itinerary),
     itineraryRaw: raw.itinerary || "",
@@ -362,37 +363,64 @@ async function verifyManagerPin(userId, pin) {
   return apiPost("verifyManagerPin", { userId, pin });
 }
 
-// 在指定容器畫出 4 碼 PIN 輸入畫面，驗證成功後呼叫 onSuccess()
+// 在指定容器畫出 9 宮格數字鍵盤讓使用者輸入 4 碼 PIN，打完第 4 碼自動送出驗證，
+// 驗證成功呼叫 onSuccess()；失敗顯示錯誤並清空重新輸入。
 function renderPinLock(mountEl, userId, onSuccess) {
+  let buffer = "";
   mountEl.innerHTML = `
     <div class="pin-lock">
       <p class="pin-icon">🔒</p>
       <p class="big">請輸入管理密碼</p>
       <p class="join-note">4 位數字，申請管理時設定的那組密碼</p>
-      <input type="password" inputmode="numeric" pattern="[0-9]*" maxlength="4" id="pinInput" class="pin-input" placeholder="••••" autocomplete="off">
-      <button class="btn btn-teal btn-block" id="pinSubmit" style="margin-top:14px;">解鎖</button>
+      <div class="pin-dots">
+        ${[0, 1, 2, 3].map(i => `<span class="pin-dot" data-i="${i}"></span>`).join("")}
+      </div>
       <p class="pin-error" id="pinError"></p>
+      <div class="pin-keypad">
+        ${[1, 2, 3, 4, 5, 6, 7, 8, 9].map(d => `<button type="button" class="pin-key" data-digit="${d}">${d}</button>`).join("")}
+        <span></span>
+        <button type="button" class="pin-key" data-digit="0">0</button>
+        <button type="button" class="pin-key pin-key-del" id="pinDel">⌫</button>
+      </div>
     </div>
   `;
-  const input = mountEl.querySelector("#pinInput");
-  const submit = async () => {
-    const pin = input.value.trim();
-    const errEl = mountEl.querySelector("#pinError");
+  const dots = mountEl.querySelectorAll(".pin-dot");
+  const errEl = mountEl.querySelector("#pinError");
+  let busy = false;
+
+  function updateDots() {
+    dots.forEach((d, i) => d.classList.toggle("filled", i < buffer.length));
+  }
+
+  async function trySubmit() {
+    busy = true;
     errEl.textContent = "";
-    if (!/^\d{4}$/.test(pin)) { errEl.textContent = "請輸入 4 位數字"; return; }
     try {
-      await verifyManagerPin(userId, pin);
+      await verifyManagerPin(userId, buffer);
       markManagerSessionUnlocked(userId);
       onSuccess();
     } catch (e) {
       errEl.textContent = e.message;
-      input.value = "";
-      input.focus();
+      buffer = "";
+      updateDots();
+      busy = false;
     }
-  };
-  mountEl.querySelector("#pinSubmit").addEventListener("click", submit);
-  input.addEventListener("keydown", e => { if (e.key === "Enter") submit(); });
-  input.focus();
+  }
+
+  mountEl.querySelectorAll(".pin-key[data-digit]").forEach(btn => {
+    btn.addEventListener("click", () => {
+      if (busy || buffer.length >= 4) return;
+      buffer += btn.dataset.digit;
+      updateDots();
+      if (buffer.length === 4) trySubmit();
+    });
+  });
+  mountEl.querySelector("#pinDel").addEventListener("click", () => {
+    if (busy) return;
+    buffer = buffer.slice(0, -1);
+    errEl.textContent = "";
+    updateDots();
+  });
 }
 
 // 管理頁共用的守門邏輯：確認登入 → 確認是核准管理者 → PIN 解鎖（5 分鐘內免重複輸入）
