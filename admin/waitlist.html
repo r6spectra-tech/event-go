@@ -41,14 +41,14 @@ function isExpired(eventDate){
 
 function rowHtml(entry){
   const canNotify = entry.status === "waiting" || entry.status === "notified" || entry.status === "expired";
-  const metaParts = [`排隊時間: ${entry.createdAt}`];
-  if(entry.notifiedAt) metaParts.push(`通知時間: ${entry.notifiedAt}`);
-  if(entry.respondedAt) metaParts.push(`回覆時間: ${entry.respondedAt}`);
+  const metaLines = [`userId: ${entry.userId.slice(0,10)}…`, `排隊時間: ${entry.createdAt}`];
+  if(entry.notifiedAt) metaLines.push(`通知時間: ${entry.notifiedAt}`);
+  if(entry.respondedAt) metaLines.push(`回覆時間: ${entry.respondedAt}`);
   return `
   <div class="waitlist-row">
     <div>
       <div class="name">${entry.displayName || "(未提供名稱)"}</div>
-      <div class="meta">userId: ${entry.userId.slice(0,10)}…｜${metaParts.join("｜")}</div>
+      <div class="meta">${metaLines.map(l=>`<div>${l}</div>`).join("")}</div>
     </div>
     <div style="display:flex;align-items:center;gap:8px;">
       <span class="badge ${entry.status}">${statusLabel[entry.status] || entry.status}</span>
