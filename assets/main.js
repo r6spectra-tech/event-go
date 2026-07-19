@@ -7,6 +7,7 @@ const CONFIG = {
   API_BASE: "https://script.google.com/macros/s/AKfycbwykjsyZB9JEQsFHDKUJfT5ki4Gh27i5jxVLaLko_zS2MLk7Uv5vSqvz5fxkPgVMPXgOw/exec",
   MAX_SHARE_ITEMS: 5,        // liff.shareTargetPicker 一次最多可帶 5 則訊息
   MAX_CAROUSEL_BUBBLES: 12,  // 單一 flex carousel 最多 12 張卡片
+  OA_LINE_URL: "https://lin.ee/jTuF7zN", // LINE 官方帳號加好友連結，候補通知要靠這個才推得到
 };
 
 // 執行期才會拿到的設定值（來自 GAS）
