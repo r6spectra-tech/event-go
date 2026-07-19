@@ -47,6 +47,9 @@ function joinBlock(a){
     <button class="btn btn-teal btn-block" id="joinBtn">參加活動</button>
     <div id="joinResult" style="margin-top:10px;"></div>`;
   }
+  if(!a.waitlistOpen){
+    return `<p class="join-note">此活動人數已滿（${a.joined}/${a.capacity}），目前未開放候補，請直接聯繫主辦人。</p>`;
+  }
   return `
     <p class="join-note">此活動人數已滿（${a.joined}/${a.capacity}），可加入候補名單排隊。有名額釋出時，
     主辦人會透過 LINE 通知您，請於通知後 24 小時內回覆，逾時視為放棄名額。</p>
