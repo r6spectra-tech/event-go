@@ -21,6 +21,13 @@
   <button class="btn-teal" id="shareSelectedBtn" disabled>分享所選</button>
 </div>
 
+<div class="sort-bar">
+  <label for="sortSelect">排序：</label>
+  <select id="sortSelect">
+    <option value="date">依活動日期（尚未滿人優先，額滿則開放候補優先）</option>
+  </select>
+</div>
+
 <div id="grid" class="grid">
   <div class="loading">載入活動中…</div>
 </div>
@@ -43,6 +50,23 @@
 <script src="assets/main.js"></script>
 <script>
 const selected = new Map(); // id -> activity
+
+// 排序：尚未滿人的活動優先；額滿的活動裡，開放候補的優先於關閉候補的；同一組內再依活動日期排序
+function sortActivities(activities){
+  function tier(a){
+    if(!a.isFull) return 0;
+    return a.waitlistOpen ? 1 : 2;
+  }
+  function dateValue(a){
+    if(!a.eventDate) return Infinity; // 沒填活動日期的排最後
+    const d = new Date(a.eventDate);
+    return isNaN(d) ? Infinity : d.getTime();
+  }
+  return [...activities].sort((a, b) => {
+    const diff = tier(a) - tier(b);
+    return diff !== 0 ? diff : dateValue(a) - dateValue(b);
+  });
+}
 
 function statusHtml(a){
   return a.isFull
@@ -158,6 +182,7 @@ async function main(){
     grid.innerHTML = `<div class="empty">目前尚無活動</div>`;
     return;
   }
+  activities = sortActivities(activities);
   grid.innerHTML = activities.map(cardHtml).join("");
 
   grid.querySelectorAll(".shareOneBtn").forEach(btn=>{
