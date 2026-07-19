@@ -154,15 +154,20 @@ async function requireLogin() {
 /* ============================================================
    Flex Message 產生器（分享用）
    ============================================================ */
-function detailUrl(activity) {
-  return `https://liff.line.me/${RUNTIME.liffId}/detail.html?id=${encodeURIComponent(activity.id)}`;
+function detailUrl(activity, referrer) {
+  let url = `https://liff.line.me/${RUNTIME.liffId}/detail.html?id=${encodeURIComponent(activity.id)}`;
+  if (referrer && referrer.userId) {
+    url += `&refId=${encodeURIComponent(referrer.userId)}&refName=${encodeURIComponent(referrer.displayName || "")}`;
+  }
+  return url;
 }
 
 // 注意：flex 訊息一旦送出，文字內容無法再更改，所以這裡只放「活動人數」這種固定資訊，
 // 不放「目前已報名 X 人」這種會隨時間變動、送出後就會過時的內容。
 // footer 只放「活動詳情」一個按鈕，分享要到 LIFF 頁面（detail.html / share.html）裡進行，
 // 不在 flex 訊息本身放分享按鈕。
-function buildBubble(activity) {
+// referrer（分享者的 {userId, displayName}）會被embed進連結，對方點開時可以回頭記錄「是誰分享的」。
+function buildBubble(activity, referrer) {
   return {
     type: "bubble",
     hero: activity.cover
@@ -184,10 +189,20 @@ function buildBubble(activity) {
       layout: "vertical",
       contents: [
         { type: "button", style: "primary", color: "#17233D", height: "sm",
-          action: { type: "uri", label: "活動詳情", uri: detailUrl(activity) } },
+          action: { type: "uri", label: "活動詳情", uri: detailUrl(activity, referrer) } },
       ],
     },
   };
+}
+
+// 分享前，如果目前已經是 LINE 登入狀態，就順手拿當下的 profile 當作分享者資訊（拿不到就不附加，不強制登入）
+async function getCurrentProfileIfAvailable() {
+  try {
+    if (window.liff && liff.isLoggedIn && liff.isLoggedIn()) {
+      return await liff.getProfile();
+    }
+  } catch (e) { /* 拿不到就算了，不影響分享 */ }
+  return null;
 }
 
 /* ============================================================
@@ -233,10 +248,12 @@ async function shareOne(activity) {
     copyLink(detailUrl(activity));
     return;
   }
+  const referrer = await getCurrentProfileIfAvailable();
   try {
     await liff.shareTargetPicker([
-      { type: "flex", altText: `【推薦行程】${activity.title}`, contents: buildBubble(activity) },
+      { type: "flex", altText: `【推薦行程】${activity.title}`, contents: buildBubble(activity, referrer) },
     ]);
+    if (referrer) recordShare(activity.id, referrer.userId, referrer.displayName);
   } catch (e) { console.error(e); }
 }
 
@@ -253,13 +270,15 @@ async function shareMany(activities) {
     alert("目前環境不支援 LINE 分享。");
     return;
   }
-  const carousel = { type: "carousel", contents: list.map(a => buildBubble(a)) };
+  const referrer = await getCurrentProfileIfAvailable();
+  const carousel = { type: "carousel", contents: list.map(a => buildBubble(a, referrer)) };
   const dateList = list.map(a => a.date).filter(Boolean).join("、");
   const altText = dateList ? `【推薦行程】${dateList}` : `【推薦行程】共 ${list.length} 個活動`;
   try {
     await liff.shareTargetPicker([
       { type: "flex", altText, contents: carousel },
     ]);
+    if (referrer) list.forEach(a => recordShare(a.id, referrer.userId, referrer.displayName));
   } catch (e) { console.error(e); }
 }
 
@@ -293,12 +312,25 @@ async function getMyWaitlistStatus(activityId) {
 /* ============================================================
    詳情頁：進站記錄 / 直接參加 / 輔助資料
    ============================================================ */
-async function recordVisit(activityId) {
+async function recordVisit(activityId, referrer) {
   try {
     const { userId, displayName } = await requireLogin();
-    return await apiPost("recordVisit", { activityId, userId, displayName });
+    const payload = { activityId, userId, displayName };
+    if (referrer && referrer.refUserId) {
+      payload.refUserId = referrer.refUserId;
+      payload.refDisplayName = referrer.refDisplayName || "";
+    }
+    return await apiPost("recordVisit", payload);
   } catch (e) {
     console.warn("recordVisit 略過（未登入或環境不支援）", e);
+  }
+}
+
+async function recordShare(activityId, userId, displayName) {
+  try {
+    return await apiPost("recordShare", { activityId, userId, displayName });
+  } catch (e) {
+    console.warn("recordShare 失敗", e);
   }
 }
 
@@ -375,8 +407,9 @@ function renderPinLock(mountEl, userId, onSuccess) {
       <div class="pin-dots">
         ${[0, 1, 2, 3].map(i => `<span class="pin-dot" data-i="${i}"></span>`).join("")}
       </div>
+      <div class="pin-spinner" id="pinSpinner" style="display:none;"></div>
       <p class="pin-error" id="pinError"></p>
-      <div class="pin-keypad">
+      <div class="pin-keypad" id="pinKeypad">
         ${[1, 2, 3, 4, 5, 6, 7, 8, 9].map(d => `<button type="button" class="pin-key" data-digit="${d}">${d}</button>`).join("")}
         <span></span>
         <button type="button" class="pin-key" data-digit="0">0</button>
@@ -386,6 +419,8 @@ function renderPinLock(mountEl, userId, onSuccess) {
   `;
   const dots = mountEl.querySelectorAll(".pin-dot");
   const errEl = mountEl.querySelector("#pinError");
+  const spinner = mountEl.querySelector("#pinSpinner");
+  const keypad = mountEl.querySelector("#pinKeypad");
   let busy = false;
 
   function updateDots() {
@@ -395,11 +430,15 @@ function renderPinLock(mountEl, userId, onSuccess) {
   async function trySubmit() {
     busy = true;
     errEl.textContent = "";
+    keypad.style.visibility = "hidden";
+    spinner.style.display = "block";
     try {
       await verifyManagerPin(userId, buffer);
       markManagerSessionUnlocked(userId);
-      onSuccess();
+      onSuccess(); // 成功後這個畫面整個會被換掉，不用自己收尾 spinner
     } catch (e) {
+      spinner.style.display = "none";
+      keypad.style.visibility = "visible";
       errEl.textContent = e.message;
       buffer = "";
       updateDots();
@@ -505,6 +544,10 @@ async function addOrganizerPreset(name, lineUrl, requestedBy) {
 
 async function adminGetManagers(requestedBy) {
   return apiGet("managers", { requestedBy });
+}
+
+async function adminGetVisitLog(requestedBy) {
+  return apiGet("visitLog", { requestedBy });
 }
 
 async function adminDecideManager(userId, decision, requestedBy) {
