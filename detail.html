@@ -159,6 +159,7 @@ async function loadManagerToolbar(a, userId){
     if(status !== "approved") return;
     box.innerHTML = `
       <div class="manager-toolbar">
+        <a class="btn btn-ghost" href="index.html">← 回清單</a>
         <a class="btn btn-ghost" href="admin/edit-activity.html?id=${encodeURIComponent(a.id)}">✏️ 編輯此活動</a>
         <a class="btn btn-ghost" id="waitlistCountLink" href="admin/waitlist.html?id=${encodeURIComponent(a.id)}">候補 … 人</a>
         <a class="btn btn-ghost" id="visitLogLink" href="admin/visit-log.html?activityId=${encodeURIComponent(a.id)}">閱讀記錄 …</a>
