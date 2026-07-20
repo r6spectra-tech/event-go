@@ -381,6 +381,81 @@ function pickRandom(arr, n) {
 }
 
 /* ============================================================
+   前端快取（sessionStorage）：讀取用的資料才快取，寫入動作一律即時打 GAS。
+   資料不會自動過期，使用者要新資料就自己按「更新」——sessionStorage 本身
+   在分頁/瀏覽階段結束就會清掉，所以下次重新開分頁自然就會是新的。
+   ============================================================ */
+function cacheKey(name) {
+  return `cache:${name}`;
+}
+
+function readCache(name) {
+  try {
+    const raw = sessionStorage.getItem(cacheKey(name));
+    if (!raw) return null;
+    return JSON.parse(raw); // { data, fetchedAt }
+  } catch (e) {
+    return null;
+  }
+}
+
+function writeCache(name, data) {
+  try {
+    sessionStorage.setItem(cacheKey(name), JSON.stringify({ data, fetchedAt: Date.now() }));
+  } catch (e) { /* storage 滿了或被禁用，忽略即可，退化成每次都重新抓 */ }
+}
+
+function formatCacheTime(ts) {
+  if (!ts) return "尚未讀取";
+  const d = new Date(ts);
+  return d.toLocaleTimeString("zh-TW", { hour12: false });
+}
+
+const REFRESH_COOLDOWN_SEC = 60;
+
+// 幫「更新」按鈕接上：點擊→執行 onRefresh()→按鈕變灰倒數 60 秒→恢復可點
+// timeLabelEl 會被更新成「上次更新：HH:MM:SS」
+function setupRefreshButton(btnEl, timeLabelEl, fetchedAt, onRefresh) {
+  let timer = null;
+
+  function paintTime(ts) {
+    if (timeLabelEl) timeLabelEl.textContent = `上次更新：${formatCacheTime(ts)}`;
+  }
+  paintTime(fetchedAt);
+
+  function startCooldown() {
+    let remaining = REFRESH_COOLDOWN_SEC;
+    btnEl.disabled = true;
+    btnEl.textContent = `更新中…`;
+    setTimeout(() => {
+      btnEl.textContent = `更新 (${remaining}s)`;
+      timer = setInterval(() => {
+        remaining -= 1;
+        if (remaining <= 0) {
+          clearInterval(timer);
+          btnEl.disabled = false;
+          btnEl.textContent = "更新";
+        } else {
+          btnEl.textContent = `更新 (${remaining}s)`;
+        }
+      }, 1000);
+    }, 300); // 讓「更新中…」先短暫顯示一下，使用者才看得出真的有在動作
+  }
+
+  btnEl.addEventListener("click", async () => {
+    if (btnEl.disabled) return;
+    btnEl.disabled = true;
+    btnEl.textContent = "更新中…";
+    try {
+      const newFetchedAt = await onRefresh();
+      paintTime(newFetchedAt);
+    } finally {
+      startCooldown();
+    }
+  });
+}
+
+/* ============================================================
    管理者申請 / 檢查（一般使用者）
    ============================================================ */
 async function applyManager() {
