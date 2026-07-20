@@ -41,7 +41,15 @@ function mapBlock(a){
 }
 
 function joinBlock(a){
+  const myStatus = a.myStatus || {};
   if(!a.isFull){
+    if(myStatus.joined){
+      return `
+      <p class="join-note">您已經參加這個活動了！</p>
+      ${a.groupUrl
+        ? `<a class="btn btn-teal btn-block" href="${a.groupUrl}" target="_blank" rel="noopener">加入揪團群組 →</a>`
+        : `<p class="join-note">主辦人尚未提供群組連結，請透過主辦人 LINE 聯繫。</p>`}`;
+    }
     return `
     <p class="join-note">目前已報名 ${a.joined} / ${a.capacity} 人，尚有名額。</p>
     <button class="btn btn-teal btn-block" id="joinBtn">參加活動</button>
@@ -49,6 +57,15 @@ function joinBlock(a){
   }
   if(!a.waitlistOpen){
     return `<p class="join-note">此活動人數已滿（${a.joined}/${a.capacity}），目前未開放候補，請直接聯繫主辦人。</p>`;
+  }
+  if(myStatus.waitlistStatus === "waiting" || myStatus.waitlistStatus === "notified"){
+    return `<p class="join-note">您已經在候補名單中，請耐心等候 LINE 通知（記得先加官方帳號好友，不然收不到通知）。</p>`;
+  }
+  if(myStatus.waitlistStatus === "expired"){
+    return `<p class="join-note">您先前收到的候補通知已逾期，如果還想候補請直接聯繫主辦人。</p>`;
+  }
+  if(myStatus.waitlistStatus === "cancelled"){
+    return `<p class="join-note">您先前已選擇不加入這個活動的候補。如果想更改決定，請直接聯繫主辦人。</p>`;
   }
   return `
     <p class="join-note">此活動人數已滿（${a.joined}/${a.capacity}），可加入候補名單排隊。有名額釋出時，
@@ -112,6 +129,8 @@ function wireJoinButtons(a){
       try{
         const res = await joinActivity(a.id);
         joinBtn.style.display = "none";
+        a.myStatus = a.myStatus || {};
+        a.myStatus.joined = true;
         resultEl.innerHTML = `
           <p class="join-note">${res.already ? "您已經參加這個活動了！" : "已為您報名這個活動！"}</p>
           ${res.groupUrl
@@ -135,6 +154,8 @@ function wireJoinButtons(a){
       const statusEl = document.getElementById("waitlistStatus");
       try{
         const res = await joinWaitlist(a.id);
+        a.myStatus = a.myStatus || {};
+        a.myStatus.waitlistStatus = "waiting";
         statusEl.innerHTML = res.already
           ? "您已經在候補名單中，請耐心等候通知。"
           : `已加入候補名單！有名額釋出時，主辦人會用 LINE 通知您（通知後請於 24 小時內回覆）。<br>
@@ -227,6 +248,13 @@ async function main(){
     if(!a){
       document.getElementById("content").innerHTML = `<div class="empty">找不到這個活動</div>`;
       return;
+    }
+    if(profile){
+      try{
+        a.myStatus = await getMyActivityStatus(a.id);
+      }catch(e){
+        console.warn("讀取個人狀態失敗", e);
+      }
     }
     render(a);
     // 如果是點了別人分享的連結進來（網址帶 refId/refName），記錄下來給「閱讀記錄」頁用
