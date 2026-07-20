@@ -3,22 +3,22 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>候補名單管理</title>
+<title>閱讀記錄</title>
 <link rel="stylesheet" href="../assets/style.css">
 </head>
 <body>
 
 <div class="topbar">
   <div>
-    <span class="eyebrow">Organizer Only</span>
-    <h1>候補名單管理</h1>
+    <span class="eyebrow">Managers Only</span>
+    <h1>閱讀記錄</h1>
   </div>
 </div>
 
 <div class="admin-wrap">
   <div class="nav-links">
     <a class="btn btn-ghost" href="../index.html">← 回列表頁</a>
-    <a class="btn btn-ghost" id="backToDetailLink" style="display:none;" href="#">回本活動詳情頁 →</a>
+    <a class="btn btn-ghost" id="clearFilterLink" href="visit-log.html" style="display:none;">查看全部活動記錄 →</a>
   </div>
   <div id="app"><div class="loading">載入中…</div></div>
 </div>
@@ -26,97 +26,60 @@
 <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
 <script src="../assets/main.js"></script>
 <script>
-const statusLabel = { waiting:"排隊中", notified:"已通知，等待回覆", joined:"已加入", cancelled:"已取消", expired:"已逾期（24hr 未回覆）" };
 let currentProfile = null;
-let allActivities = [];
+let rawLog = [];
+const activityIdFilter = new URLSearchParams(location.search).get("activityId");
 
-function isExpired(eventDate){
-  if(!eventDate) return false;
-  const d = new Date(eventDate);
-  if(isNaN(d)) return false;
-  const today = new Date();
-  today.setHours(0,0,0,0);
-  return d < today;
-}
+const actionVerb = { joined: "參加", waitlisted: "候補", shared: "分享" };
+// 需求 6：每個行為前面加顏色色塊
+const actionColor = { open: "🟦", joined: "🟩", waitlisted: "🟧", shared: "🟨" };
+const actionFilterLabel = { all: "全部", open: "瀏覽", joined: "參加", waitlisted: "候補", shared: "分享" };
 
-function rowHtml(entry){
-  const canNotify = entry.status === "waiting" || entry.status === "notified" || entry.status === "expired";
-  const metaLines = [`userId: ${entry.userId.slice(0,10)}…`, `排隊時間: ${entry.createdAt}`];
-  if(entry.notifiedAt) metaLines.push(`通知時間: ${entry.notifiedAt}`);
-  if(entry.respondedAt) metaLines.push(`回覆時間: ${entry.respondedAt}`);
-  return `
-  <div class="waitlist-row">
-    <div>
-      <div class="name">${entry.displayName || "(未提供名稱)"}</div>
-      <div class="meta">${metaLines.map(l=>`<div>${l}</div>`).join("")}</div>
-    </div>
-    <div style="display:flex;align-items:center;gap:8px;">
-      <span class="badge ${entry.status}">${statusLabel[entry.status] || entry.status}</span>
-      ${canNotify ? `<button class="btn btn-teal notifyBtn" data-user="${entry.userId}">傳 LINE 通知</button>` : ""}
-    </div>
-  </div>`;
-}
-
-async function loadActivityOptions(preselectId){
-  const select = document.getElementById("activitySelect");
-  try{
-    allActivities = await fetchActivities();
-    let list = allActivities.filter(a => !isExpired(a.eventDate));
-    // 如果是從活動詳情頁的候補連結帶 id 過來，就算該活動已過期也要能選到
-    if(preselectId && !list.some(a => a.id === preselectId)){
-      const found = allActivities.find(a => a.id === preselectId);
-      if(found) list = [found, ...list];
-    }
-    if(!list.length){
-      select.innerHTML = `<option value="">（沒有未過期的活動）</option>`;
-      return;
-    }
-    select.innerHTML = `<option value="">請選擇活動…</option>` +
-      list.map(a => `<option value="${a.id}">${a.id} - ${a.title}（${a.date}）</option>`).join("");
-    if(preselectId){
-      select.value = preselectId;
-      onActivityChange(preselectId);
-    }
-  }catch(e){
-    select.innerHTML = `<option value="">活動列表載入失敗</option>`;
-  }
-}
-
-function onActivityChange(activityId){
-  const backLink = document.getElementById("backToDetailLink");
-  if(activityId){
-    backLink.href = `../detail.html?id=${encodeURIComponent(activityId)}`;
-    backLink.style.display = "inline-block";
+function lineText(e){
+  const name = e.displayName || "(未知使用者)";
+  let verb;
+  if(e.action === "open"){
+    verb = e.refDisplayName ? `打開了 <b>${e.refDisplayName}</b> 分享的` : "打開了";
   }else{
-    backLink.style.display = "none";
+    verb = actionVerb[e.action] || e.action;
   }
-  loadWaitlist(activityId);
+  return `${actionColor[e.action] || "⬜"} <b>${name}</b> ${verb} ${e.activityDate} ${e.activityTitle} 活動頁`;
 }
 
-async function loadWaitlist(activityId){
-  const listEl = document.getElementById("list");
-  if(!activityId){ listEl.innerHTML = ""; return; }
+// 需求 3：依日期分組，組內只顯示時間
+function renderLines(log){
+  if(!log.length) return `<div class="empty">沒有符合條件的記錄</div>`;
+  let html = "";
+  let currentDate = null;
+  log.forEach((e, i) => {
+    const [datePart, timePart] = e.timestamp.split(" ");
+    if(datePart !== currentDate){
+      currentDate = datePart;
+      html += `<div class="log-date-header">－ ${datePart} －</div>`;
+    }
+    html += `<div class="log-line ${i % 2 === 0 ? "log-even" : "log-odd"}">
+      <span class="log-time">${timePart || ""}</span>
+      <span class="log-body">${lineText(e)}</span>
+    </div>`;
+  });
+  return html;
+}
+
+function applyFilters(){
+  const actionFilter = document.getElementById("actionFilter").value;
+  const hideMine = document.getElementById("hideMineToggle").checked;
+  let filtered = rawLog;
+  if(actionFilter !== "all") filtered = filtered.filter(e => e.action === actionFilter);
+  if(hideMine) filtered = filtered.filter(e => e.userId !== currentProfile.userId);
+  document.getElementById("logList").innerHTML = renderLines(filtered);
+}
+
+async function loadLog(){
+  const listEl = document.getElementById("logList");
   listEl.innerHTML = `<div class="loading">載入中…</div>`;
   try{
-    const entries = await adminGetWaitlist(activityId, currentProfile.userId);
-    if(!entries.length){
-      listEl.innerHTML = `<div class="empty">目前沒有候補名單</div>`;
-      return;
-    }
-    listEl.innerHTML = entries.map(rowHtml).join("");
-    listEl.querySelectorAll(".notifyBtn").forEach(btn=>{
-      btn.addEventListener("click", async ()=>{
-        btn.disabled = true; btn.textContent = "通知中…";
-        try{
-          await adminNotify(activityId, btn.dataset.user, currentProfile.userId);
-          btn.textContent = "已送出通知";
-          loadWaitlist(activityId);
-        }catch(e){
-          alert("通知失敗：" + e.message);
-          btn.disabled = false; btn.textContent = "傳 LINE 通知";
-        }
-      });
-    });
+    rawLog = await adminGetVisitLog(currentProfile.userId, activityIdFilter);
+    applyFilters();
   }catch(e){
     console.error(e);
     listEl.innerHTML = `<div class="empty">讀取失敗：${e.message}</div>`;
@@ -126,22 +89,38 @@ async function loadWaitlist(activityId){
 function renderContent(profile){
   currentProfile = profile;
   const app = document.getElementById("app");
+
+  if(activityIdFilter){
+    document.getElementById("clearFilterLink").style.display = "inline-block";
+  }
+
   app.innerHTML = `
     <div class="panel">
-      <p class="panel-title">選擇活動 <span class="tag">未過期</span></p>
+      <p class="panel-title">
+        ${activityIdFilter ? "此活動的瀏覽／參加／候補／分享紀錄" : "所有活動的瀏覽／參加／候補／分享紀錄"}
+        <span class="tag">最新在上</span>
+      </p>
       <div class="field">
-        <select id="activitySelect"><option value="">載入中…</option></select>
+        <label>只看某個行為</label>
+        <select id="actionFilter">
+          <option value="all">全部</option>
+          <option value="open">🟦 瀏覽</option>
+          <option value="joined">🟩 參加</option>
+          <option value="waitlisted">🟧 候補</option>
+          <option value="shared">🟨 分享</option>
+        </select>
       </div>
-    </div>
-    <div class="panel">
-      <p class="panel-title">候補名單</p>
-      <div id="list"><div class="empty">請先選擇上方活動</div></div>
+      <label class="hide-mine-row">
+        <input type="checkbox" id="hideMineToggle" checked> 隱藏本人的記錄
+      </label>
+      <button class="btn btn-ghost btn-block" id="refreshBtn" style="margin-top:10px;">重新整理</button>
+      <div id="logList" style="margin-top:14px;"></div>
     </div>
   `;
-  const select = document.getElementById("activitySelect");
-  const preselectId = new URLSearchParams(location.search).get("id");
-  loadActivityOptions(preselectId);
-  select.addEventListener("change", ()=> onActivityChange(select.value));
+  document.getElementById("refreshBtn").addEventListener("click", loadLog);
+  document.getElementById("actionFilter").addEventListener("change", applyFilters);
+  document.getElementById("hideMineToggle").addEventListener("change", applyFilters);
+  loadLog();
 }
 
 guardManagerPage(document.getElementById("app"), renderContent);
