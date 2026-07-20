@@ -183,8 +183,11 @@
     flex-direction: column;
   }
 
-  /* 單張紀錄卡片 */
+  /* 單張紀錄卡片：改為左右排列 */
   .log-card {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
     padding: 14px 16px;
     border-radius: 12px;
     margin-bottom: 12px;
@@ -192,25 +195,24 @@
     box-shadow: 0 2px 4px rgba(0,0,0,0.03);
   }
 
-  /* 斑馬紋設定：加大對比，不與外層背景同色 */
+  /* 斑馬紋設定 */
   .log-even {
     background-color: #ffffff; /* 奇數行：純白 */
   }
   .log-odd {
-    background-color: #e2e8f0; /* 雙數行：加深灰藍色，斑馬紋明顯 */
+    background-color: #e2e8f0; /* 雙數行：加深灰藍色 */
     border-color: #94a3b8;
   }
 
-  /* 時間：加大、置中 */
-  .log-time-center {
-    text-align: center;
-    font-size: 20px;
+  /* 時間：改在最左邊，加大顯示 */
+  .log-time-left {
+    font-size: 18px;
     font-weight: 800;
     color: #334155;
     letter-spacing: 0.5px;
-    margin-bottom: 8px;
-    padding-bottom: 6px;
-    border-bottom: 1px dashed #cbd5e1;
+    min-width: 55px; /* 固定寬度靠左對齊 */
+    padding-top: 2px;
+    flex-shrink: 0;
   }
 
   /* 內容文字排版 */
@@ -219,6 +221,7 @@
     line-height: 1.6;
     color: #0f172a;
     text-align: left;
+    flex: 1;
   }
 
   /* 行為 Badge 標籤 */
@@ -286,6 +289,7 @@ function getDayOfWeek(dateString) {
   return isNaN(date.getDay()) ? "" : `(${days[date.getDay()]})`;
 }
 
+// 修改點：在活動名稱前加上 <br> 換行
 function lineText(e){
   const name = e.displayName || "(未知使用者)";
   let verb;
@@ -295,7 +299,7 @@ function lineText(e){
     verb = actionVerb[e.action] || e.action;
   }
   const badgeHtml = actionBadge[e.action] || '<span class="badge">其他</span>';
-  return `${badgeHtml} <b>${name}</b> ${verb} <strong>${e.activityDate} ${e.activityTitle}</strong> 活動頁`;
+  return `${badgeHtml} <b>${name}</b> ${verb} <br><strong>${e.activityDate} ${e.activityTitle}</strong> 活動頁`;
 }
 
 // 依日期分組與輸出
@@ -307,22 +311,22 @@ function renderLines(log){
   log.forEach((e, i) => {
     const [datePart, timePart] = e.timestamp.split(" ");
     
-    // 1. 日期加上星期 (例如: 2026/7/20(一))
+    // 日期加上星期 (例如: 2026/7/20(一))
     if(datePart !== currentDate){
       currentDate = datePart;
       const weekDay = getDayOfWeek(datePart);
       html += `<div class="log-date-header">📅 ${datePart} ${weekDay}</div>`;
     }
 
-    // 2. 時間只保留到「分」(HH:mm)
+    // 時間只保留到「分」(HH:mm)
     const timeShort = timePart ? timePart.substring(0, 5) : "";
     
-    // 3. 斑馬紋底色類別
+    // 斑馬紋底色類別
     const zebraClass = i % 2 === 0 ? "log-even" : "log-odd";
 
     html += `
       <div class="log-card ${zebraClass}">
-        <div class="log-time-center">${timeShort}</div>
+        <div class="log-time-left">${timeShort}</div>
         <div class="log-body">${lineText(e)}</div>
       </div>`;
   });
