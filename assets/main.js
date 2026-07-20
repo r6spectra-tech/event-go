@@ -156,7 +156,7 @@ async function requireLogin() {
    Flex Message 產生器（分享用）
    ============================================================ */
 function detailUrl(activity, referrer) {
-  let url = `https://liff.line.me/${RUNTIME.liffId}/detail.html?id=${encodeURIComponent(activity.id)}`;
+  let url = `${RUNTIME.siteUrl}/detail.html?id=${encodeURIComponent(activity.id)}`;
   if (referrer && referrer.userId) {
     url += `&refId=${encodeURIComponent(referrer.userId)}&refName=${encodeURIComponent(referrer.displayName || "")}`;
   }
@@ -308,6 +308,18 @@ async function confirmWaitlistDecision(activityId, decision) {
 async function getMyWaitlistStatus(activityId) {
   const { userId } = await requireLogin();
   return apiGet("waitlistStatus", { activityId, userId });
+}
+
+// detail.html 用：這個人對這個活動目前的狀態（已參加 / 候補中…），避免同一個人重複點「參加活動」
+async function getMyActivityStatus(activityId) {
+  const { userId } = await requireLogin();
+  return apiGet("myActivityStatus", { activityId, userId });
+}
+
+// me.html（個人頁面）用：這個人打開過／候補過／參加過的所有活動
+async function getMyActivities() {
+  const { userId } = await requireLogin();
+  return apiGet("myActivities", { userId });
 }
 
 /* ============================================================
