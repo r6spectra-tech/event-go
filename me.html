@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>我的活動</title>
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+
+<div class="topbar">
+  <div>
+    <span class="eyebrow">My Activities</span>
+    <h1>我的活動</h1>
+  </div>
+  <div id="managerArea"></div>
+</div>
+
+<div class="admin-wrap" id="content">
+  <div class="loading">載入中…</div>
+</div>
+
+<script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+<script src="assets/main.js"></script>
+<script>
+const categoryInfo = {
+  joined:     { label: "🟩 已參加", cls: "cat-joined" },
+  waitlisted: { label: "🟧 候補中", cls: "cat-waitlisted" },
+  viewed:     { label: "🟦 看過",   cls: "cat-viewed" },
+};
+
+function waitlistLabel(item){
+  if(item.category !== "waitlisted") return categoryInfo[item.category];
+  if(item.waitlistStatus === "cancelled") return { label: "🟧 候補已取消", cls: "cat-waitlisted" };
+  if(item.waitlistStatus === "expired") return { label: "🟧 候補已逾期", cls: "cat-waitlisted" };
+  return categoryInfo.waitlisted;
+}
+
+function itemHtml(item){
+  const info = waitlistLabel(item);
+  return `
+  <a class="my-activity-row" href="detail.html?id=${encodeURIComponent(item.activityId)}">
+    ${item.cover ? `<img src="${item.cover}" class="my-activity-thumb">` : `<div class="my-activity-thumb my-activity-thumb-empty"></div>`}
+    <div class="my-activity-info">
+      <p class="my-activity-title">${item.title}</p>
+      <p class="my-activity-date">${item.date}</p>
+    </div>
+    <span class="cat-badge ${info.cls}">${info.label}</span>
+  </a>`;
+}
+
+function dateValue(item){
+  return item.date || "";
+}
+
+function renderList(list){
+  if(!list.length) return `<div class="empty">目前沒有紀錄</div>`;
+  return list.map(itemHtml).join("");
+}
+
+async function main(){
+  setupManagerArea();
+
+  let profile;
+  try{
+    profile = await requireLogin();
+  }catch(e){
+    document.getElementById("content").innerHTML = `<div class="empty">需要 LINE 登入才能查看個人紀錄</div>`;
+    return;
+  }
+
+  try{
+    const items = await getMyActivities();
+    const current = items.filter(i => !i.expired);
+    const expired = items.filter(i => i.expired);
+
+    document.getElementById("content").innerHTML = `
+      <div class="panel">
+        <p class="panel-title">目前的活動</p>
+        <div id="currentList">${renderList(current)}</div>
+      </div>
+      <div class="panel">
+        <p class="panel-title">已過期</p>
+        <div id="expiredList">${renderList(expired)}</div>
+      </div>
+    `;
+  }catch(e){
+    console.error(e);
+    document.getElementById("content").innerHTML = `<div class="empty">讀取失敗：${e.message}</div>`;
+  }
+}
+
+async function setupManagerArea(){
+  const area = document.getElementById("managerArea");
+  try{
+    const ok = await ensureLiff();
+    if(!ok || !liff.isLoggedIn()) return;
+    const profile = await liff.getProfile();
+    const { status } = await checkIsManager(profile.userId);
+    if(status === "approved"){
+      area.innerHTML = `
+        <a class="btn btn-ghost manager-link" href="admin/new-activity.html">新增活動</a>
+        <a class="btn btn-ghost manager-link" href="admin/edit-activity.html">編輯活動</a>
+        <a class="btn btn-ghost manager-link" href="admin/waitlist.html">候補管理</a>
+        <a class="btn btn-ghost manager-link" href="admin/visit-log.html">閱讀記錄</a>
+        <a class="btn btn-ghost manager-link" href="admin/managers.html">管理申請</a>
+      `;
+    }
+  }catch(e){
+    console.warn("管理者狀態載入失敗", e);
+  }
+}
+
+main();
+</script>
+</body>
+</html>
