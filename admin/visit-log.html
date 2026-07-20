@@ -18,6 +18,7 @@
 <div class="admin-wrap">
   <div class="nav-links">
     <a class="btn btn-ghost" href="../index.html">← 回列表頁</a>
+    <a class="btn btn-ghost" id="clearFilterLink" href="visit-log.html" style="display:none;">查看全部活動記錄 →</a>
   </div>
   <div id="app"><div class="loading">載入中…</div></div>
 </div>
@@ -26,10 +27,15 @@
 <script src="../assets/main.js"></script>
 <script>
 let currentProfile = null;
+let rawLog = [];
+const activityIdFilter = new URLSearchParams(location.search).get("activityId");
 
 const actionVerb = { joined: "參加", waitlisted: "候補", shared: "分享" };
+// 需求 6：每個行為前面加顏色色塊
+const actionColor = { open: "🟦", joined: "🟩", waitlisted: "🟧", shared: "🟨" };
+const actionFilterLabel = { all: "全部", open: "瀏覽", joined: "參加", waitlisted: "候補", shared: "分享" };
 
-function lineHtml(e){
+function lineText(e){
   const name = e.displayName || "(未知使用者)";
   let verb;
   if(e.action === "open"){
@@ -37,22 +43,43 @@ function lineHtml(e){
   }else{
     verb = actionVerb[e.action] || e.action;
   }
-  return `<div class="log-line">
-    <span class="log-time">${e.timestamp}</span>
-    <span class="log-body"><b>${name}</b> ${verb} ${e.activityDate} ${e.activityTitle} 活動頁</span>
-  </div>`;
+  return `${actionColor[e.action] || "⬜"} <b>${name}</b> ${verb} ${e.activityDate} ${e.activityTitle} 活動頁`;
+}
+
+// 需求 3：依日期分組，組內只顯示時間
+function renderLines(log){
+  if(!log.length) return `<div class="empty">沒有符合條件的記錄</div>`;
+  let html = "";
+  let currentDate = null;
+  log.forEach((e, i) => {
+    const [datePart, timePart] = e.timestamp.split(" ");
+    if(datePart !== currentDate){
+      currentDate = datePart;
+      html += `<div class="log-date-header">－ ${datePart} －</div>`;
+    }
+    html += `<div class="log-line ${i % 2 === 0 ? "log-even" : "log-odd"}">
+      <span class="log-time">${timePart || ""}</span>
+      <span class="log-body">${lineText(e)}</span>
+    </div>`;
+  });
+  return html;
+}
+
+function applyFilters(){
+  const actionFilter = document.getElementById("actionFilter").value;
+  const hideMine = document.getElementById("hideMineToggle").checked;
+  let filtered = rawLog;
+  if(actionFilter !== "all") filtered = filtered.filter(e => e.action === actionFilter);
+  if(hideMine) filtered = filtered.filter(e => e.userId !== currentProfile.userId);
+  document.getElementById("logList").innerHTML = renderLines(filtered);
 }
 
 async function loadLog(){
   const listEl = document.getElementById("logList");
   listEl.innerHTML = `<div class="loading">載入中…</div>`;
   try{
-    const log = await adminGetVisitLog(currentProfile.userId);
-    if(!log.length){
-      listEl.innerHTML = `<div class="empty">目前還沒有任何記錄</div>`;
-      return;
-    }
-    listEl.innerHTML = log.map(lineHtml).join("");
+    rawLog = await adminGetVisitLog(currentProfile.userId, activityIdFilter);
+    applyFilters();
   }catch(e){
     console.error(e);
     listEl.innerHTML = `<div class="empty">讀取失敗：${e.message}</div>`;
@@ -62,14 +89,37 @@ async function loadLog(){
 function renderContent(profile){
   currentProfile = profile;
   const app = document.getElementById("app");
+
+  if(activityIdFilter){
+    document.getElementById("clearFilterLink").style.display = "inline-block";
+  }
+
   app.innerHTML = `
     <div class="panel">
-      <p class="panel-title">所有活動的瀏覽／參加／候補／分享紀錄 <span class="tag">最新在上</span></p>
-      <button class="btn btn-ghost btn-block" id="refreshBtn">重新整理</button>
+      <p class="panel-title">
+        ${activityIdFilter ? "此活動的瀏覽／參加／候補／分享紀錄" : "所有活動的瀏覽／參加／候補／分享紀錄"}
+        <span class="tag">最新在上</span>
+      </p>
+      <div class="field">
+        <label>只看某個行為</label>
+        <select id="actionFilter">
+          <option value="all">全部</option>
+          <option value="open">🟦 瀏覽</option>
+          <option value="joined">🟩 參加</option>
+          <option value="waitlisted">🟧 候補</option>
+          <option value="shared">🟨 分享</option>
+        </select>
+      </div>
+      <label class="hide-mine-row">
+        <input type="checkbox" id="hideMineToggle" checked> 隱藏本人的記錄
+      </label>
+      <button class="btn btn-ghost btn-block" id="refreshBtn" style="margin-top:10px;">重新整理</button>
       <div id="logList" style="margin-top:14px;"></div>
     </div>
   `;
   document.getElementById("refreshBtn").addEventListener("click", loadLog);
+  document.getElementById("actionFilter").addEventListener("change", applyFilters);
+  document.getElementById("hideMineToggle").addEventListener("change", applyFilters);
   loadLog();
 }
 
