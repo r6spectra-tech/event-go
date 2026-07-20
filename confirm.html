@@ -94,7 +94,7 @@ async function main(){
     renderQuestion(activity);
   }catch(e){
     console.error(e);
-    el.innerHTML = `<p>讀取失敗，請稍後再試。</p>`;
+    el.innerHTML = `<p>讀取失敗：${e.message || e}</p>`;
   }
 }
 
