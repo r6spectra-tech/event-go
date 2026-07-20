@@ -4,7 +4,7 @@
    前端開頁時用 action=config 向 GAS 要。
    ============================================================ */
 const CONFIG = {
-  API_BASE: "https://script.google.com/macros/s/AKfycbwykjsyZB9JEQsFHDKUJfT5ki4Gh27i5jxVLaLko_zS2MLk7Uv5vSqvz5fxkPgVMPXgOw/exec",
+  API_BASE: "https://script.google.com/macros/library/d/1WpRsuM6PX7k88mFLr_TdYWq69ST0B_V0w5TTSDPRr30Cg5vrjUzt1sfe/11",
   MAX_SHARE_ITEMS: 5,        // liff.shareTargetPicker 一次最多可帶 5 則訊息
   MAX_CAROUSEL_BUBBLES: 12,  // 單一 flex carousel 最多 12 張卡片
   OA_LINE_URL: "https://lin.ee/jTuF7zN", // LINE 官方帳號加好友連結，候補通知要靠這個才推得到
@@ -361,110 +361,18 @@ function pickRandom(arr, n) {
 /* ============================================================
    管理者申請 / 檢查（一般使用者）
    ============================================================ */
-async function applyManager(pin) {
+async function applyManager() {
   const { userId, displayName } = await requireLogin();
-  return apiPost("applyManager", { userId, displayName, pin });
+  return apiPost("applyManager", { userId, displayName });
 }
 
 async function checkIsManager(userId) {
   return apiGet("isManager", { userId });
 }
 
-/* ============================================================
-   管理者 PIN 登入（每個管理者用自己的 4 碼密碼，5 分鐘無操作自動鎖定）
-   ============================================================ */
-const MANAGER_SESSION_MS = 5 * 60 * 1000;
-
-function managerSessionKey(userId) {
-  return `managerUnlockedAt:${userId}`;
-}
-
-function isManagerSessionValid(userId) {
-  const t = Number(sessionStorage.getItem(managerSessionKey(userId)) || 0);
-  return t && Date.now() - t < MANAGER_SESSION_MS;
-}
-
-function markManagerSessionUnlocked(userId) {
-  sessionStorage.setItem(managerSessionKey(userId), String(Date.now()));
-}
-
-function clearManagerSession(userId) {
-  sessionStorage.removeItem(managerSessionKey(userId));
-}
-
-async function verifyManagerPin(userId, pin) {
-  return apiPost("verifyManagerPin", { userId, pin });
-}
-
-// 在指定容器畫出 9 宮格數字鍵盤讓使用者輸入 4 碼 PIN，打完第 4 碼自動送出驗證，
-// 驗證成功呼叫 onSuccess()；失敗顯示錯誤並清空重新輸入。
-function renderPinLock(mountEl, userId, onSuccess) {
-  let buffer = "";
-  mountEl.innerHTML = `
-    <div class="pin-lock">
-      <p class="pin-icon">🔒</p>
-      <p class="big">請輸入管理密碼</p>
-      <p class="join-note">4 位數字，申請管理時設定的那組密碼</p>
-      <div class="pin-dots">
-        ${[0, 1, 2, 3].map(i => `<span class="pin-dot" data-i="${i}"></span>`).join("")}
-      </div>
-      <div class="pin-spinner" id="pinSpinner" style="display:none;"></div>
-      <p class="pin-error" id="pinError"></p>
-      <div class="pin-keypad" id="pinKeypad">
-        ${[1, 2, 3, 4, 5, 6, 7, 8, 9].map(d => `<button type="button" class="pin-key" data-digit="${d}">${d}</button>`).join("")}
-        <span></span>
-        <button type="button" class="pin-key" data-digit="0">0</button>
-        <button type="button" class="pin-key pin-key-del" id="pinDel">⌫</button>
-      </div>
-    </div>
-  `;
-  const dots = mountEl.querySelectorAll(".pin-dot");
-  const errEl = mountEl.querySelector("#pinError");
-  const spinner = mountEl.querySelector("#pinSpinner");
-  const keypad = mountEl.querySelector("#pinKeypad");
-  let busy = false;
-
-  function updateDots() {
-    dots.forEach((d, i) => d.classList.toggle("filled", i < buffer.length));
-  }
-
-  async function trySubmit() {
-    busy = true;
-    errEl.textContent = "";
-    keypad.style.visibility = "hidden";
-    spinner.style.display = "block";
-    try {
-      await verifyManagerPin(userId, buffer);
-      markManagerSessionUnlocked(userId);
-      onSuccess(); // 成功後這個畫面整個會被換掉，不用自己收尾 spinner
-    } catch (e) {
-      spinner.style.display = "none";
-      keypad.style.visibility = "visible";
-      errEl.textContent = e.message;
-      buffer = "";
-      updateDots();
-      busy = false;
-    }
-  }
-
-  mountEl.querySelectorAll(".pin-key[data-digit]").forEach(btn => {
-    btn.addEventListener("click", () => {
-      if (busy || buffer.length >= 4) return;
-      buffer += btn.dataset.digit;
-      updateDots();
-      if (buffer.length === 4) trySubmit();
-    });
-  });
-  mountEl.querySelector("#pinDel").addEventListener("click", () => {
-    if (busy) return;
-    buffer = buffer.slice(0, -1);
-    errEl.textContent = "";
-    updateDots();
-  });
-}
-
-// 管理頁共用的守門邏輯：確認登入 → 確認是核准管理者 → PIN 解鎖（5 分鐘內免重複輸入）
-// renderContent(profile) 會在通過驗證後被呼叫，負責畫出實際的後台內容
+// 管理頁共用的守門邏輯：確認 LINE 登入 → 確認是核准管理者，就直接放行，
+// 沒有任何密碼/PIN 這種東西——每次打開頁面都會重新檢查一次身分。
+// renderContent(profile) 會在通過驗證後被呼叫，負責畫出實際的後台內容。
 async function guardManagerPage(mountEl, renderContent) {
   mountEl.innerHTML = `<div class="loading">驗證身分中…</div>`;
   let profile;
@@ -487,27 +395,7 @@ async function guardManagerPage(mountEl, renderContent) {
     return;
   }
 
-  const lockAndShow = () => renderPinLock(mountEl, profile.userId, () => {
-    renderContent(profile);
-    startAutoLockWatcher(mountEl, profile.userId, lockAndShow);
-  });
-
-  if (isManagerSessionValid(profile.userId)) {
-    renderContent(profile);
-    startAutoLockWatcher(mountEl, profile.userId, lockAndShow);
-  } else {
-    lockAndShow();
-  }
-}
-
-function startAutoLockWatcher(mountEl, userId, onExpire) {
-  if (mountEl._lockWatcher) clearInterval(mountEl._lockWatcher);
-  mountEl._lockWatcher = setInterval(() => {
-    if (!isManagerSessionValid(userId)) {
-      clearInterval(mountEl._lockWatcher);
-      onExpire();
-    }
-  }, 10000);
+  renderContent(profile);
 }
 
 /* ============================================================
@@ -547,8 +435,10 @@ async function adminGetManagers(requestedBy) {
   return apiGet("managers", { requestedBy });
 }
 
-async function adminGetVisitLog(requestedBy) {
-  return apiGet("visitLog", { requestedBy });
+async function adminGetVisitLog(requestedBy, activityId) {
+  const params = { requestedBy };
+  if (activityId) params.activityId = activityId;
+  return apiGet("visitLog", params);
 }
 
 async function adminDecideManager(userId, decision, requestedBy) {
