@@ -3,147 +3,159 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>編輯活動</title>
+<title>新增活動</title>
 <link rel="stylesheet" href="../assets/style.css">
 </head>
 <body>
 
 <div class="topbar">
   <div>
-    <span class="eyebrow">Managers Only</span>
-    <h1>編輯活動</h1>
+    <span class="eyebrow">Organizer Only</span>
+    <h1>新增活動</h1>
   </div>
 </div>
 
-<div class="admin-wrap">
-  <div class="nav-links" id="navLinks">
-    <a class="btn btn-ghost" href="../index.html">← 回列表頁</a>
-    <a class="btn btn-ghost" id="backToDetailLink" style="display:none;" href="#">回本活動詳情頁 →</a>
-  </div>
-  <div id="app"><div class="loading">載入中…</div></div>
+<div class="admin-wrap" id="app">
+  <div class="loading">載入中…</div>
 </div>
 
 <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
 <script src="../assets/main.js"></script>
 <script>
 let currentProfile = null;
-let activityMap = {};
-
-const fieldIds = ["title","cover_image","area","date_text","event_date","price","capacity",
-  "notes","itinerary","youtube_links","map_links","organizer_name","organizer_line_url","group_url"];
 
 const formHtml = `
   <div class="panel">
-    <p class="panel-title">選擇要編輯的活動</p>
+    <p class="panel-title">基本資訊 <span class="tag">Auto ID</span></p>
     <div class="field">
-      <select id="activitySelect"><option value="">載入中…</option></select>
+      <label>活動代碼（自動產生，可自行修改）</label>
+      <input id="id" placeholder="載入中…">
+    </div>
+    <div class="field">
+      <label>活動名稱</label>
+      <input id="title">
+    </div>
+    <div class="field">
+      <label>地區</label>
+      <input id="area" placeholder="例如 花蓮">
+    </div>
+    <div class="field">
+      <label>日期文字（顯示用）</label>
+      <input id="date_text" placeholder="例如 10/18(六)-10/19(日)">
+    </div>
+    <div class="field">
+      <label>活動日期（yyyy-mm-dd，僅用來判斷是否過期）</label>
+      <input id="event_date" type="date">
+    </div>
+    <div class="field">
+      <label>價格</label>
+      <input id="price" type="number" placeholder="2980">
+    </div>
+    <div class="field">
+      <label>總名額</label>
+      <input id="capacity" type="number" placeholder="20">
     </div>
   </div>
 
-  <div id="editForm" style="display:none;">
-    <div class="panel">
-      <p class="panel-title">基本資訊</p>
-      <div class="field"><label>活動代碼（不可修改）</label><input id="idDisplay" disabled></div>
-      <div class="field"><label>活動名稱</label><input id="title"></div>
-      <div class="field"><label>地區</label><input id="area"></div>
-      <div class="field"><label>日期文字（顯示用）</label><input id="date_text"></div>
-      <div class="field"><label>活動日期（yyyy-mm-dd，判斷過期用）</label><input id="event_date" type="date"></div>
-      <div class="field"><label>價格</label><input id="price" type="number"></div>
-      <div class="field"><label>總名額</label><input id="capacity" type="number"></div>
+  <div class="panel">
+    <p class="panel-title">封面圖片</p>
+    <div class="field">
+      <label>封面圖網址</label>
+      <input id="cover_image" placeholder="https://... 或從下方圖庫點選">
     </div>
-
-    <div class="panel">
-      <p class="panel-title">封面圖片</p>
-      <div class="field"><label>封面圖網址</label><input id="cover_image"></div>
-      <div class="cover-picker" id="coverPicker"></div>
-      <button class="btn btn-ghost btn-block" id="reshuffleCoverBtn" style="margin-top:10px;">換一批建議圖</button>
-    </div>
-
-    <div class="panel">
-      <p class="panel-title">行程與連結</p>
-      <div class="field"><label>備註（顯示在詳情頁行程之上）</label><textarea id="notes"></textarea></div>
-      <div class="field"><label>行程（每一天用 || 分隔）</label><textarea id="itinerary"></textarea></div>
-      <div class="field"><label>YouTube 連結（可多行，每行：說明文字 網址）</label><textarea id="youtube_links"></textarea></div>
-      <div class="field"><label>Google Map 連結（可多行，每行：說明文字 網址）</label><textarea id="map_links"></textarea></div>
-    </div>
-
-    <div class="panel">
-      <p class="panel-title">主辦資訊</p>
-      <div class="field"><label>主辦人名稱</label><input id="organizer_name"></div>
-      <div class="field"><label>主辦人 LINE 加好友連結</label><input id="organizer_line_url"></div>
-      <div class="field"><label>揪團群組連結</label><input id="group_url"></div>
-    </div>
-
-    <button class="btn btn-primary btn-block" id="submitBtn">儲存變更</button>
-    <p id="msg" class="join-note"></p>
+    <div class="cover-picker" id="coverPicker"></div>
+    <button class="btn btn-ghost btn-block" id="reshuffleCoverBtn" style="margin-top:10px;">換一批</button>
   </div>
+
+  <div class="panel">
+    <p class="panel-title">行程與連結</p>
+    <div class="field">
+      <label>備註（顯示在詳情頁行程之上，可留空）</label>
+      <textarea id="notes" placeholder="例如：請自備泳具、活動當天若下雨則順延一週"></textarea>
+    </div>
+    <div class="field">
+      <label>行程（每一天用 || 分隔）</label>
+      <textarea id="itinerary" placeholder="Day1 集合出發，前往太魯閣||Day2 早起賞日出，中午賦歸"></textarea>
+    </div>
+    <div class="field">
+      <label>YouTube 連結（可多行，每行：說明文字 網址）</label>
+      <textarea id="youtube_links" placeholder="行前說明會 https://youtu.be/xxxx
+去年花絮 https://youtu.be/yyyy"></textarea>
+    </div>
+    <div class="field">
+      <label>Google Map 連結（可多行，每行：說明文字 網址）</label>
+      <textarea id="map_links" placeholder="集合地點 https://maps.app.goo.gl/xxxx
+午餐地點 https://maps.app.goo.gl/yyyy"></textarea>
+    </div>
+  </div>
+
+  <div class="panel">
+    <p class="panel-title">主辦資訊</p>
+    <div class="field">
+      <label>主辦人名稱</label>
+      <input id="organizer_name">
+    </div>
+    <div class="field">
+      <label>主辦人 LINE 加好友連結</label>
+      <input id="organizer_line_url" placeholder="https://line.me/ti/p/xxxxxxx">
+    </div>
+    <div class="field">
+      <label>常用主辦人</label>
+      <div class="chip-row" id="organizerPresetList"></div>
+      <button class="btn btn-ghost btn-block" id="savePresetBtn" style="margin-top:10px;">把上面填的名稱＋連結存成常用</button>
+    </div>
+    <div class="field">
+      <label>揪團群組連結</label>
+      <input id="group_url" placeholder="https://line.me/ti/g2/xxxxxxx">
+    </div>
+  </div>
+
+  <button class="btn btn-primary btn-block" id="submitBtn">建立活動</button>
+  <p id="msg" class="join-note"></p>
 `;
+
+const fieldIds = ["id","title","cover_image","area","date_text","event_date","price","capacity",
+  "notes","itinerary","youtube_links","map_links","organizer_name","organizer_line_url","group_url"];
 
 async function renderCoverPicker(){
   const picker = document.getElementById("coverPicker");
   picker.innerHTML = `<span class="join-note">載入圖庫中…</span>`;
   try{
     const all = await fetchCoverImages();
-    if(!all.length){ picker.innerHTML = `<span class="join-note">圖庫是空的</span>`; return; }
+    if(!all.length){ picker.innerHTML = `<span class="join-note">圖庫是空的（cover-image 分頁沒有圖片網址）</span>`; return; }
     const sample = pickRandom(all, 3);
     picker.innerHTML = sample.map(url => `<img class="cover-thumb" src="${url}" data-url="${url}">`).join("");
     picker.querySelectorAll(".cover-thumb").forEach(img=>{
-      img.addEventListener("click", ()=>{ document.getElementById("cover_image").value = img.dataset.url; });
+      img.addEventListener("click", ()=>{
+        document.getElementById("cover_image").value = img.dataset.url;
+        picker.querySelectorAll(".cover-thumb").forEach(i=>i.classList.remove("selected"));
+        img.classList.add("selected");
+      });
     });
   }catch(e){
     picker.innerHTML = `<span class="join-note">圖庫載入失敗</span>`;
   }
 }
 
-function fillForm(a){
-  document.getElementById("idDisplay").value = a.id;
-  document.getElementById("title").value = a.title || "";
-  document.getElementById("area").value = a.area || "";
-  document.getElementById("date_text").value = a.date || "";
-  // <input type="date"> 只接受精確的 yyyy-MM-dd；Google Sheet 常把日期存成含時間的 ISO 字串
-  // （例如 2026-08-07T16:00:00.000Z），直接賦值會被瀏覽器悄悄拒絕、欄位變空白，所以先截斷成前 10 碼。
-  document.getElementById("event_date").value = String(a.eventDate || "").slice(0, 10);
-  // <input type="number"> 一樣是嚴格格式，只要混到非數字字元（例如全形空格、貨幣符號）就會被拒絕，
-  // 先過濾掉非數字/小數點的字元再賦值。
-  document.getElementById("price").value = String(a.price || "").replace(/[^\d.]/g, "");
-  document.getElementById("capacity").value = String(a.capacity || "").replace(/[^\d.]/g, "");
-  document.getElementById("cover_image").value = a.cover || "";
-  document.getElementById("notes").value = a.notes || "";
-  document.getElementById("itinerary").value = (a.itineraryRaw !== undefined ? a.itineraryRaw : a.itinerary.join("||"));
-  document.getElementById("youtube_links").value = a.youtubeLinksRaw || "";
-  document.getElementById("map_links").value = a.mapLinksRaw || "";
-  document.getElementById("organizer_name").value = a.organizerName || "";
-  document.getElementById("organizer_line_url").value = a.organizerLineUrl || "";
-  document.getElementById("group_url").value = a.groupUrl || "";
-}
-
-function selectActivity(id){
-  const select = document.getElementById("activitySelect");
-  const editForm = document.getElementById("editForm");
-  const backLink = document.getElementById("backToDetailLink");
-  if(!id || !activityMap[id]){
-    editForm.style.display = "none";
-    backLink.style.display = "none";
-    return;
-  }
-  select.value = id;
-  editForm.style.display = "block";
-  fillForm(activityMap[id]);
-  renderCoverPicker();
-  backLink.href = `../detail.html?id=${encodeURIComponent(id)}`;
-  backLink.style.display = "inline-block";
-}
-
-async function loadActivityOptions(preselectId){
-  const select = document.getElementById("activitySelect");
+async function renderOrganizerPresets(){
+  const listEl = document.getElementById("organizerPresetList");
+  listEl.innerHTML = `<span class="join-note">載入中…</span>`;
   try{
-    const activities = await fetchActivities();
-    activityMap = Object.fromEntries(activities.map(a => [a.id, a]));
-    select.innerHTML = `<option value="">請選擇活動…</option>` +
-      activities.map(a => `<option value="${a.id}">${a.id} - ${a.title}（${a.date}）</option>`).join("");
-    if(preselectId) selectActivity(preselectId);
+    const presets = await fetchOrganizerPresets();
+    if(!presets.length){
+      listEl.innerHTML = `<span class="join-note">還沒有常用主辦人，填好上面欄位後可以按下方按鈕新增</span>`;
+      return;
+    }
+    listEl.innerHTML = presets.map((p,i) => `<span class="chip-link presetChip" data-i="${i}" style="cursor:pointer;">👤 ${p.name || p.lineUrl}</span>`).join("");
+    listEl.querySelectorAll(".presetChip").forEach(chip=>{
+      chip.addEventListener("click", ()=>{
+        const p = presets[Number(chip.dataset.i)];
+        document.getElementById("organizer_name").value = p.name;
+        document.getElementById("organizer_line_url").value = p.lineUrl;
+      });
+    });
   }catch(e){
-    select.innerHTML = `<option value="">活動列表載入失敗</option>`;
+    listEl.innerHTML = `<span class="join-note">載入失敗</span>`;
   }
 }
 
@@ -152,33 +164,49 @@ function renderContent(profile){
   const app = document.getElementById("app");
   app.innerHTML = formHtml;
 
-  const preselectId = new URLSearchParams(location.search).get("id");
-  loadActivityOptions(preselectId);
-
-  document.getElementById("activitySelect").addEventListener("change", (e)=> selectActivity(e.target.value));
+  fetchNextActivityId().then(id => { document.getElementById("id").value = id; }).catch(()=>{});
+  renderCoverPicker();
+  renderOrganizerPresets();
   document.getElementById("reshuffleCoverBtn").addEventListener("click", renderCoverPicker);
 
+  document.getElementById("savePresetBtn").addEventListener("click", async ()=>{
+    const name = document.getElementById("organizer_name").value.trim();
+    const lineUrl = document.getElementById("organizer_line_url").value.trim();
+    if(!name && !lineUrl){ alert("請先填主辦人名稱或連結再存成常用"); return; }
+    try{
+      await addOrganizerPreset(name, lineUrl, currentProfile.userId);
+      renderOrganizerPresets();
+    }catch(e){
+      alert("新增常用失敗：" + e.message);
+    }
+  });
+
   document.getElementById("submitBtn").addEventListener("click", async ()=>{
-    const id = document.getElementById("activitySelect").value;
-    if(!id) return;
     const msg = document.getElementById("msg");
-    const fields = { id };
-    fieldIds.forEach(fid => fields[fid] = document.getElementById(fid).value.trim());
+    const fields = {};
+    fieldIds.forEach(id => fields[id] = document.getElementById(id).value.trim());
+
+    if(!fields.id || !fields.title){
+      msg.textContent = "請至少填寫活動代碼與名稱";
+      return;
+    }
 
     const btn = document.getElementById("submitBtn");
-    btn.disabled = true; btn.textContent = "儲存中…";
+    btn.disabled = true; btn.textContent = "建立中…";
     msg.textContent = "";
     try{
-      const res = await adminUpdateActivity(fields, currentProfile.userId);
+      const res = await adminCreateActivity(fields, currentProfile.userId);
       msg.textContent = res.unmapped && res.unmapped.length
-        ? `⚠️ 已儲存，但這些欄位在 Sheet 裡找不到對應欄名、沒有存進去：${res.unmapped.join("、")}（請檢查 activities 分頁的表頭）`
-        : "✅ 已儲存變更";
-      loadActivityOptions(id);
+        ? `⚠️ 活動已建立，但這些欄位在 Sheet 裡找不到對應欄名、沒有存進去：${res.unmapped.join("、")}（請檢查 activities 分頁的表頭）`
+        : "✅ 活動已建立，可以到列表頁查看。";
+      fieldIds.forEach(id => document.getElementById(id).value = "");
+      fetchNextActivityId().then(id => { document.getElementById("id").value = id; }).catch(()=>{});
+      renderCoverPicker();
     }catch(e){
       console.error(e);
-      msg.textContent = "❌ 儲存失敗：" + e.message;
+      msg.textContent = "❌ 建立失敗：" + e.message;
     }finally{
-      btn.disabled = false; btn.textContent = "儲存變更";
+      btn.disabled = false; btn.textContent = "建立活動";
     }
   });
 }
