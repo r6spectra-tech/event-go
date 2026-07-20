@@ -65,7 +65,8 @@ async function main(){
   try{
     profile = await requireLogin();
   }catch(e){
-    document.getElementById("content").innerHTML = `<div class="empty">需要 LINE 登入才能查看個人紀錄</div>`;
+    console.error(e);
+    document.getElementById("content").innerHTML = `<div class="empty">需要 LINE 登入才能查看個人紀錄（${e.message || e}）</div>`;
     return;
   }
 
