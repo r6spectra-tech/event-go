@@ -5,6 +5,248 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>閱讀記錄</title>
 <link rel="stylesheet" href="../assets/style.css">
+<style>
+  /* === 現代化 UI 重置與變數定義 === */
+  :root {
+    --primary-color: #2563eb;
+    --bg-color: #f8fafc;
+    --card-bg: #ffffff;
+    --text-main: #1e293b;
+    --text-sub: #64748b;
+    --border-color: #e2e8f0;
+    --radius-md: 10px;
+    --radius-lg: 16px;
+    --shadow-sm: 0 1px 3px rgba(0,0,0,0.05);
+    --shadow-md: 0 4px 12px rgba(0,0,0,0.05);
+  }
+
+  body {
+    background-color: var(--bg-color);
+    color: var(--text-main);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    margin: 0;
+    padding: 0;
+  }
+
+  /* 頂部列美化 */
+  .topbar {
+    background: #ffffff;
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--border-color);
+    box-shadow: var(--shadow-sm);
+  }
+  .eyebrow {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    color: #ef4444;
+    background: #fef2f2;
+    padding: 2px 8px;
+    border-radius: 4px;
+    display: inline-block;
+    margin-bottom: 4px;
+  }
+  .topbar h1 {
+    margin: 0;
+    font-size: 20px;
+    font-weight: 700;
+  }
+
+  /* 容器排版 */
+  .admin-wrap {
+    max-width: 680px;
+    margin: 0 auto;
+    padding: 16px;
+  }
+
+  .nav-links {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 16px;
+  }
+
+  /* 卡片面板 */
+  .panel {
+    background: var(--card-bg);
+    border-radius: var(--radius-lg);
+    padding: 20px;
+    box-shadow: var(--shadow-md);
+    border: 1px solid var(--border-color);
+  }
+
+  .panel-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+  }
+
+  .panel-title {
+    font-size: 16px;
+    font-weight: 700;
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .tag {
+    font-size: 12px;
+    background: #f1f5f9;
+    color: var(--text-sub);
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-weight: normal;
+  }
+
+  /* 控制控制區域 (Filter Controls) */
+  .controls-card {
+    background: #f8fafc;
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    padding: 12px 16px;
+    margin-bottom: 20px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .field-inline {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 14px;
+  }
+
+  select {
+    padding: 6px 12px;
+    border-radius: 6px;
+    border: 1px solid var(--border-color);
+    background-color: #fff;
+    font-size: 14px;
+    outline: none;
+    cursor: pointer;
+  }
+
+  .hide-mine-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 14px;
+    color: var(--text-sub);
+    cursor: pointer;
+    user-select: none;
+  }
+
+  .hide-mine-row input {
+    cursor: pointer;
+  }
+
+  /* 按鈕優化 */
+  .btn {
+    padding: 6px 14px;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 500;
+    text-decoration: none;
+    transition: all 0.2s;
+    cursor: pointer;
+    border: 1px solid transparent;
+  }
+
+  .btn-ghost {
+    background: #fff;
+    border-color: var(--border-color);
+    color: var(--text-main);
+  }
+  .btn-ghost:hover {
+    background: #f1f5f9;
+  }
+
+  .btn-primary {
+    background: var(--primary-color);
+    color: #fff;
+  }
+  .btn-primary:hover {
+    background: #1d4ed8;
+  }
+
+  .btn-block {
+    width: 100%;
+  }
+
+  /* === 時間軸樣式 (Log Timeline) === */
+  .log-date-header {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--text-sub);
+    background: #f1f5f9;
+    padding: 6px 12px;
+    border-radius: 6px;
+    margin: 20px 0 10px 0;
+    display: inline-block;
+  }
+
+  .log-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .log-line {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 12px;
+    border-radius: var(--radius-md);
+    background: #ffffff;
+    border: 1px solid #f1f5f9;
+    transition: background 0.15s ease;
+  }
+
+  .log-line:hover {
+    background: #f8fafc;
+  }
+
+  .log-time {
+    font-size: 12px;
+    font-family: monospace;
+    color: var(--text-sub);
+    min-width: 45px;
+  }
+
+  .log-body {
+    font-size: 14px;
+    line-height: 1.4;
+    color: var(--text-main);
+  }
+
+  /* 行為 Badge (替代原本的Emoji色塊) */
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: 600;
+    margin-right: 4px;
+  }
+  .badge-open { background: #dbeafe; color: #1e40af; }
+  .badge-joined { background: #dcfce7; color: #166534; }
+  .badge-waitlisted { background: #ffedd5; color: #9a3412; }
+  .badge-shared { background: #fef9c3; color: #854d0e; }
+
+  /* 狀態提示 (Loading & Empty) */
+  .loading, .empty {
+    text-align: center;
+    padding: 30px 0;
+    color: var(--text-sub);
+    font-size: 14px;
+  }
+</style>
 </head>
 <body>
 
@@ -31,9 +273,14 @@ let rawLog = [];
 const activityIdFilter = new URLSearchParams(location.search).get("activityId");
 
 const actionVerb = { joined: "參加", waitlisted: "候補", shared: "分享" };
-// 需求 6：每個行為前面加顏色色塊
-const actionColor = { open: "🟦", joined: "🟩", waitlisted: "🟧", shared: "🟨" };
-const actionFilterLabel = { all: "全部", open: "瀏覽", joined: "參加", waitlisted: "候補", shared: "分享" };
+
+// 升級：用乾淨的 Badge 替代純色塊 Emoji
+const actionBadge = {
+  open: '<span class="badge badge-open">瀏覽</span>',
+  joined: '<span class="badge badge-joined">參加</span>',
+  waitlisted: '<span class="badge badge-waitlisted">候補</span>',
+  shared: '<span class="badge badge-shared">分享</span>'
+};
 
 function lineText(e){
   const name = e.displayName || "(未知使用者)";
@@ -43,25 +290,30 @@ function lineText(e){
   }else{
     verb = actionVerb[e.action] || e.action;
   }
-  return `${actionColor[e.action] || "⬜"} <b>${name}</b> ${verb} ${e.activityDate} ${e.activityTitle} 活動頁`;
+  const badgeHtml = actionBadge[e.action] || '<span class="badge">其他</span>';
+  return `${badgeHtml} <b>${name}</b> ${verb} <strong>${e.activityDate} ${e.activityTitle}</strong> 活動頁`;
 }
 
-// 需求 3：依日期分組，組內只顯示時間
+// 依日期分組與輸出
 function renderLines(log){
-  if(!log.length) return `<div class="empty">沒有符合條件的記錄</div>`;
-  let html = "";
+  if(!log.length) return `<div class="empty">目前沒有符合條件的記錄</div>`;
+  let html = '<div class="log-list">';
   let currentDate = null;
-  log.forEach((e, i) => {
+  
+  log.forEach((e) => {
     const [datePart, timePart] = e.timestamp.split(" ");
     if(datePart !== currentDate){
       currentDate = datePart;
-      html += `<div class="log-date-header">－ ${datePart} －</div>`;
+      html += `<div class="log-date-header">📅 ${datePart}</div>`;
     }
-    html += `<div class="log-line ${i % 2 === 0 ? "log-even" : "log-odd"}">
-      <span class="log-time">${timePart || ""}</span>
-      <span class="log-body">${lineText(e)}</span>
-    </div>`;
+    html += `
+      <div class="log-line">
+        <span class="log-time">${timePart || ""}</span>
+        <span class="log-body">${lineText(e)}</span>
+      </div>`;
   });
+  
+  html += '</div>';
   return html;
 }
 
@@ -70,19 +322,19 @@ function applyFilters(){
   const hideMine = document.getElementById("hideMineToggle").checked;
   let filtered = rawLog;
   if(actionFilter !== "all") filtered = filtered.filter(e => e.action === actionFilter);
-  if(hideMine) filtered = filtered.filter(e => e.userId !== currentProfile.userId);
+  if(hideMine && currentProfile) filtered = filtered.filter(e => e.userId !== currentProfile.userId);
   document.getElementById("logList").innerHTML = renderLines(filtered);
 }
 
 async function loadLog(){
   const listEl = document.getElementById("logList");
-  listEl.innerHTML = `<div class="loading">載入中…</div>`;
+  listEl.innerHTML = `<div class="loading">資料載入中…</div>`;
   try{
     rawLog = await adminGetVisitLog(currentProfile.userId, activityIdFilter);
     applyFilters();
   }catch(e){
     console.error(e);
-    listEl.innerHTML = `<div class="empty">讀取失敗：${e.message}</div>`;
+    listEl.innerHTML = `<div class="empty" style="color:#ef4444;">讀取失敗：${e.message}</div>`;
   }
 }
 
@@ -96,27 +348,36 @@ function renderContent(profile){
 
   app.innerHTML = `
     <div class="panel">
-      <p class="panel-title">
-        ${activityIdFilter ? "此活動的瀏覽／參加／候補／分享紀錄" : "所有活動的瀏覽／參加／候補／分享紀錄"}
-        <span class="tag">最新在上</span>
-      </p>
-      <div class="field">
-        <label>只看某個行為</label>
-        <select id="actionFilter">
-          <option value="all">全部</option>
-          <option value="open">🟦 瀏覽</option>
-          <option value="joined">🟩 參加</option>
-          <option value="waitlisted">🟧 候補</option>
-          <option value="shared">🟨 分享</option>
-        </select>
+      <div class="panel-header">
+        <h2 class="panel-title">
+          ${activityIdFilter ? "活動專屬紀錄" : "所有活動紀錄"}
+          <span class="tag">最新在上</span>
+        </h2>
+        <button class="btn btn-ghost" id="refreshBtn">🔄 重新整理</button>
       </div>
-      <label class="hide-mine-row">
-        <input type="checkbox" id="hideMineToggle" checked> 隱藏本人的記錄
-      </label>
-      <button class="btn btn-ghost btn-block" id="refreshBtn" style="margin-top:10px;">重新整理</button>
-      <div id="logList" style="margin-top:14px;"></div>
+
+      <!-- 控制器卡片 -->
+      <div class="controls-card">
+        <div class="field-inline">
+          <label for="actionFilter">篩選行為：</label>
+          <select id="actionFilter">
+            <option value="all">全部行為</option>
+            <option value="open">🟦 瀏覽</option>
+            <option value="joined">🟩 參加</option>
+            <option value="waitlisted">🟧 候補</option>
+            <option value="shared">🟨 分享</option>
+          </select>
+        </div>
+        <label class="hide-mine-row">
+          <input type="checkbox" id="hideMineToggle" checked> 隱藏我的記錄
+        </label>
+      </div>
+
+      <!-- 紀錄列表區 -->
+      <div id="logList"></div>
     </div>
   `;
+  
   document.getElementById("refreshBtn").addEventListener("click", loadLog);
   document.getElementById("actionFilter").addEventListener("change", applyFilters);
   document.getElementById("hideMineToggle").addEventListener("change", applyFilters);
