@@ -15,6 +15,11 @@
   </div>
 </div>
 
+<div class="cache-bar">
+  <span id="cacheTimeLabel">上次更新：尚未讀取</span>
+  <button class="btn btn-ghost" id="refreshBtn">更新</button>
+</div>
+
 <div class="detail-wrap" id="content">
   <div class="loading">載入中…</div>
 </div>
@@ -229,6 +234,37 @@ function renderWaitlistToggle(a, userId){
   });
 }
 
+function activityCacheKey(id){ return `activity:${id}`; }
+
+// 只快取活動本身的顯示資料（標題/行程/連結/名額等），不快取「我的狀態」跟任何寫入動作
+async function loadActivityFromCacheOrFetch(id){
+  const cached = readCache(activityCacheKey(id));
+  if(cached){
+    return { activity: cached.data, fetchedAt: cached.fetchedAt };
+  }
+  const a = await getActivityById(id);
+  if(a) writeCache(activityCacheKey(id), a);
+  return { activity: a, fetchedAt: Date.now() };
+}
+
+async function refreshActivity(id){
+  const a = await getActivityById(id);
+  if(a) writeCache(activityCacheKey(id), a);
+  return a;
+}
+
+async function renderActivity(a, profile){
+  if(profile){
+    try{
+      a.myStatus = await getMyActivityStatus(a.id);
+    }catch(e){
+      console.warn("讀取個人狀態失敗", e);
+    }
+  }
+  render(a);
+  if(profile) loadManagerToolbar(a, profile.userId);
+}
+
 async function main(){
   // 開啟本頁一律先登入 LINE，取得 userId（候補/參加/進站記錄都需要識別使用者）
   let profile = null;
@@ -244,25 +280,24 @@ async function main(){
     return;
   }
   try{
-    const a = await getActivityById(id);
+    const { activity: a, fetchedAt } = await loadActivityFromCacheOrFetch(id);
     if(!a){
       document.getElementById("content").innerHTML = `<div class="empty">找不到這個活動</div>`;
       return;
     }
-    if(profile){
-      try{
-        a.myStatus = await getMyActivityStatus(a.id);
-      }catch(e){
-        console.warn("讀取個人狀態失敗", e);
-      }
-    }
-    render(a);
-    // 如果是點了別人分享的連結進來（網址帶 refId/refName），記錄下來給「閱讀記錄」頁用
+    await renderActivity(a, profile);
+
+    // 進站記錄、分享歸因是「事件」，不管活動資料是不是走快取，這裡都要照常即時記錄
     const params = new URLSearchParams(location.search);
     const refUserId = params.get("refId");
     const refDisplayName = params.get("refName");
     recordVisit(a.id, refUserId ? { refUserId, refDisplayName } : null);
-    if(profile) loadManagerToolbar(a, profile.userId);
+
+    setupRefreshButton(document.getElementById("refreshBtn"), document.getElementById("cacheTimeLabel"), fetchedAt, async ()=>{
+      const fresh = await refreshActivity(id);
+      if(fresh) await renderActivity(fresh, profile);
+      return Date.now();
+    });
   }catch(e){
     console.error(e);
     document.getElementById("content").innerHTML = `<div class="empty">活動資料讀取失敗</div>`;
