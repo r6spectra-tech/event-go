@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>澎湖合菜預約與統計</title>
+  <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; padding: 15px; background-color: #f8f9fa; color: #333; }
+    .card { background: white; border-radius: 10px; padding: 15px; margin-bottom: 15px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
+    .restaurant-item { border-left: 4px solid #06C755; padding-left: 10px; margin-bottom: 15px; }
+    button { cursor: pointer; border: none; border-radius: 5px; padding: 8px 14px; font-size: 13px; margin-right: 5px; }
+    .btn-join { background-color: #06C755; color: white; }
+    .btn-leave { background-color: #dc3545; color: white; }
+    .btn-info { background-color: #17a2b8; color: white; }
+    .btn-add { background-color: #007bff; color: white; width: 100%; padding: 10px; margin-top: 10px; }
+    input, select { width: 100%; padding: 8px; margin: 5px 0 15px; box-sizing: border-box; border: 1px solid #ccc; border-radius: 4px; }
+    .tag { display: inline-block; background: #e9ecef; font-size: 12px; padding: 2px 6px; border-radius: 3px; margin-right: 5px; }
+    .list-box { background: #f1f3f5; padding: 8px; border-radius: 5px; font-size: 13px; margin-top: 8px; display: none; }
+    .admin-box { border: 2px dashed #ffc107; background: #fffdf5; display: none; }
+  </style>
+</head>
+<body>
+
+  <h2>✈️ 澎湖合菜預約與統計</h2>
+  <div id="user-info" class="card" style="font-weight: bold; color: #06C755;">載入系統資訊中...</div>
+
+  <!-- 新增餐廳區域 -->
+  <div class="card" style="background-color: #eef9f1;">
+    <h3>➕ 推薦/新增其他餐廳</h3>
+    <label>發起人（您的稱呼）</label>
+    <input type="text" id="add-initiator" placeholder="例如：阿清">
+    
+    <label>用餐日期</label>
+    <input type="date" id="add-date" value="2026-09-25">
+    
+    <label>用餐別</label>
+    <select id="add-meal-type">
+      <option value="午餐">午餐</option>
+      <option value="晚餐">晚餐</option>
+    </select>
+
+    <label>店家名稱</label>
+    <input type="text" id="add-name" placeholder="例如：阿霜小吃">
+
+    <button class="btn-add" onclick="addNewRestaurant()">新增至清單</button>
+  </div>
+
+  <!-- 發起人專屬區：閱讀人員 (僅發起人可見) -->
+  <div id="admin-view-area" class="card admin-box">
+    <h3 style="color: #d39e00;">🔒 閱讀人員統計（僅發起人可見）</h3>
+    <p style="font-size: 12px; color: #666;">以下為開啟過此網頁的團員列表：</p>
+    <ul id="viewers-list" style="padding-left: 20px; font-size: 14px;"></ul>
+  </div>
+
+  <!-- 餐廳清單 -->
+  <h3>🍱 候選餐廳列表與報名</h3>
+  <div id="restaurant-list"></div>
+
+  <!-- 分享按鈕 -->
+  <div class="card" style="text-align: center;">
+    <button class="btn-join" style="width: 100%; padding: 12px; font-size: 16px;" onclick="shareFlexMessage()">📢 發送邀約卡片到 LINE 群組</button>
+  </div>
+
+  <script>
+    // 只需要填入您的 GAS Web App 發布網址
+    const GAS_URL = "YOUR_GAS_WEB_APP_URL"; 
+    
+    let LIFF_ID = "";
+    let ADMIN_USER_ID = "";
+    let profileData = {};
+    let allVotes = [];
+    let allViews = [];
+
+    let restaurants = [
+      { initiator: "官方建議", date: "2026-09-25", mealType: "晚餐", name: "日新餐廳" },
+      { initiator: "官方建議", date: "2026-09-25", mealType: "晚餐", name: "花菜干人文飲食堂" },
+      { initiator: "官方建議", date: "2026-09-26", mealType: "晚餐", name: "來福小吃部" },
+      { initiator: "官方建議", date: "2026-09-27", mealType: "晚餐", name: "潮境 TideLand" },
+      { initiator: "官方建議", date: "2026-09-27", mealType: "晚餐", name: "Addict Restaurant 癮餐桌" },
+      { initiator: "官方建議", date: "2026-09-28", mealType: "午餐", name: "聚味軒海鮮中餐廳" }
+    ];
+
+    async function main() {
+      // 1. 先向 GAS 取得設定參數與現有資料
+      await loadData();
+
+      // 2. 初始化 LIFF
+      if (LIFF_ID) {
+        await liff.init({ liffId: LIFF_ID });
+        if (!liff.isLoggedIn()) {
+          liff.login();
+        } else {
+          profileData = await liff.getProfile();
+          document.getElementById('user-info').innerText = `👤 當前登入：${profileData.displayName}`;
+          document.getElementById('add-initiator').value = profileData.displayName;
+
+          // 3. 背景紀錄閱讀人員 (User ID + 暱稱)
+          await recordPageView();
+
+          // 4. 比對發起人 User ID，若符合則展示不公開的閱讀人員名單
+          checkAdminPermission();
+        }
+      } else {
+        alert("無法讀取 LIFF ID，請確認 GAS 指令碼屬性設定");
+      }
+    }
+    main();
+
+    // 載入資料與 GAS 指令碼屬性
+    async function loadData() {
+      try {
+        const res = await fetch(GAS_URL);
+        const data = await res.json();
+        allVotes = data.votes || [];
+        allViews = data.views || [];
+        LIFF_ID = data.liffId;
+        ADMIN_USER_ID = data.adminUserId;
+        renderRestaurants();
+      } catch (e) {
+        console.error("載入資料失敗", e);
+      }
+    }
+
+    // 背景記錄打開人的 userid 與 name
+    async function recordPageView() {
+      try {
+        await fetch(GAS_URL, {
+          method: "POST",
+          body: JSON.stringify({
+            action: "recordView",
+            userId: profileData.userId,
+            displayName: profileData.displayName
+          })
+        });
+      } catch (e) {
+        console.error("背景紀錄失敗", e);
+      }
+    }
+
+    // 檢查是否為發起人
+    function checkAdminPermission() {
+      if (profileData.userId === ADMIN_USER_ID) {
+        const adminArea = document.getElementById('admin-view-area');
+        adminArea.style.display = 'block';
+
+        const uniqueViewers = {};
+        allViews.forEach(v => { uniqueViewers[v.displayName] = true; });
+
+        const viewersList = document.getElementById('viewers-list');
+        viewersList.innerHTML = Object.keys(uniqueViewers).map(name => `<li>${name}</li>`).join('');
+      }
+    }
+
+    // 渲染餐廳列表
+    function renderRestaurants() {
+      const container = document.getElementById('restaurant-list');
+      container.innerHTML = "";
+
+      restaurants.forEach((item, index) => {
+        const itemVotes = allVotes.filter(v => v.restaurantName === item.name);
+        const joins = itemVotes.filter(v => v.status === '參加').map(v => v.displayName);
+        const leaves = itemVotes.filter(v => v.status === '不參加').map(v => v.displayName);
+
+        const card = document.createElement('div');
+        card.className = 'card restaurant-item';
+        card.innerHTML = `
+          <div>
+            <span class="tag">${item.date}</span>
+            <span class="tag">${item.mealType}</span>
+            <span class="tag" style="background:#d4edda;">發起人: ${item.initiator}</span>
+          </div>
+          <h4 style="margin: 8px 0;">${item.name}</h4>
+          
+          <div style="margin-top: 10px;">
+            <button class="btn-join" onclick="submitVote(${index}, '參加')">👍 參加 (${joins.length})</button>
+            <button class="btn-leave" onclick="submitVote(${index}, '不參加')">✋ 不參加 (${leaves.length})</button>
+            <button class="btn-info" onclick="toggleDetails(${index})">🔍 名單</button>
+          </div>
+
+          <div id="details-${index}" class="list-box">
+            <div><strong>⭕ 參加人員 (${joins.length})：</strong> ${joins.length > 0 ? joins.join(', ') : '暫無'}</div>
+            <div style="margin-top: 5px;"><strong>❌ 不參加人員 (${leaves.length})：</strong> ${leaves.length > 0 ? leaves.join(', ') : '暫無'}</div>
+          </div>
+        `;
+        container.appendChild(card);
+      });
+    }
+
+    function toggleDetails(index) {
+      const box = document.getElementById(`details-${index}`);
+      box.style.display = box.style.display === 'block' ? 'none' : 'block';
+    }
+
+    // 提交參加 / 不參加
+    async function submitVote(index, status) {
+      if (!profileData.userId) return alert("無法取得 LINE 使用者資訊");
+
+      const item = restaurants[index];
+      const payload = {
+        action: "submitVote",
+        userId: profileData.userId,
+        displayName: profileData.displayName,
+        initiator: item.initiator,
+        date: item.date,
+        mealType: item.mealType,
+        restaurantName: item.name,
+        status: status
+      };
+
+      try {
+        await fetch(GAS_URL, {
+          method: "POST",
+          body: JSON.stringify(payload)
+        });
+        alert(`已記錄：[${item.name}] - ${status}`);
+        await loadData();
+      } catch (err) {
+        alert("發送失敗，請重試");
+      }
+    }
+
+    // 新增自訂餐廳
+    function addNewRestaurant() {
+      const initiator = document.getElementById('add-initiator').value.trim();
+      const date = document.getElementById('add-date').value;
+      const mealType = document.getElementById('add-meal-type').value;
+      const name = document.getElementById('add-name').value.trim();
+
+      if (!initiator || !name) {
+        alert("請填寫發起人與店家名稱！");
+        return;
+      }
+
+      restaurants.unshift({ initiator, date, mealType, name });
+      renderRestaurants();
+      document.getElementById('add-name').value = "";
+      alert(`已成功新增：「${name}」！`);
+    }
+
+    // 分享 Flex Message 到聊天室
+    async function shareFlexMessage() {
+      if (!liff.isApiAvailable('shareTargetPicker')) {
+        alert("請在 LINE App 內開啟此網頁以使用分享功能");
+        return;
+      }
+
+      const flexMessage = {
+        type: "flex",
+        altText: "🍱 澎湖合菜餐廳調查邀請",
+        contents: {
+          type: "bubble",
+          body: {
+            type: "box",
+            layout: "vertical",
+            contents: [
+              { type: "text", text: "澎湖旅遊合菜意願調查", weight: "bold", size: "lg", color: "#1DB446" },
+              { type: "text", text: "大家快來選擇想吃的餐廳，也可以自己新增推薦店家喔！", size: "sm", color: "#666666", wrap: true, margin: "md" }
+            ]
+          },
+          footer: {
+            type: "box",
+            layout: "vertical",
+            contents: [
+              {
+                type: "button",
+                action: {
+                  type: "uri",
+                  label: "點我查看/選擇餐廳",
+                  uri: `https://liff.line.me/${LIFF_ID}`
+                },
+                style: "primary",
+                color: "#06C755"
+              }
+            ]
+          }
+        }
+      };
+
+      await liff.shareTargetPicker([flexMessage]);
+    }
+  </script>
+</body>
+</html>
