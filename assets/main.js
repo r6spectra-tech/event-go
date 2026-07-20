@@ -4,7 +4,7 @@
    前端開頁時用 action=config 向 GAS 要。
    ============================================================ */
 const CONFIG = {
-  API_BASE: "https://script.google.com/macros/s/AKfycbwykjsyZB9JEQsFHDKUJfT5ki4Gh27i5jxVLaLko_zS2MLk7Uv5vSqvz5fxkPgVMPXgOw/exec",
+  API_BASE: "https://script.google.com/macros/s/YOUR_DEPLOYMENT_ID/exec",
   MAX_SHARE_ITEMS: 5,        // liff.shareTargetPicker 一次最多可帶 5 則訊息
   MAX_CAROUSEL_BUBBLES: 12,  // 單一 flex carousel 最多 12 張卡片
   OA_LINE_URL: "https://lin.ee/jTuF7zN", // LINE 官方帳號加好友連結，候補通知要靠這個才推得到
@@ -148,8 +148,18 @@ async function requireLogin() {
     // login 會導頁，之後這行不會被執行到
     await new Promise(() => {});
   }
-  const profile = await liff.getProfile();
-  return { userId: profile.userId, displayName: profile.displayName };
+  try {
+    const profile = await liff.getProfile();
+    return { userId: profile.userId, displayName: profile.displayName };
+  } catch (e) {
+    // liff.isLoggedIn() 只檢查「有沒有存 token」，不保證 token 沒過期。
+    // token 過期時 getProfile() 會丟錯（例如 "The access token expired"），
+    // 這種情況強制登出再重新登入一次，而不是直接判定失敗。
+    console.warn("getProfile 失敗（可能是 token 過期），嘗試重新登入", e);
+    liff.logout();
+    liff.login({ redirectUri: location.href });
+    await new Promise(() => {}); // login 會導頁，之後這行不會被執行到
+  }
 }
 
 /* ============================================================
