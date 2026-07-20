@@ -89,7 +89,7 @@ function render(a){
         </div>
       </div>
       ${a.organizerLineUrl ? `<a class="btn btn-ghost btn-block" href="${a.organizerLineUrl}" target="_blank" rel="noopener">加主辦人 LINE 好友</a>` : ""}
-      <div style="margin-top:16px;">
+      <div id="joinBlockWrap" style="margin-top:16px;">
         ${joinBlock(a)}
       </div>
     </div>
@@ -99,7 +99,10 @@ function render(a){
     </div>
   `;
   document.getElementById("shareBtn").addEventListener("click", ()=> shareOne(a));
+  wireJoinButtons(a);
+}
 
+function wireJoinButtons(a){
   const joinBtn = document.getElementById("joinBtn");
   if(joinBtn){
     joinBtn.addEventListener("click", async ()=>{
@@ -158,15 +161,50 @@ async function loadManagerToolbar(a, userId){
       <div class="manager-toolbar">
         <a class="btn btn-ghost" href="admin/edit-activity.html?id=${encodeURIComponent(a.id)}">✏️ 編輯此活動</a>
         <a class="btn btn-ghost" id="waitlistCountLink" href="admin/waitlist.html?id=${encodeURIComponent(a.id)}">候補 … 人</a>
+        <a class="btn btn-ghost" id="visitLogLink" href="admin/visit-log.html?activityId=${encodeURIComponent(a.id)}">閱讀記錄 …</a>
+        <button type="button" class="btn waitlist-toggle" id="waitlistToggleBtn"></button>
       </div>
     `;
     try{
       const { count } = await adminGetWaitlistCount(a.id, userId);
       document.getElementById("waitlistCountLink").textContent = `候補 ${count} 人 →`;
     }catch(e){ console.warn("候補人數載入失敗", e); }
+    try{
+      const log = await adminGetVisitLog(userId, a.id);
+      document.getElementById("visitLogLink").textContent = `閱讀記錄 (${log.length}) →`;
+    }catch(e){ console.warn("閱讀記錄筆數載入失敗", e); }
+
+    renderWaitlistToggle(a, userId);
   }catch(e){
     console.warn("管理者狀態載入失敗", e);
   }
+}
+
+function renderWaitlistToggle(a, userId){
+  const btn = document.getElementById("waitlistToggleBtn");
+  if(!btn) return;
+  function paint(){
+    btn.textContent = a.waitlistOpen ? "候補：開放中 ⇄" : "候補：已關閉 ⇄";
+    btn.classList.toggle("waitlist-toggle-on", a.waitlistOpen);
+    btn.classList.toggle("waitlist-toggle-off", !a.waitlistOpen);
+  }
+  paint();
+  btn.addEventListener("click", async ()=>{
+    btn.disabled = true;
+    const newValue = a.waitlistOpen ? "closed" : "";
+    try{
+      await adminUpdateActivity({ id: a.id, waitlist_status: newValue }, userId);
+      a.waitlistOpen = !a.waitlistOpen;
+      paint();
+      // 候補開關會影響下面「加入候補名單」區塊是否顯示，重新畫一次該區塊
+      document.getElementById("joinBlockWrap").innerHTML = joinBlock(a);
+      wireJoinButtons(a);
+    }catch(e){
+      alert("切換失敗：" + e.message);
+    }finally{
+      btn.disabled = false;
+    }
+  });
 }
 
 async function main(){
