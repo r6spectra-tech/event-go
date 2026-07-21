@@ -194,7 +194,7 @@ async function loadActivitiesFromCacheOrFetch(){
 }
 
 async function refreshActivities(){
-  allActivities = await fetchActivities();
+  allActivities = await fetchActivities(true); // 略過瀏覽器快取跟 GAS 端的共用快取，強制讀最新資料
   writeCache(ACTIVITIES_CACHE_KEY, allActivities);
   renderGrid();
   return Date.now();
