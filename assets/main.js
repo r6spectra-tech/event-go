@@ -46,13 +46,15 @@ async function loadConfig() {
 /* ============================================================
    活動資料（改由 GAS 提供，GAS 內部才知道 SHEET_ID）
    ============================================================ */
-async function fetchActivities() {
-  const list = await apiGet("activities");
+async function fetchActivities(forceRefresh) {
+  const params = forceRefresh ? { forceRefresh: "1" } : {};
+  const list = await apiGet("activities", params);
   return list.map(normalizeActivity);
 }
 
-async function getActivityById(id) {
-  const a = await apiGet("activity", { id });
+async function getActivityById(id, forceRefresh) {
+  const params = forceRefresh ? { id, forceRefresh: "1" } : { id };
+  const a = await apiGet("activity", params);
   return a ? normalizeActivity(a) : null;
 }
 
