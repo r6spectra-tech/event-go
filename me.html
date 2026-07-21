@@ -40,7 +40,6 @@ function itemHtml(item){
   const info = waitlistLabel(item);
   return `
   <a class="my-activity-row" href="detail.html?id=${encodeURIComponent(item.activityId)}">
-    ${item.cover ? `<img src="${item.cover}" class="my-activity-thumb">` : `<div class="my-activity-thumb my-activity-thumb-empty"></div>`}
     <div class="my-activity-info">
       <p class="my-activity-title">${item.title}</p>
       <p class="my-activity-date">${item.date}</p>
