@@ -96,6 +96,39 @@
     padding: 20px 16px;
   }
 
+  /* 排序選擇器卡片 */
+  .sort-controls-card {
+    background: #ffffff;
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    padding: 12px 16px;
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    box-shadow: var(--shadow-sm);
+  }
+
+  .field-inline {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-main);
+  }
+
+  select {
+    padding: 6px 12px;
+    border-radius: 6px;
+    border: 1px solid var(--border-color);
+    background-color: #fff;
+    font-size: 14px;
+    outline: none;
+    cursor: pointer;
+    font-weight: 500;
+  }
+
   /* 面板卡片 */
   .panel {
     background: var(--card-bg);
@@ -116,26 +149,41 @@
     gap: 8px;
   }
 
+  /* 活動列表容器 */
+  .activity-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
   /* 活動單項卡片 */
   .my-activity-row {
     display: flex;
     justify-content: space-between;
     align-items: center;
     padding: 14px 16px;
-    background: #ffffff;
-    border: 1px solid #e2e8f0;
     border-radius: var(--radius-md);
-    margin-bottom: 10px;
     text-decoration: none;
     color: inherit;
     transition: all 0.2s ease;
-    box-shadow: 0 1px 2px rgba(0,0,0,0.02);
+    border: 1px solid #cbd5e1;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.03);
+  }
+
+  /* 斑馬紋底色：奇數純白、雙數灰藍，對比清晰 */
+  .item-even {
+    background-color: #ffffff;
+  }
+
+  .item-odd {
+    background-color: #e2e8f0;
+    border-color: #94a3b8;
   }
 
   .my-activity-row:hover {
     border-color: var(--primary-color);
     transform: translateY(-1px);
-    box-shadow: 0 4px 8px rgba(0,0,0,0.05);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.06);
   }
 
   .my-activity-info {
@@ -174,11 +222,9 @@
   .cat-waitlisted { background: #ffedd5; color: #9a3412; }
   .cat-viewed     { background: #dbeafe; color: #1e40af; }
 
-  /* 已過期區域樣式淡化 */
+  /* 已過期區域樣式 */
   #expiredList .my-activity-row {
-    background: #f8fafc;
-    border-color: #e2e8f0;
-    opacity: 0.75;
+    opacity: 0.8;
   }
 
   #expiredList .my-activity-row:hover {
@@ -211,6 +257,8 @@
 <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
 <script src="assets/main.js"></script>
 <script>
+let rawActivities = [];
+
 const categoryInfo = {
   joined:     { label: "🟩 已參加", cls: "cat-joined" },
   waitlisted: { label: "🟧 候補中", cls: "cat-waitlisted" },
@@ -224,13 +272,16 @@ function waitlistLabel(item){
   return categoryInfo.waitlisted;
 }
 
-function itemHtml(item){
+// 產生帶有斑馬紋標籤的單一卡片
+function itemHtml(item, index){
   const info = waitlistLabel(item);
+  const zebraClass = index % 2 === 0 ? "item-even" : "item-odd";
+
   return `
-  <a class="my-activity-row" href="detail.html?id=${encodeURIComponent(item.activityId)}">
+  <a class="my-activity-row ${zebraClass}" href="detail.html?id=${encodeURIComponent(item.activityId)}">
     <div class="my-activity-info">
       <p class="my-activity-title">${item.title}</p>
-      <p class="my-activity-date">📅 ${item.date}</p>
+      <p class="my-activity-date">📅 ${item.date || "未指定日期"}</p>
     </div>
     <span class="cat-badge ${info.cls}">${info.label}</span>
   </a>`;
@@ -238,7 +289,31 @@ function itemHtml(item){
 
 function renderList(list){
   if(!list.length) return `<div class="empty">目前沒有紀錄</div>`;
-  return list.map(itemHtml).join("");
+  return `<div class="activity-list">${list.map((item, idx) => itemHtml(item, idx)).join("")}</div>`;
+}
+
+// 排序邏輯（最近日期在上）
+function sortItems(items, sortKey) {
+  return [...items].sort((a, b) => {
+    let valA = a[sortKey] || "";
+    let valB = b[sortKey] || "";
+    // 新到舊排序 (降冪)
+    if (valA < valB) return 1;
+    if (valA > valB) return -1;
+    return 0;
+  });
+}
+
+function updateAndRenderLists() {
+  const sortKey = document.getElementById("sortSelect").value;
+  
+  // 先排序
+  const sortedItems = sortItems(rawActivities, sortKey);
+  const current = sortedItems.filter(i => !i.expired);
+  const expired = sortedItems.filter(i => i.expired);
+
+  document.getElementById("currentList").innerHTML = renderList(current);
+  document.getElementById("expiredList").innerHTML = renderList(expired);
 }
 
 async function main(){
@@ -254,20 +329,35 @@ async function main(){
   }
 
   try{
-    const items = await getMyActivities();
-    const current = items.filter(i => !i.expired);
-    const expired = items.filter(i => i.expired);
+    rawActivities = await getMyActivities();
 
+    // 渲染外層包含排序選單的容器
     document.getElementById("content").innerHTML = `
+      <div class="sort-controls-card">
+        <div class="field-inline">
+          <label for="sortSelect">排序方式：</label>
+          <select id="sortSelect">
+            <option value="date">按活動日期（最近在上）</option>
+            <option value="updatedAt">按操作日期（最近在上）</option>
+          </select>
+        </div>
+      </div>
+
       <div class="panel">
         <p class="panel-title">📌 目前的活動</p>
-        <div id="currentList">${renderList(current)}</div>
+        <div id="currentList"></div>
       </div>
       <div class="panel">
         <p class="panel-title">⌛ 已過期</p>
-        <div id="expiredList">${renderList(expired)}</div>
+        <div id="expiredList"></div>
       </div>
     `;
+
+    document.getElementById("sortSelect").addEventListener("change", updateAndRenderLists);
+    
+    // 初次載入與渲染
+    updateAndRenderLists();
+
   }catch(e){
     console.error(e);
     document.getElementById("content").innerHTML = `<div class="empty">讀取失敗：${e.message}</div>`;
