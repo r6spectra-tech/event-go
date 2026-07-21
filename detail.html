@@ -248,7 +248,7 @@ async function loadActivityFromCacheOrFetch(id){
 }
 
 async function refreshActivity(id){
-  const a = await getActivityById(id);
+  const a = await getActivityById(id, true); // 略過瀏覽器快取跟 GAS 端的共用快取
   if(a) writeCache(activityCacheKey(id), a);
   return a;
 }
