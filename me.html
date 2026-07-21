@@ -170,7 +170,7 @@
     box-shadow: 0 1px 3px rgba(0,0,0,0.03);
   }
 
-  /* 斑馬紋底色：奇數純白、雙數灰藍，對比清晰 */
+  /* 斑馬紋底色：奇數純白、雙數灰藍 */
   .item-even {
     background-color: #ffffff;
   }
@@ -206,6 +206,13 @@
     font-size: 13px;
     color: var(--text-sub);
     font-weight: 500;
+  }
+
+  .my-activity-updated {
+    margin: 0;
+    font-size: 12px;
+    color: #2563eb;
+    font-weight: 600;
   }
 
   /* Badge 狀態標籤 */
@@ -272,32 +279,52 @@ function waitlistLabel(item){
   return categoryInfo.waitlisted;
 }
 
-// 產生帶有斑馬紋標籤的單一卡片
-function itemHtml(item, index){
+// 產生帶有斑馬紋與操作時間資訊的卡片
+function itemHtml(item, index, showUpdatedTime){
   const info = waitlistLabel(item);
   const zebraClass = index % 2 === 0 ? "item-even" : "item-odd";
+  
+  // 顯示 date_text（若無則顯示 event_date）
+  const displayDate = item.date_text || item.date || item.event_date || "未指定日期";
+  
+  // 當選擇「按操作日期」排序時加註操作時間
+  const updatedHtml = (showUpdatedTime && item.updatedAt) 
+    ? `<p class="my-activity-updated">🕒 操作時間：${item.updatedAt}</p>` 
+    : "";
 
   return `
   <a class="my-activity-row ${zebraClass}" href="detail.html?id=${encodeURIComponent(item.activityId)}">
     <div class="my-activity-info">
       <p class="my-activity-title">${item.title}</p>
-      <p class="my-activity-date">📅 ${item.date || "未指定日期"}</p>
+      <p class="my-activity-date">📅 ${displayDate}</p>
+      ${updatedHtml}
     </div>
     <span class="cat-badge ${info.cls}">${info.label}</span>
   </a>`;
 }
 
-function renderList(list){
+function renderList(list, showUpdatedTime){
   if(!list.length) return `<div class="empty">目前沒有紀錄</div>`;
-  return `<div class="activity-list">${list.map((item, idx) => itemHtml(item, idx)).join("")}</div>`;
+  return `<div class="activity-list">${list.map((item, idx) => itemHtml(item, idx, showUpdatedTime)).join("")}</div>`;
 }
 
-// 排序邏輯（最近日期在上）
-function sortItems(items, sortKey) {
+// 倒序排序邏輯（最新/越晚在上）
+function sortItems(items, sortType) {
   return [...items].sort((a, b) => {
-    let valA = a[sortKey] || "";
-    let valB = b[sortKey] || "";
-    // 新到舊排序 (降冪)
+    let valA = "";
+    let valB = "";
+
+    if (sortType === "eventDate") {
+      // 按活動日期：使用 event_date 排序
+      valA = a.event_date || a.date || "";
+      valB = b.event_date || b.date || "";
+    } else if (sortType === "updatedAt") {
+      // 按操作日期：使用 updatedAt 排序
+      valA = a.updatedAt || "";
+      valB = b.updatedAt || "";
+    }
+
+    // 倒序 (DESC)：新的/大的在前面
     if (valA < valB) return 1;
     if (valA > valB) return -1;
     return 0;
@@ -305,15 +332,16 @@ function sortItems(items, sortKey) {
 }
 
 function updateAndRenderLists() {
-  const sortKey = document.getElementById("sortSelect").value;
+  const sortType = document.getElementById("sortSelect").value;
+  const showUpdatedTime = (sortType === "updatedAt");
   
-  // 先排序
-  const sortedItems = sortItems(rawActivities, sortKey);
+  // 執行倒序排序
+  const sortedItems = sortItems(rawActivities, sortType);
   const current = sortedItems.filter(i => !i.expired);
   const expired = sortedItems.filter(i => i.expired);
 
-  document.getElementById("currentList").innerHTML = renderList(current);
-  document.getElementById("expiredList").innerHTML = renderList(expired);
+  document.getElementById("currentList").innerHTML = renderList(current, showUpdatedTime);
+  document.getElementById("expiredList").innerHTML = renderList(expired, showUpdatedTime);
 }
 
 async function main(){
@@ -331,14 +359,13 @@ async function main(){
   try{
     rawActivities = await getMyActivities();
 
-    // 渲染外層包含排序選單的容器
     document.getElementById("content").innerHTML = `
       <div class="sort-controls-card">
         <div class="field-inline">
           <label for="sortSelect">排序方式：</label>
           <select id="sortSelect">
-            <option value="date">按活動日期（最近在上）</option>
-            <option value="updatedAt">按操作日期（最近在上）</option>
+            <option value="eventDate">按活動日期（最新在上）</option>
+            <option value="updatedAt">按操作日期（最新在上）</option>
           </select>
         </div>
       </div>
