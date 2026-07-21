@@ -383,9 +383,11 @@ function pickRandom(arr, n) {
 }
 
 /* ============================================================
-   前端快取（sessionStorage）：讀取用的資料才快取，寫入動作一律即時打 GAS。
-   資料不會自動過期，使用者要新資料就自己按「更新」——sessionStorage 本身
-   在分頁/瀏覽階段結束就會清掉，所以下次重新開分頁自然就會是新的。
+   前端快取：讀取用的資料才快取，寫入動作一律即時打 GAS。
+   用 localStorage（不是 sessionStorage）：LINE 內建瀏覽器/部分瀏覽器每次開新頁面
+   都可能視為新的瀏覽階段，sessionStorage 會被清空、等於每次都沒吃到快取；
+   localStorage 不受這個影響，會一直留著，直到按「更新」蓋過去，或使用者自己清瀏覽器資料。
+   資料本身不會自動過期——要新資料就是按「更新」，這是刻意的設計，不是 bug。
    ============================================================ */
 function cacheKey(name) {
   return `cache:${name}`;
@@ -393,7 +395,7 @@ function cacheKey(name) {
 
 function readCache(name) {
   try {
-    const raw = sessionStorage.getItem(cacheKey(name));
+    const raw = localStorage.getItem(cacheKey(name));
     if (!raw) return null;
     return JSON.parse(raw); // { data, fetchedAt }
   } catch (e) {
@@ -403,7 +405,7 @@ function readCache(name) {
 
 function writeCache(name, data) {
   try {
-    sessionStorage.setItem(cacheKey(name), JSON.stringify({ data, fetchedAt: Date.now() }));
+    localStorage.setItem(cacheKey(name), JSON.stringify({ data, fetchedAt: Date.now() }));
   } catch (e) { /* storage 滿了或被禁用，忽略即可，退化成每次都重新抓 */ }
 }
 
