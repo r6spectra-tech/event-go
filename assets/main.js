@@ -120,9 +120,10 @@ function extractYoutubeId(url) {
    ============================================================ */
 let liffReady = false;
 let liffInitPromise = null;
+let liffLastError = null;
 
 async function ensureLiff() {
-  if (!window.liff) return false;
+  if (!window.liff) { liffLastError = "找不到 LIFF SDK（window.liff 未定義，可能是 SDK 載入失敗）"; return false; }
   if (liffReady) return true;
   if (!liffInitPromise) {
     liffInitPromise = (async () => {
@@ -136,6 +137,7 @@ async function ensureLiff() {
     return true;
   } catch (e) {
     console.error("LIFF init failed", e);
+    liffLastError = (e && e.message) ? e.message : String(e);
     liffInitPromise = null; // 讓之後還能重試
     return false;
   }
@@ -144,7 +146,7 @@ async function ensureLiff() {
 // 強制登入，回傳 { userId, displayName }
 async function requireLogin() {
   const ok = await ensureLiff();
-  if (!ok) throw new Error("此環境不支援 LIFF");
+  if (!ok) throw new Error(`此環境不支援 LIFF（${liffLastError || "原因不明"}）`);
   if (!liff.isLoggedIn()) {
     liff.login({ redirectUri: location.href });
     // login 會導頁，之後這行不會被執行到
