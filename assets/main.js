@@ -4,7 +4,7 @@
    前端開頁時用 action=config 向 GAS 要。
    ============================================================ */
 const CONFIG = {
-  API_BASE: "https://script.google.com/macros/s/AKfycbwykjsyZB9JEQsFHDKUJfT5ki4Gh27i5jxVLaLko_zS2MLk7Uv5vSqvz5fxkPgVMPXgOw/exec",
+  API_BASE: "https://script.google.com/macros/s/YOURDEPLOYMENTID/exec",
   MAX_SHARE_ITEMS: 5,        // liff.shareTargetPicker 一次最多可帶 5 則訊息
   MAX_CAROUSEL_BUBBLES: 12,  // 單一 flex carousel 最多 12 張卡片
   OA_LINE_URL: "https://lin.ee/jTuF7zN", // LINE 官方帳號加好友連結，候補通知要靠這個才推得到
@@ -312,8 +312,17 @@ async function joinWaitlist(activityId) {
 
 // confirm.html 用：候補者收到通知後回覆 加入 / 取消
 async function confirmWaitlistDecision(activityId, decision) {
-  const { userId } = await requireLogin();
-  return apiPost("confirm", { activityId, userId, decision });
+  const { userId, displayName } = await requireLogin();
+  return apiPost("confirm", { activityId, userId, decision, displayName });
+}
+
+async function recordConfirmOpen(activityId) {
+  try {
+    const { userId, displayName } = await requireLogin();
+    return await apiPost("recordConfirmOpen", { activityId, userId, displayName });
+  } catch (e) {
+    console.warn("recordConfirmOpen 略過", e);
+  }
 }
 
 // confirm.html 用：開頁時先檢查這個人對這個活動是否已經回覆過，避免重複詢問
@@ -508,8 +517,8 @@ async function adminGetWaitlist(activityId, requestedBy) {
   return apiGet("waitlist", { activityId, requestedBy });
 }
 
-async function adminNotify(activityId, targetUserId, requestedBy) {
-  return apiPost("notify", { activityId, targetUserId, requestedBy });
+async function adminNotify(activityId, targetUserId, requestedBy, requestedByName) {
+  return apiPost("notify", { activityId, targetUserId, requestedBy, requestedByName });
 }
 
 async function adminCreateActivity(fields, requestedBy) {
