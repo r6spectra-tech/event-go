@@ -5,6 +5,208 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>活動詳情</title>
 <link rel="stylesheet" href="assets/style.css">
+<style>
+  /* ── 美化與優化擴充樣式 ── */
+  :root {
+    --primary-color: #0d9488;
+    --primary-hover: #0f766e;
+    --bg-surface: #ffffff;
+    --text-main: #1f2937;
+    --text-sub: #6b7280;
+    --radius-lg: 16px;
+    --radius-md: 10px;
+    --shadow-soft: 0 10px 25px -5px rgba(0, 0, 0, 0.05), 0 8px 10px -6px rgba(0, 0, 0, 0.01);
+  }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    color: var(--text-main);
+    background-color: #f8fafc;
+    margin: 0;
+    padding-bottom: 40px;
+  }
+
+  .topbar {
+    background: rgba(255, 255, 255, 0.85);
+    backdrop-filter: blur(12px);
+    position: sticky;
+    top: 0;
+    z-index: 50;
+    border-bottom: 1px solid #e5e7eb;
+    padding: 12px 20px;
+  }
+  .eyebrow {
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    color: var(--primary-color);
+    letter-spacing: 0.05em;
+  }
+  .topbar h1 {
+    margin: 2px 0 0;
+    font-size: 1.25rem;
+    font-weight: 700;
+  }
+
+  .detail-wrap {
+    max-width: 640px;
+    margin: 0 auto;
+    padding: 20px;
+  }
+
+  .hero-img {
+    width: 100%;
+    max-height: 320px;
+    object-fit: cover;
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-soft);
+    margin-bottom: 20px;
+  }
+
+  .detail-title {
+    font-size: 1.5rem;
+    font-weight: 800;
+    line-height: 1.3;
+    margin: 0 0 8px;
+  }
+  .detail-meta {
+    font-size: 0.95rem;
+    color: var(--text-sub);
+    margin-bottom: 24px;
+  }
+
+  .section-label {
+    display: block;
+    font-size: 0.875rem;
+    font-weight: 700;
+    color: var(--text-sub);
+    margin: 24px 0 8px;
+    text-transform: uppercase;
+  }
+
+  .notes-box {
+    background: #f1f5f9;
+    border-left: 4px solid var(--primary-color);
+    padding: 12px 16px;
+    border-radius: 0 var(--radius-md) var(--radius-md) 0;
+    font-size: 0.95rem;
+    line-height: 1.6;
+  }
+
+  .itinerary-list {
+    background: var(--bg-surface);
+    border-radius: var(--radius-lg);
+    padding: 16px 20px 16px 40px;
+    box-shadow: var(--shadow-soft);
+    line-height: 1.8;
+  }
+
+  .chip-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 8px;
+  }
+  .chip-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: #eff6ff;
+    color: #2563eb;
+    text-decoration: none;
+    padding: 8px 14px;
+    border-radius: 20px;
+    font-size: 0.875rem;
+    font-weight: 600;
+    transition: all 0.2s ease;
+  }
+  .chip-link:hover {
+    background: #dbeafe;
+    transform: translateY(-1px);
+  }
+
+  .footer-card {
+    background: var(--bg-surface);
+    border-radius: var(--radius-lg);
+    padding: 20px;
+    box-shadow: var(--shadow-soft);
+    margin-top: 32px;
+  }
+
+  .modal-overlay {
+    background: rgba(0, 0, 0, 0.4);
+    backdrop-filter: blur(4px);
+    position: fixed;
+    inset: 0;
+    z-index: 100;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+  }
+  .modal-card {
+    background: var(--bg-surface);
+    border-radius: var(--radius-lg);
+    padding: 24px;
+    width: 100%;
+    max-width: 480px;
+    position: relative;
+    box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1);
+  }
+  .modal-close {
+    position: absolute;
+    top: 16px;
+    right: 16px;
+    border: none;
+    background: #f3f4f6;
+    border-radius: 50%;
+    width: 32px;
+    height: 32px;
+    cursor: pointer;
+  }
+
+  /* ── 隱藏式/被動式管理員按鈕 ── */
+  .admin-fab {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    z-index: 90;
+    background: #1e293b;
+    color: #fff;
+    border: none;
+    border-radius: 30px;
+    padding: 10px 18px;
+    font-size: 0.875rem;
+    font-weight: 600;
+    box-shadow: 0 10px 15px -3px rgba(0,0,0,0.3);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .admin-menu-popup {
+    position: fixed;
+    bottom: 75px;
+    right: 24px;
+    z-index: 91;
+    background: #ffffff;
+    border-radius: var(--radius-lg);
+    box-shadow: 0 20px 25px -5px rgba(0,0,0,0.15);
+    border: 1px solid #e2e8f0;
+    padding: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    min-width: 200px;
+  }
+  .admin-menu-popup .btn {
+    text-align: left;
+    justify-content: flex-start;
+    padding: 8px 12px;
+    font-size: 0.875rem;
+  }
+</style>
 </head>
 <body>
 
@@ -19,10 +221,13 @@
   <div class="loading">載入中…</div>
 </div>
 
+<!-- 管理員選單浮動區域（預設隱藏，驗證後才動態插入） -->
+<div id="adminFabContainer"></div>
+
 <div id="rsvpModal" class="modal-overlay" style="display:none;">
   <div class="modal-card modal-card-half">
     <button type="button" class="modal-close" id="rsvpModalClose">✕</button>
-    <p class="big" style="text-align:left;">報名情形</p>
+    <p class="big" style="text-align:left; font-size: 1.25rem; font-weight: 700; margin-top:0;">報名情形</p>
     <div id="rsvpModalBody" style="text-align:left;"></div>
   </div>
 </div>
@@ -30,7 +235,6 @@
 <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
 <script src="assets/main.js"></script>
 <script>
-// YouTube / Google Map 都用同一種「文字 chip，點了才跳轉」的呈現方式，多筆就並排、超出邊界自動換行
 function chipRow(items, icon){
   if(!items.length) return "";
   return `<div class="chip-row">
@@ -91,11 +295,10 @@ function render(a){
   document.title = a.title;
   document.getElementById("content").innerHTML = `
     ${a.cover ? `<img class="hero-img" src="${a.cover}" alt="${a.title}">` : ""}
-    <div id="managerToolbar"></div>
     <p class="detail-title">${a.title}</p>
     <p class="detail-meta">${a.area}｜${a.date}${a.price ? `｜NT$ ${a.price}` : ""}</p>
 
-    ${a.notes ? `<span class="section-label">備註</span><div class="notes-box">${a.notes.split("\n").map(l=>`<p>${l}</p>`).join("")}</div>` : ""}
+    ${a.notes ? `<span class="section-label">備註</span><div class="notes-box">${a.notes.split("\n").map(l=>`<p style="margin:0">${l}</p>`).join("")}</div>` : ""}
 
     <span class="section-label">活動行程</span>
     <ul class="itinerary-list">
@@ -106,8 +309,8 @@ function render(a){
     ${mapBlock(a)}
 
     <div class="footer-card">
-      <div class="organizer-row">
-        <div class="organizer-avatar"></div>
+      <div class="organizer-row" style="display:flex; align-items:center; gap:12px; margin-bottom:12px;">
+        <div class="organizer-avatar" style="width:40px; height:40px; background:#e2e8f0; border-radius:50%;"></div>
         <div>
           <strong>${a.organizerName}</strong><br>
           <span style="font-size:0.8rem;color:#777;">活動主辦人</span>
@@ -121,7 +324,7 @@ function render(a){
     </div>
 
     <div class="actions" style="padding:20px 0 0;">
-      <button class="btn btn-primary" id="shareBtn">分享這個行程</button>
+      <button class="btn btn-primary" id="shareBtn" style="width:100%;">分享這個行程</button>
     </div>
   `;
   document.getElementById("shareBtn").addEventListener("click", ()=> shareOne(a));
@@ -191,33 +394,52 @@ function wireJoinButtons(a){
   }
 }
 
+/**
+ * 非同步／被動式載入管理員工具列
+ * 不卡住主畫面，確認是 approved 後，才在右下角渲染一組輕巧浮動按鈕 (FAB)
+ */
 async function loadManagerToolbar(a, userId){
-  const box = document.getElementById("managerToolbar");
-  if(!box) return;
   try{
     const { status } = await checkIsManager(userId);
-    if(status !== "approved") return;
-    box.innerHTML = `
-      <div class="manager-toolbar">
-        <a class="btn btn-ghost" href="index.html">← 回清單</a>
-        <a class="btn btn-ghost" href="admin/edit-activity.html?id=${encodeURIComponent(a.id)}">✏️ 編輯此活動</a>
+    if(status !== "approved") return; // 非管理員不進行任何渲染，加快瀏覽體驗
+
+    const container = document.getElementById("adminFabContainer");
+    if(!container) return;
+
+    // 動態建構浮動控制面板
+    container.innerHTML = `
+      <button class="admin-fab" id="adminFabBtn">⚙️ 管理員工具</button>
+      <div class="admin-menu-popup" id="adminMenuPopup" style="display:none;">
+        <a class="btn btn-ghost" href="admin/edit-activity.html?id=${encodeURIComponent(a.id)}">✏️ 編輯活動</a>
         <a class="btn btn-ghost" id="waitlistCountLink" href="admin/waitlist.html?id=${encodeURIComponent(a.id)}">候補 … 人</a>
         <a class="btn btn-ghost" id="visitLogLink" href="admin/visit-log.html?activityId=${encodeURIComponent(a.id)}">閱讀記錄 …</a>
         <button type="button" class="btn waitlist-toggle" id="waitlistToggleBtn"></button>
       </div>
     `;
-    try{
-      const { count } = await adminGetWaitlistCount(a.id, userId);
-      document.getElementById("waitlistCountLink").textContent = `候補 ${count} 人 →`;
-    }catch(e){ console.warn("候補人數載入失敗", e); }
-    try{
-      const log = await adminGetVisitLog(userId, a.id);
-      document.getElementById("visitLogLink").textContent = `閱讀記錄 (${log.length}) →`;
-    }catch(e){ console.warn("閱讀記錄筆數載入失敗", e); }
+
+    const fabBtn = document.getElementById("adminFabBtn");
+    const popup = document.getElementById("adminMenuPopup");
+
+    fabBtn.addEventListener("click", () => {
+      popup.style.display = popup.style.display === "none" ? "flex" : "none";
+    });
+
+    // 取得進階統計數據
+    adminGetWaitlistCount(a.id, userId)
+      .then(({ count }) => {
+        const el = document.getElementById("waitlistCountLink");
+        if(el) el.textContent = `候補 ${count} 人 →`;
+      }).catch(e => console.warn("候補人數載入失敗", e));
+
+    adminGetVisitLog(userId, a.id)
+      .then(log => {
+        const el = document.getElementById("visitLogLink");
+        if(el) el.textContent = `閱讀記錄 (${log.length}) →`;
+      }).catch(e => console.warn("閱讀記錄筆數載入失敗", e));
 
     renderWaitlistToggle(a, userId);
   }catch(e){
-    console.warn("管理者狀態載入失敗", e);
+    console.warn("管理者狀態驗證跳過或失敗", e);
   }
 }
 
@@ -237,7 +459,6 @@ function renderWaitlistToggle(a, userId){
       await adminUpdateActivity({ id: a.id, waitlist_status: newValue }, userId);
       a.waitlistOpen = !a.waitlistOpen;
       paint();
-      // 候補開關會影響「加入候補名單」區塊是否顯示，如果報名情形彈窗現在是開著的就重新畫一次
       const modalBody = document.getElementById("rsvpModalBody");
       if(modalBody && document.getElementById("rsvpModal").style.display !== "none"){
         modalBody.innerHTML = joinBlock(a);
@@ -252,19 +473,27 @@ function renderWaitlistToggle(a, userId){
 }
 
 async function renderActivity(a, profile){
+  // 1. 優先渲染畫面 (速讀體驗第一)
+  render(a);
+
+  // 2. 個人狀態非同步獲取
   if(profile){
-    try{
-      a.myStatus = await getMyActivityStatus(a.id);
-    }catch(e){
-      console.warn("讀取個人狀態失敗", e);
+    getMyActivityStatus(a.id).then(status => {
+      a.myStatus = status;
+    }).catch(e => console.warn("讀取個人狀態失敗", e));
+  }
+
+  // 3. 背景延遲檢查管理員身分 (不主動顯示、不干涉主畫面繪製)
+  if(profile) {
+    if ('requestIdleCallback' in window) {
+      requestIdleCallback(() => loadManagerToolbar(a, profile.userId));
+    } else {
+      setTimeout(() => loadManagerToolbar(a, profile.userId), 200);
     }
   }
-  render(a);
-  if(profile) loadManagerToolbar(a, profile.userId);
 }
 
 async function main(){
-  // 開啟本頁一律先登入 LINE，取得 userId（候補/參加/進站記錄都需要識別使用者）
   let profile = null;
   try{
     profile = await requireLogin();
@@ -283,9 +512,10 @@ async function main(){
       document.getElementById("content").innerHTML = `<div class="empty">找不到這個活動</div>`;
       return;
     }
+    
+    // 開始進行畫面與資料非同步繪製
     await renderActivity(a, profile);
 
-    // 如果是點了別人分享的連結進來（網址帶 refId/refName），記錄下來給「閱讀記錄」頁用
     const params = new URLSearchParams(location.search);
     const refUserId = params.get("refId");
     const refDisplayName = params.get("refName");
@@ -300,7 +530,7 @@ main();
 
 document.getElementById("rsvpModalClose").addEventListener("click", closeRsvpModal);
 document.getElementById("rsvpModal").addEventListener("click", (e)=>{
-  if(e.target.id === "rsvpModal") closeRsvpModal(); // 點背景遮罩也能關閉
+  if(e.target.id === "rsvpModal") closeRsvpModal();
 });
 </script>
 </body>
