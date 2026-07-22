@@ -5,247 +5,6 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>我的活動</title>
 <link rel="stylesheet" href="assets/style.css">
-<style>
-  /* === 現代化 UI 重置與變數定義 === */
-  :root {
-    --primary-color: #2563eb;
-    --bg-color: #f1f5f9;
-    --card-bg: #ffffff;
-    --text-main: #0f172a;
-    --text-sub: #475569;
-    --border-color: #cbd5e1;
-    --radius-md: 10px;
-    --radius-lg: 16px;
-    --shadow-sm: 0 1px 3px rgba(0,0,0,0.05);
-    --shadow-md: 0 4px 12px rgba(0,0,0,0.08);
-  }
-
-  body {
-    background-color: var(--bg-color);
-    color: var(--text-main);
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-    margin: 0;
-    padding: 0;
-  }
-
-  /* 頂部列美化 */
-  .topbar {
-    background: #ffffff;
-    padding: 16px 20px;
-    border-bottom: 1px solid var(--border-color);
-    box-shadow: var(--shadow-sm);
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-  }
-
-  @media (min-width: 640px) {
-    .topbar {
-      flex-direction: row;
-      justify-content: space-between;
-      align-items: center;
-    }
-  }
-
-  .eyebrow {
-    font-size: 11px;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.8px;
-    color: var(--primary-color);
-    background: #eff6ff;
-    padding: 2px 8px;
-    border-radius: 4px;
-    display: inline-block;
-    margin-bottom: 4px;
-  }
-
-  .topbar h1 {
-    margin: 0;
-    font-size: 22px;
-    font-weight: 800;
-  }
-
-  /* 管理者按鈕區塊 */
-  #managerArea {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 6px;
-  }
-
-  .manager-link {
-    font-size: 12px !important;
-    padding: 4px 10px !important;
-    background: #f8fafc;
-    border: 1px solid var(--border-color);
-    color: var(--text-sub);
-    border-radius: 6px;
-    text-decoration: none;
-    transition: all 0.2s;
-  }
-
-  .manager-link:hover {
-    background: #e2e8f0;
-    color: var(--text-main);
-  }
-
-  /* 主容器 */
-  .admin-wrap {
-    max-width: 680px;
-    margin: 0 auto;
-    padding: 20px 16px;
-  }
-
-  /* 排序選擇器卡片 */
-  .sort-controls-card {
-    background: #ffffff;
-    border: 1px solid var(--border-color);
-    border-radius: var(--radius-md);
-    padding: 12px 16px;
-    margin-bottom: 20px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    box-shadow: var(--shadow-sm);
-  }
-
-  .field-inline {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    font-size: 14px;
-    font-weight: 600;
-    color: var(--text-main);
-  }
-
-  select {
-    padding: 6px 12px;
-    border-radius: 6px;
-    border: 1px solid var(--border-color);
-    background-color: #fff;
-    font-size: 14px;
-    outline: none;
-    cursor: pointer;
-    font-weight: 500;
-  }
-
-  /* 面板卡片 */
-  .panel {
-    background: var(--card-bg);
-    border-radius: var(--radius-lg);
-    padding: 20px;
-    box-shadow: var(--shadow-md);
-    border: 1px solid var(--border-color);
-    margin-bottom: 24px;
-  }
-
-  .panel-title {
-    font-size: 17px;
-    font-weight: 800;
-    margin: 0 0 16px 0;
-    color: var(--text-main);
-    display: flex;
-    align-items: center;
-    gap: 8px;
-  }
-
-  /* 活動列表容器 */
-  .activity-list {
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-  }
-
-  /* 活動單項卡片 */
-  .my-activity-row {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 14px 16px;
-    border-radius: var(--radius-md);
-    text-decoration: none;
-    color: inherit;
-    transition: all 0.2s ease;
-    border: 1px solid #cbd5e1;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.03);
-  }
-
-  /* 斑馬紋底色：奇數純白、雙數灰藍 */
-  .item-even {
-    background-color: #ffffff;
-  }
-
-  .item-odd {
-    background-color: #e2e8f0;
-    border-color: #94a3b8;
-  }
-
-  .my-activity-row:hover {
-    border-color: var(--primary-color);
-    transform: translateY(-1px);
-    box-shadow: 0 4px 8px rgba(0,0,0,0.06);
-  }
-
-  .my-activity-info {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-    padding-right: 12px;
-  }
-
-  .my-activity-title {
-    margin: 0;
-    font-size: 15px;
-    font-weight: 700;
-    color: var(--text-main);
-    line-height: 1.4;
-  }
-
-  .my-activity-date {
-    margin: 0;
-    font-size: 13px;
-    color: var(--text-sub);
-    font-weight: 500;
-  }
-
-  .my-activity-updated {
-    margin: 0;
-    font-size: 12px;
-    color: #2563eb;
-    font-weight: 600;
-  }
-
-  /* Badge 狀態標籤 */
-  .cat-badge {
-    font-size: 12px;
-    font-weight: 700;
-    padding: 4px 10px;
-    border-radius: 6px;
-    white-space: nowrap;
-    flex-shrink: 0;
-  }
-
-  .cat-joined     { background: #dcfce7; color: #166534; }
-  .cat-waitlisted { background: #ffedd5; color: #9a3412; }
-  .cat-viewed     { background: #dbeafe; color: #1e40af; }
-
-  /* 已過期區域樣式 */
-  #expiredList .my-activity-row {
-    opacity: 0.8;
-  }
-
-  #expiredList .my-activity-row:hover {
-    opacity: 1;
-  }
-
-  /* 載入與空狀態 */
-  .loading, .empty {
-    text-align: center;
-    padding: 40px 0;
-    color: var(--text-sub);
-    font-size: 14px;
-  }
-</style>
 </head>
 <body>
 
@@ -264,84 +23,34 @@
 <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
 <script src="assets/main.js"></script>
 <script>
-let rawActivities = [];
-
-const categoryInfo = {
-  joined:     { label: "🟩 已參加", cls: "cat-joined" },
-  waitlisted: { label: "🟧 候補中", cls: "cat-waitlisted" },
-  viewed:     { label: "🟦 看過",   cls: "cat-viewed" },
+const statusInfo = {
+  joined:     { label: "已參加",   cls: "status-green" },
+  waitlisted: { label: "候補中",   cls: "status-orange" },
+  viewed:     { label: "看過",     cls: "status-blue" },
 };
 
-function waitlistLabel(item){
-  if(item.category !== "waitlisted") return categoryInfo[item.category];
-  if(item.waitlistStatus === "cancelled") return { label: "🟧 候補已取消", cls: "cat-waitlisted" };
-  if(item.waitlistStatus === "expired") return { label: "🟧 候補已逾期", cls: "cat-waitlisted" };
-  return categoryInfo.waitlisted;
+function resolveStatus(item){
+  if(item.category !== "waitlisted") return statusInfo[item.category];
+  if(item.waitlistStatus === "cancelled") return { label: "候補已取消", cls: "status-orange" };
+  if(item.waitlistStatus === "expired") return { label: "候補已逾期", cls: "status-orange" };
+  return statusInfo.waitlisted;
 }
 
-// 產生帶有斑馬紋與操作時間資訊的卡片
-function itemHtml(item, index, showUpdatedTime){
-  const info = waitlistLabel(item);
-  const zebraClass = index % 2 === 0 ? "item-even" : "item-odd";
-  
-  // 顯示 date_text（若無則顯示 event_date）
-  const displayDate = item.date_text || item.date || item.event_date || "未指定日期";
-  
-  // 當選擇「按操作日期」排序時加註操作時間
-  const updatedHtml = (showUpdatedTime && item.updatedAt) 
-    ? `<p class="my-activity-updated">🕒 操作時間：${item.updatedAt}</p>` 
-    : "";
-
+function itemHtml(item){
+  const info = resolveStatus(item);
   return `
-  <a class="my-activity-row ${zebraClass}" href="detail.html?id=${encodeURIComponent(item.activityId)}">
-    <div class="my-activity-info">
+  <a class="my-activity-card" href="detail.html?id=${encodeURIComponent(item.activityId)}">
+    <div class="my-activity-main">
       <p class="my-activity-title">${item.title}</p>
-      <p class="my-activity-date">📅 ${displayDate}</p>
-      ${updatedHtml}
+      <p class="my-activity-date">📅 ${item.date}</p>
     </div>
-    <span class="cat-badge ${info.cls}">${info.label}</span>
+    <span class="status-pill ${info.cls}"><span class="status-dot"></span>${info.label}</span>
   </a>`;
 }
 
-function renderList(list, showUpdatedTime){
+function renderList(list){
   if(!list.length) return `<div class="empty">目前沒有紀錄</div>`;
-  return `<div class="activity-list">${list.map((item, idx) => itemHtml(item, idx, showUpdatedTime)).join("")}</div>`;
-}
-
-// 倒序排序邏輯（最新/越晚在上）
-function sortItems(items, sortType) {
-  return [...items].sort((a, b) => {
-    let valA = "";
-    let valB = "";
-
-    if (sortType === "eventDate") {
-      // 按活動日期：使用 event_date 排序
-      valA = a.event_date || a.date || "";
-      valB = b.event_date || b.date || "";
-    } else if (sortType === "updatedAt") {
-      // 按操作日期：使用 updatedAt 排序
-      valA = a.updatedAt || "";
-      valB = b.updatedAt || "";
-    }
-
-    // 倒序 (DESC)：新的/大的在前面
-    if (valA < valB) return 1;
-    if (valA > valB) return -1;
-    return 0;
-  });
-}
-
-function updateAndRenderLists() {
-  const sortType = document.getElementById("sortSelect").value;
-  const showUpdatedTime = (sortType === "updatedAt");
-  
-  // 執行倒序排序
-  const sortedItems = sortItems(rawActivities, sortType);
-  const current = sortedItems.filter(i => !i.expired);
-  const expired = sortedItems.filter(i => i.expired);
-
-  document.getElementById("currentList").innerHTML = renderList(current, showUpdatedTime);
-  document.getElementById("expiredList").innerHTML = renderList(expired, showUpdatedTime);
+  return list.map(itemHtml).join("");
 }
 
 async function main(){
@@ -357,34 +66,20 @@ async function main(){
   }
 
   try{
-    rawActivities = await getMyActivities();
+    const items = await getMyActivities();
+    const current = items.filter(i => !i.expired);
+    const expired = items.filter(i => i.expired);
 
     document.getElementById("content").innerHTML = `
-      <div class="sort-controls-card">
-        <div class="field-inline">
-          <label for="sortSelect">排序方式：</label>
-          <select id="sortSelect">
-            <option value="eventDate">按活動日期（最新在上）</option>
-            <option value="updatedAt">按操作日期（最新在上）</option>
-          </select>
-        </div>
-      </div>
-
       <div class="panel">
         <p class="panel-title">📌 目前的活動</p>
-        <div id="currentList"></div>
+        <div id="currentList">${renderList(current)}</div>
       </div>
       <div class="panel">
-        <p class="panel-title">⌛ 已過期</p>
-        <div id="expiredList"></div>
+        <p class="panel-title">🗄️ 已過期</p>
+        <div id="expiredList">${renderList(expired)}</div>
       </div>
     `;
-
-    document.getElementById("sortSelect").addEventListener("change", updateAndRenderLists);
-    
-    // 初次載入與渲染
-    updateAndRenderLists();
-
   }catch(e){
     console.error(e);
     document.getElementById("content").innerHTML = `<div class="empty">讀取失敗：${e.message}</div>`;
@@ -400,11 +95,11 @@ async function setupManagerArea(){
     const { status } = await checkIsManager(profile.userId);
     if(status === "approved"){
       area.innerHTML = `
-        <a class="btn manager-link" href="admin/new-activity.html">新增活動</a>
-        <a class="btn manager-link" href="admin/edit-activity.html">編輯活動</a>
-        <a class="btn manager-link" href="admin/waitlist.html">候補管理</a>
-        <a class="btn manager-link" href="admin/visit-log.html">閱讀記錄</a>
-        <a class="btn manager-link" href="admin/managers.html">管理申請</a>
+        <a class="btn btn-ghost manager-link" href="admin/new-activity.html">新增活動</a>
+        <a class="btn btn-ghost manager-link" href="admin/edit-activity.html">編輯活動</a>
+        <a class="btn btn-ghost manager-link" href="admin/waitlist.html">候補管理</a>
+        <a class="btn btn-ghost manager-link" href="admin/visit-log.html">閱讀記錄</a>
+        <a class="btn btn-ghost manager-link" href="admin/managers.html">管理申請</a>
       `;
     }
   }catch(e){
