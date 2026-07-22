@@ -5,6 +5,269 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>閱讀記錄</title>
 <link rel="stylesheet" href="../assets/style.css">
+<style>
+/* ===================================================
+   高級黑黃主題 (Dark Amber & Gold Theme)
+   =================================================== */
+:root {
+  --bg-main: #121214;          /* 深度霧黑背景 */
+  --bg-card: #1e1e24;          /* 卡片區塊背景 */
+  --bg-card-hover: #26262e;    /* 卡片懸浮效果 */
+  --bg-input: #18181c;         /* 輸入框/下拉選單背景 */
+  
+  --gold-primary: #f59e0b;     /* 經典暖琥珀黃 (用於主標題) */
+  --gold-bright: #fbbf24;      /* 明亮金色 (用於強調/微光) */
+  --gold-dim: rgba(245, 158, 11, 0.15); /* 金黃透光襯底 */
+  
+  --text-main: #e2e8f0;        /* 內文主要顏色 (高對比冷灰白，不刺眼) */
+  --text-muted: #94a3b8;       /* 次級文字顏色 (柔和灰) */
+  --border-color: #2e2e38;     /* 邊框顏色 */
+  --border-gold: #d97706;      /* 金色邊框 */
+
+  /* 標籤顏色系統 (低飽和質感配色) */
+  --pill-open: #38bdf8;
+  --pill-joined: #34d399;
+  --pill-waitlisted: #f59e0b;
+  --pill-shared: #a78bfa;
+  --pill-cancelled: #f87171;
+  --pill-expired: #6b7280;
+}
+
+body {
+  background-color: var(--bg-main);
+  color: var(--text-main);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  margin: 0;
+  padding: 0;
+  line-height: 1.6;
+}
+
+/* 頂部列 */
+.topbar {
+  background: linear-gradient(180deg, #1c1c22 0%, var(--bg-main) 100%);
+  padding: 2rem 1.5rem 1rem;
+  border-bottom: 1px solid var(--border-color);
+}
+.eyebrow {
+  display: inline-block;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: #fbbf24;
+  background: rgba(251, 191, 36, 0.1);
+  padding: 2px 8px;
+  border-radius: 4px;
+  margin-bottom: 0.5rem;
+}
+.topbar h1 {
+  margin: 0;
+  font-size: 1.8rem;
+  color: var(--gold-primary); /* 標題黃色 */
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  text-shadow: 0 0 20px rgba(245, 158, 11, 0.2); /* 質感微光 */
+}
+
+/* 內容容器 */
+.admin-wrap {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 1.5rem;
+}
+
+/* 導航按鈕 */
+.nav-links {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
+}
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  font-weight: 500;
+  text-decoration: none;
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+.btn-ghost {
+  color: var(--text-muted);
+  background: transparent;
+  border: 1px solid var(--border-color);
+}
+.btn-ghost:hover {
+  color: var(--gold-bright);
+  border-color: var(--gold-primary);
+  background: var(--gold-dim);
+}
+
+/* 面板 (Panel) */
+.panel {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  padding: 1.25rem;
+  margin-bottom: 1.25rem;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+}
+.panel-title-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.panel-title-inline {
+  margin: 0;
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--text-main);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.tag {
+  font-size: 0.75rem;
+  background: var(--border-color);
+  color: var(--text-muted);
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+.join-note {
+  margin: 0.5rem 0 0 0;
+  font-size: 0.875rem;
+  color: var(--gold-bright);
+  font-weight: 500;
+}
+
+/* 篩選控制器 */
+.field {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+.field label {
+  font-size: 0.9rem;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+select {
+  background: var(--bg-input);
+  color: var(--text-main);
+  border: 1px solid var(--border-color);
+  padding: 0.5rem 1rem;
+  border-radius: 6px;
+  font-size: 0.9rem;
+  outline: none;
+  width: 100%;
+  cursor: pointer;
+  transition: border-color 0.2s;
+}
+select:focus {
+  border-color: var(--gold-primary);
+}
+.hide-mine-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.9rem;
+  color: var(--text-muted);
+  cursor: pointer;
+  user-select: none;
+}
+.hide-mine-row input[type="checkbox"] {
+  accent-color: var(--gold-primary);
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+}
+
+/* 日期分隔線 */
+.log-date-header {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--gold-bright);
+  margin: 1.5rem 0 0.75rem 0;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  letter-spacing: 0.05em;
+}
+.log-date-header::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: var(--border-color);
+}
+
+/* 活動紀錄卡片 */
+.log-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-left: 3px solid var(--border-color);
+  border-radius: 8px;
+  padding: 0.9rem 1.1rem;
+  margin-bottom: 0.6rem;
+  transition: transform 0.15s ease, border-color 0.15s ease, background 0.15s ease;
+}
+.log-card:hover {
+  background: var(--bg-card-hover);
+  border-left-color: var(--gold-primary);
+  transform: translateX(2px);
+}
+.log-card-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.4rem;
+}
+.log-time {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  font-family: monospace;
+}
+.log-body {
+  margin: 0;
+  font-size: 0.95rem;
+  color: #cbd5e1;
+}
+.log-body b {
+  color: #fff;
+  font-weight: 600;
+}
+
+/* 行為 Pill 標籤 */
+.action-pill {
+  font-size: 0.75rem;
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+.action-open { background: rgba(56, 189, 248, 0.12); color: var(--pill-open); }
+.action-joined { background: rgba(52, 211, 153, 0.12); color: var(--pill-joined); }
+.action-waitlisted { background: rgba(245, 158, 11, 0.12); color: var(--pill-waitlisted); }
+.action-shared { background: rgba(167, 139, 250, 0.12); color: var(--pill-shared); }
+.action-cancelled { background: rgba(248, 113, 113, 0.12); color: var(--pill-cancelled); }
+.action-notified { background: rgba(245, 158, 11, 0.15); color: var(--gold-bright); border: 1px solid rgba(245, 158, 11, 0.3); }
+.action-confirm-open { background: rgba(255, 255, 255, 0.08); color: #e2e8f0; }
+.action-expired { background: rgba(107, 114, 128, 0.15); color: var(--pill-expired); }
+
+/* 狀態顯示 */
+.loading, .empty {
+  text-align: center;
+  padding: 3rem 1rem;
+  color: var(--text-muted);
+  font-size: 0.95rem;
+  background: var(--bg-card);
+  border-radius: 12px;
+  border: 1px dashed var(--border-color);
+}
+</style>
 </head>
 <body>
 
