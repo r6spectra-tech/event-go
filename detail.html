@@ -24,6 +24,14 @@
   <div class="loading">載入中…</div>
 </div>
 
+<div id="rsvpModal" class="modal-overlay" style="display:none;">
+  <div class="modal-card modal-card-half">
+    <button type="button" class="modal-close" id="rsvpModalClose">✕</button>
+    <p class="big" style="text-align:left;">報名情形</p>
+    <div id="rsvpModalBody" style="text-align:left;"></div>
+  </div>
+</div>
+
 <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
 <script src="assets/main.js"></script>
 <script>
@@ -111,8 +119,9 @@ function render(a){
         </div>
       </div>
       ${a.organizerLineUrl ? `<a class="btn btn-ghost btn-block" href="${a.organizerLineUrl}" target="_blank" rel="noopener">加主辦人 LINE 好友</a>` : ""}
-      <div id="joinBlockWrap" style="margin-top:16px;">
-        ${joinBlock(a)}
+      <div style="margin-top:16px; display:flex; gap:10px; flex-wrap:wrap;">
+        <button type="button" class="btn btn-teal btn-block" id="openRsvpBtn">查看本活動的報名情形</button>
+        <a class="btn btn-ghost btn-block" href="me.html">我的活動</a>
       </div>
     </div>
 
@@ -121,7 +130,17 @@ function render(a){
     </div>
   `;
   document.getElementById("shareBtn").addEventListener("click", ()=> shareOne(a));
+  document.getElementById("openRsvpBtn").addEventListener("click", ()=> openRsvpModal(a));
+}
+
+function openRsvpModal(a){
+  document.getElementById("rsvpModalBody").innerHTML = joinBlock(a);
+  document.getElementById("rsvpModal").style.display = "flex";
   wireJoinButtons(a);
+}
+
+function closeRsvpModal(){
+  document.getElementById("rsvpModal").style.display = "none";
 }
 
 function wireJoinButtons(a){
@@ -223,9 +242,12 @@ function renderWaitlistToggle(a, userId){
       await adminUpdateActivity({ id: a.id, waitlist_status: newValue }, userId);
       a.waitlistOpen = !a.waitlistOpen;
       paint();
-      // 候補開關會影響下面「加入候補名單」區塊是否顯示，重新畫一次該區塊
-      document.getElementById("joinBlockWrap").innerHTML = joinBlock(a);
-      wireJoinButtons(a);
+      // 候補開關會影響「加入候補名單」區塊是否顯示，如果報名情形彈窗現在是開著的就重新畫一次
+      const modalBody = document.getElementById("rsvpModalBody");
+      if(modalBody && document.getElementById("rsvpModal").style.display !== "none"){
+        modalBody.innerHTML = joinBlock(a);
+        wireJoinButtons(a);
+      }
     }catch(e){
       alert("切換失敗：" + e.message);
     }finally{
@@ -305,6 +327,11 @@ async function main(){
 }
 
 main();
+
+document.getElementById("rsvpModalClose").addEventListener("click", closeRsvpModal);
+document.getElementById("rsvpModal").addEventListener("click", (e)=>{
+  if(e.target.id === "rsvpModal") closeRsvpModal(); // 點背景遮罩也能關閉
+});
 </script>
 </body>
 </html>
