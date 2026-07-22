@@ -5,6 +5,197 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>我的活動</title>
 <link rel="stylesheet" href="assets/style.css">
+<style>
+  /* --- 現代化美化 CSS 擴充 --- */
+  :root {
+    --bg-main: #f8fafc;
+    --card-bg: #ffffff;
+    --text-main: #0f172a;
+    --text-muted: #64748b;
+    --primary: #2563eb;
+    --border-color: #e2e8f0;
+    --radius: 12px;
+  }
+
+  body {
+    background-color: var(--bg-main);
+    color: var(--text-main);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    margin: 0;
+    padding: 0;
+    line-height: 1.5;
+  }
+
+  /* 頂部列優化 */
+  .topbar {
+    background: #ffffff;
+    border-bottom: 1px solid var(--border-color);
+    padding: 1.25rem 1.5rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+  }
+
+  .eyebrow {
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--primary);
+  }
+
+  .topbar h1 {
+    margin: 0.2rem 0 0 0;
+    font-size: 1.5rem;
+    font-weight: 700;
+  }
+
+  /* 管理員功能按鈕群 */
+  #managerArea {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+  }
+
+  .btn-ghost {
+    background: #f1f5f9;
+    color: #334155;
+    text-decoration: none;
+    padding: 0.4rem 0.8rem;
+    border-radius: 8px;
+    font-size: 0.85rem;
+    font-weight: 500;
+    transition: all 0.2s ease;
+  }
+
+  .btn-ghost:hover {
+    background: #e2e8f0;
+    color: var(--text-main);
+  }
+
+  /* 主內容容器 */
+  .container {
+    max-width: 800px;
+    margin: 2rem auto;
+    padding: 0 1rem;
+  }
+
+  /* 區塊（Panel）樣式 */
+  .panel {
+    background: var(--card-bg);
+    border-radius: var(--radius);
+    border: 1px solid var(--border-color);
+    padding: 1.25rem;
+    margin-bottom: 1.5rem;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.03);
+  }
+
+  .panel-title {
+    font-size: 1.1rem;
+    font-weight: 700;
+    margin: 0 0 1rem 0;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  /* 活動卡片清單網格 */
+  .activity-grid {
+    display: grid;
+    gap: 0.75rem;
+  }
+
+  /* 卡片主體 */
+  .my-activity-card {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: #ffffff;
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    padding: 1rem 1.25rem;
+    text-decoration: none;
+    color: inherit;
+    transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+  }
+
+  .my-activity-card:hover {
+    transform: translateY(-2px);
+    border-color: var(--primary);
+    box-shadow: 0 4px 12px rgba(37, 99, 235, 0.08);
+  }
+
+  .my-activity-main {
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+  }
+
+  .my-activity-title {
+    margin: 0;
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--text-main);
+  }
+
+  .my-activity-date {
+    margin: 0;
+    font-size: 0.85rem;
+    color: var(--text-muted);
+  }
+
+  /* 狀態膠囊標籤 */
+  .status-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.25rem 0.65rem;
+    border-radius: 9999px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    white-space: nowrap;
+  }
+
+  .status-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+  }
+
+  /* 狀態顏色定義 */
+  .status-green  { background: #dcfce7; color: #15803d; }
+  .status-green .status-dot { background: #16a34a; }
+
+  .status-orange { background: #ffedd5; color: #c2410c; }
+  .status-orange .status-dot { background: #ea580c; }
+
+  .status-blue   { background: #dbeafe; color: #1d4ed8; }
+  .status-blue .status-dot { background: #2563eb; }
+
+  .status-purple { background: #f3e8ff; color: #7e22ce; }
+  .status-purple .status-dot { background: #9333ea; }
+
+  .status-gray   { background: #f1f5f9; color: #64748b; }
+  .status-gray .status-dot { background: #94a3b8; }
+
+  /* 空狀態 & 載入中 */
+  .empty, .loading {
+    text-align: center;
+    padding: 2rem 1rem;
+    color: var(--text-muted);
+    font-size: 0.9rem;
+  }
+
+  /* 過期區塊特殊遮罩效果 */
+  .expired-panel {
+    opacity: 0.8;
+    background: #fafafa;
+  }
+</style>
 </head>
 <body>
 
@@ -16,24 +207,30 @@
   <div id="managerArea"></div>
 </div>
 
-<div class="admin-wrap" id="content">
-  <div class="loading">載入中…</div>
+<div class="container" id="content">
+  <div class="loading">⌛ 載入資料中…</div>
 </div>
 
 <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
 <script src="assets/main.js"></script>
 <script>
+// 定義 5 種行為狀態的呈現方式
 const statusInfo = {
   joined:     { label: "已參加",   cls: "status-green" },
   waitlisted: { label: "候補中",   cls: "status-orange" },
-  viewed:     { label: "看過",     cls: "status-blue" },
+  viewed:     { label: "已觀看",   cls: "status-blue" },
+  shared:     { label: "已分享",   cls: "status-purple" },
+  expired:    { label: "已過期",   cls: "status-gray" }
 };
 
 function resolveStatus(item){
-  if(item.category !== "waitlisted") return statusInfo[item.category];
-  if(item.waitlistStatus === "cancelled") return { label: "候補已取消", cls: "status-orange" };
-  if(item.waitlistStatus === "expired") return { label: "候補已逾期", cls: "status-orange" };
-  return statusInfo.waitlisted;
+  if(item.expired) return statusInfo.expired;
+  if(item.category === "waitlisted") {
+    if(item.waitlistStatus === "cancelled") return { label: "候補已取消", cls: "status-gray" };
+    if(item.waitlistStatus === "expired") return { label: "候補已逾期", cls: "status-gray" };
+    return statusInfo.waitlisted;
+  }
+  return statusInfo[item.category] || statusInfo.viewed;
 }
 
 function itemHtml(item){
@@ -49,40 +246,61 @@ function itemHtml(item){
 }
 
 function renderList(list){
-  if(!list.length) return `<div class="empty">目前沒有紀錄</div>`;
-  return list.map(itemHtml).join("");
+  if(!list || !list.length) return `<div class="empty">目前尚無此類別紀錄</div>`;
+  return `<div class="activity-grid">${list.map(itemHtml).join("")}</div>`;
 }
 
 async function main(){
   setupManagerArea();
 
-  let profile;
   try{
-    profile = await requireLogin();
+    await requireLogin();
   }catch(e){
     console.error(e);
-    document.getElementById("content").innerHTML = `<div class="empty">需要 LINE 登入才能查看個人紀錄（${e.message || e}）</div>`;
+    document.getElementById("content").innerHTML = `<div class="empty">⚠️ 需要 LINE 登入才能查看個人紀錄（${e.message || e}）</div>`;
     return;
   }
 
   try{
     const items = await getMyActivities();
-    const current = items.filter(i => !i.expired);
-    const expired = items.filter(i => i.expired);
 
+    // 依據行為條件過濾成 5 個區塊
+    const joined   = items.filter(i => !i.expired && i.category === "joined");
+    const waitlist = items.filter(i => !i.expired && i.category === "waitlisted");
+    const viewed   = items.filter(i => !i.expired && i.category === "viewed");
+    const shared   = items.filter(i => !i.expired && i.category === "shared");
+    const expired  = items.filter(i => i.expired);
+
+    // 渲染 5 個專屬區塊
     document.getElementById("content").innerHTML = `
       <div class="panel">
-        <p class="panel-title">📌 目前的活動</p>
-        <div id="currentList">${renderList(current)}</div>
+        <p class="panel-title">✅ 已參加的活動</p>
+        <div>${renderList(joined)}</div>
       </div>
+
       <div class="panel">
-        <p class="panel-title">🗄️ 已過期</p>
-        <div id="expiredList">${renderList(expired)}</div>
+        <p class="panel-title">⏳ 候補中的活動</p>
+        <div>${renderList(waitlist)}</div>
+      </div>
+
+      <div class="panel">
+        <p class="panel-title">👀 瀏覽紀錄 (觀看)</p>
+        <div>${renderList(viewed)}</div>
+      </div>
+
+      <div class="panel">
+        <p class="panel-title">🔗 分享紀錄</p>
+        <div>${renderList(shared)}</div>
+      </div>
+
+      <div class="panel expired-panel">
+        <p class="panel-title">🗄️ 已過期活動</p>
+        <div>${renderList(expired)}</div>
       </div>
     `;
   }catch(e){
     console.error(e);
-    document.getElementById("content").innerHTML = `<div class="empty">讀取失敗：${e.message}</div>`;
+    document.getElementById("content").innerHTML = `<div class="empty">❌ 載入失敗：${e.message}</div>`;
   }
 }
 
@@ -95,11 +313,11 @@ async function setupManagerArea(){
     const { status } = await checkIsManager(profile.userId);
     if(status === "approved"){
       area.innerHTML = `
-        <a class="btn btn-ghost manager-link" href="admin/new-activity.html">新增活動</a>
-        <a class="btn btn-ghost manager-link" href="admin/edit-activity.html">編輯活動</a>
-        <a class="btn btn-ghost manager-link" href="admin/waitlist.html">候補管理</a>
-        <a class="btn btn-ghost manager-link" href="admin/visit-log.html">閱讀記錄</a>
-        <a class="btn btn-ghost manager-link" href="admin/managers.html">管理申請</a>
+        <a class="btn btn-ghost" href="admin/new-activity.html">新增活動</a>
+        <a class="btn btn-ghost" href="admin/edit-activity.html">編輯活動</a>
+        <a class="btn btn-ghost" href="admin/waitlist.html">候補管理</a>
+        <a class="btn btn-ghost" href="admin/visit-log.html">閱讀記錄</a>
+        <a class="btn btn-ghost" href="admin/managers.html">管理申請</a>
       `;
     }
   }catch(e){
