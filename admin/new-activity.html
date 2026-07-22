@@ -55,6 +55,13 @@ const formHtml = `
       <label>總名額</label>
       <input id="capacity" type="number" placeholder="20">
     </div>
+    <div class="field">
+      <label>候補功能</label>
+      <select id="waitlist_status">
+        <option value="">開放候補（預設）</option>
+        <option value="closed">關閉候補</option>
+      </select>
+    </div>
   </div>
 
   <div class="panel">
@@ -115,7 +122,7 @@ const formHtml = `
 `;
 
 const fieldIds = ["id","title","cover_image","area","date_text","event_date","price","capacity",
-  "notes","itinerary","youtube_links","map_links","organizer_name","organizer_line_url","group_url"];
+  "waitlist_status","notes","itinerary","youtube_links","map_links","organizer_name","organizer_line_url","group_url"];
 
 async function renderCoverPicker(){
   const picker = document.getElementById("coverPicker");
@@ -193,12 +200,13 @@ function renderContent(profile){
 
     const btn = document.getElementById("submitBtn");
     btn.disabled = true; btn.textContent = "建立中…";
-    msg.textContent = "";
+    msg.innerHTML = "";
     try{
       const res = await adminCreateActivity(fields, currentProfile.userId);
-      msg.textContent = res.unmapped && res.unmapped.length
+      const newActivityLink = `<br><a href="../detail.html?id=${encodeURIComponent(fields.id)}" target="_blank" rel="noopener">→ 查看新活動「${fields.title}」</a>`;
+      msg.innerHTML = (res.unmapped && res.unmapped.length
         ? `⚠️ 活動已建立，但這些欄位在 Sheet 裡找不到對應欄名、沒有存進去：${res.unmapped.join("、")}（請檢查 activities 分頁的表頭）`
-        : "✅ 活動已建立，可以到列表頁查看。";
+        : "✅ 活動已建立，可以到列表頁查看。") + newActivityLink;
       fieldIds.forEach(id => document.getElementById(id).value = "");
       fetchNextActivityId().then(id => { document.getElementById("id").value = id; }).catch(()=>{});
       renderCoverPicker();
