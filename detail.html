@@ -15,13 +15,16 @@
   </div>
 </div>
 
-<div class="cache-bar">
-  <span id="cacheTimeLabel">上次更新：尚未讀取</span>
-  <button class="btn btn-ghost" id="refreshBtn">更新</button>
-</div>
-
 <div class="detail-wrap" id="content">
   <div class="loading">載入中…</div>
+</div>
+
+<div id="rsvpModal" class="modal-overlay" style="display:none;">
+  <div class="modal-card modal-card-half">
+    <button type="button" class="modal-close" id="rsvpModalClose">✕</button>
+    <p class="big" style="text-align:left;">報名情形</p>
+    <div id="rsvpModalBody" style="text-align:left;"></div>
+  </div>
 </div>
 
 <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
@@ -111,8 +114,9 @@ function render(a){
         </div>
       </div>
       ${a.organizerLineUrl ? `<a class="btn btn-ghost btn-block" href="${a.organizerLineUrl}" target="_blank" rel="noopener">加主辦人 LINE 好友</a>` : ""}
-      <div id="joinBlockWrap" style="margin-top:16px;">
-        ${joinBlock(a)}
+      <div style="margin-top:16px; display:flex; gap:10px; flex-wrap:wrap;">
+        <button type="button" class="btn btn-teal btn-block" id="openRsvpBtn">查看本活動的報名情形</button>
+        <a class="btn btn-ghost btn-block" href="me.html">我的活動</a>
       </div>
     </div>
 
@@ -121,7 +125,17 @@ function render(a){
     </div>
   `;
   document.getElementById("shareBtn").addEventListener("click", ()=> shareOne(a));
+  document.getElementById("openRsvpBtn").addEventListener("click", ()=> openRsvpModal(a));
+}
+
+function openRsvpModal(a){
+  document.getElementById("rsvpModalBody").innerHTML = joinBlock(a);
+  document.getElementById("rsvpModal").style.display = "flex";
   wireJoinButtons(a);
+}
+
+function closeRsvpModal(){
+  document.getElementById("rsvpModal").style.display = "none";
 }
 
 function wireJoinButtons(a){
@@ -223,34 +237,18 @@ function renderWaitlistToggle(a, userId){
       await adminUpdateActivity({ id: a.id, waitlist_status: newValue }, userId);
       a.waitlistOpen = !a.waitlistOpen;
       paint();
-      // 候補開關會影響下面「加入候補名單」區塊是否顯示，重新畫一次該區塊
-      document.getElementById("joinBlockWrap").innerHTML = joinBlock(a);
-      wireJoinButtons(a);
+      // 候補開關會影響「加入候補名單」區塊是否顯示，如果報名情形彈窗現在是開著的就重新畫一次
+      const modalBody = document.getElementById("rsvpModalBody");
+      if(modalBody && document.getElementById("rsvpModal").style.display !== "none"){
+        modalBody.innerHTML = joinBlock(a);
+        wireJoinButtons(a);
+      }
     }catch(e){
       alert("切換失敗：" + e.message);
     }finally{
       btn.disabled = false;
     }
   });
-}
-
-function activityCacheKey(id){ return `activity:${id}`; }
-
-// 只快取活動本身的顯示資料（標題/行程/連結/名額等），不快取「我的狀態」跟任何寫入動作
-async function loadActivityFromCacheOrFetch(id){
-  const cached = readCache(activityCacheKey(id));
-  if(cached){
-    return { activity: cached.data, fetchedAt: cached.fetchedAt };
-  }
-  const a = await getActivityById(id);
-  if(a) writeCache(activityCacheKey(id), a);
-  return { activity: a, fetchedAt: Date.now() };
-}
-
-async function refreshActivity(id){
-  const a = await getActivityById(id, true); // 略過瀏覽器快取跟 GAS 端的共用快取
-  if(a) writeCache(activityCacheKey(id), a);
-  return a;
 }
 
 async function renderActivity(a, profile){
@@ -280,31 +278,30 @@ async function main(){
     return;
   }
   try{
-    const { activity: a, fetchedAt } = await loadActivityFromCacheOrFetch(id);
+    const a = await getActivityById(id);
     if(!a){
       document.getElementById("content").innerHTML = `<div class="empty">找不到這個活動</div>`;
       return;
     }
     await renderActivity(a, profile);
 
-    // 進站記錄、分享歸因是「事件」，不管活動資料是不是走快取，這裡都要照常即時記錄
+    // 如果是點了別人分享的連結進來（網址帶 refId/refName），記錄下來給「閱讀記錄」頁用
     const params = new URLSearchParams(location.search);
     const refUserId = params.get("refId");
     const refDisplayName = params.get("refName");
     recordVisit(a.id, refUserId ? { refUserId, refDisplayName } : null);
-
-    setupRefreshButton(document.getElementById("refreshBtn"), document.getElementById("cacheTimeLabel"), fetchedAt, async ()=>{
-      const fresh = await refreshActivity(id);
-      if(fresh) await renderActivity(fresh, profile);
-      return Date.now();
-    });
   }catch(e){
     console.error(e);
-    document.getElementById("content").innerHTML = `<div class="empty">活動資料讀取失敗</div>`;
+    document.getElementById("content").innerHTML = `<div class="empty">活動資料讀取失敗：${e.message || e}</div>`;
   }
 }
 
 main();
+
+document.getElementById("rsvpModalClose").addEventListener("click", closeRsvpModal);
+document.getElementById("rsvpModal").addEventListener("click", (e)=>{
+  if(e.target.id === "rsvpModal") closeRsvpModal(); // 點背景遮罩也能關閉
+});
 </script>
 </body>
 </html>
