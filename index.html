@@ -30,11 +30,6 @@
   </select>
 </div>
 
-<div class="cache-bar">
-  <span id="cacheTimeLabel">上次更新：尚未讀取</span>
-  <button class="btn btn-ghost" id="refreshBtn">更新</button>
-</div>
-
 <div id="grid" class="grid">
   <div class="loading">載入活動中…</div>
 </div>
@@ -180,26 +175,6 @@ async function setupManagerArea(){
   }
 }
 
-const ACTIVITIES_CACHE_KEY = "activities";
-
-async function loadActivitiesFromCacheOrFetch(){
-  const cached = readCache(ACTIVITIES_CACHE_KEY);
-  if(cached){
-    allActivities = cached.data;
-    return cached.fetchedAt;
-  }
-  allActivities = await fetchActivities();
-  writeCache(ACTIVITIES_CACHE_KEY, allActivities);
-  return Date.now();
-}
-
-async function refreshActivities(){
-  allActivities = await fetchActivities(true); // 略過瀏覽器快取跟 GAS 端的共用快取，強制讀最新資料
-  writeCache(ACTIVITIES_CACHE_KEY, allActivities);
-  renderGrid();
-  return Date.now();
-}
-
 async function main(){
   setupManagerArea();
   await ensureLiff().catch(()=>{});
@@ -208,18 +183,16 @@ async function main(){
     shareApp("揪你一起去玩！", "點開看看最近有哪些揪團行程，晚了要候補囉 →");
   });
 
-  let fetchedAt;
   try{
-    fetchedAt = await loadActivitiesFromCacheOrFetch();
+    allActivities = await fetchActivities();
   }catch(e){
-    document.getElementById("grid").innerHTML = `<div class="empty">活動資料讀取失敗，請確認 Google Sheet 設定。</div>`;
+    document.getElementById("grid").innerHTML = `<div class="empty">活動資料讀取失敗：${e.message || e}</div>`;
     console.error(e);
     return;
   }
 
   renderGrid();
   document.getElementById("sortSelect").addEventListener("change", renderGrid);
-  setupRefreshButton(document.getElementById("refreshBtn"), document.getElementById("cacheTimeLabel"), fetchedAt, refreshActivities);
 
   document.getElementById("shareSelectedBtn").addEventListener("click", ()=>{
     shareMany(Array.from(selected.values()));
