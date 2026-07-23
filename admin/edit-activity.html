@@ -30,7 +30,31 @@ let currentProfile = null;
 let activityMap = {};
 
 const fieldIds = ["title","cover_image","area","date_text","event_date","price","capacity",
-  "notes","itinerary","youtube_links","map_links","organizer_name","organizer_line_url","group_url"];
+  "waitlist_status","notes","youtube_links","map_links","organizer_name","organizer_line_url","group_url"];
+
+const MAX_DAYS = 10;
+const CN_NUM = ["一","二","三","四","五","六","七","八","九","十"];
+let dayTexts = Array(MAX_DAYS).fill("");
+
+function initDaysSelect(){
+  const sel = document.getElementById("days");
+  sel.innerHTML = CN_NUM.map((cn,i) => `<option value="${i+1}">${cn}日遊</option>`).join("");
+}
+
+function renderDayFields(){
+  const days = Number(document.getElementById("days").value) || 1;
+  for(let i = days; i < MAX_DAYS; i++) dayTexts[i] = "";
+  const wrap = document.getElementById("itineraryDaysWrap");
+  wrap.innerHTML = Array.from({length: days}, (_, i) => `
+    <div class="field">
+      <label>第 ${i+1} 天行程（換行就斷行，可用「文字|網址」插入 YouTube/Google Map 連結）</label>
+      <textarea class="dayTextarea" data-day="${i+1}">${dayTexts[i] || ""}</textarea>
+    </div>
+  `).join("");
+  wrap.querySelectorAll(".dayTextarea").forEach(ta=>{
+    ta.addEventListener("input", ()=>{ dayTexts[Number(ta.dataset.day)-1] = ta.value; });
+  });
+}
 
 const formHtml = `
   <div class="panel">
@@ -45,11 +69,19 @@ const formHtml = `
       <p class="panel-title">基本資訊</p>
       <div class="field"><label>活動代碼（不可修改）</label><input id="idDisplay" disabled></div>
       <div class="field"><label>活動名稱</label><input id="title"></div>
+      <div class="field"><label>活動天數</label><select id="days"></select></div>
       <div class="field"><label>地區</label><input id="area"></div>
       <div class="field"><label>日期文字（顯示用）</label><input id="date_text"></div>
       <div class="field"><label>活動日期（yyyy-mm-dd，判斷過期用）</label><input id="event_date" type="date"></div>
       <div class="field"><label>價格</label><input id="price" type="number"></div>
       <div class="field"><label>總名額</label><input id="capacity" type="number"></div>
+      <div class="field">
+        <label>候補功能</label>
+        <select id="waitlist_status">
+          <option value="">開放候補（預設）</option>
+          <option value="closed">關閉候補</option>
+        </select>
+      </div>
     </div>
 
     <div class="panel">
@@ -62,7 +94,7 @@ const formHtml = `
     <div class="panel">
       <p class="panel-title">行程與連結</p>
       <div class="field"><label>備註（顯示在詳情頁行程之上）</label><textarea id="notes"></textarea></div>
-      <div class="field"><label>行程（每一天用 || 分隔）</label><textarea id="itinerary"></textarea></div>
+      <div id="itineraryDaysWrap"></div>
       <div class="field"><label>YouTube 連結（可多行，每行：說明文字 網址）</label><textarea id="youtube_links"></textarea></div>
       <div class="field"><label>Google Map 連結（可多行，每行：說明文字 網址）</label><textarea id="map_links"></textarea></div>
     </div>
@@ -107,9 +139,25 @@ function fillForm(a){
   // 先過濾掉非數字/小數點的字元再賦值。
   document.getElementById("price").value = String(a.price || "").replace(/[^\d.]/g, "");
   document.getElementById("capacity").value = String(a.capacity || "").replace(/[^\d.]/g, "");
+  document.getElementById("waitlist_status").value = a.waitlistOpen === false ? "closed" : "";
   document.getElementById("cover_image").value = a.cover || "";
   document.getElementById("notes").value = a.notes || "";
-  document.getElementById("itinerary").value = (a.itineraryRaw !== undefined ? a.itineraryRaw : a.itinerary.join("||"));
+
+  // 天數 + 每天行程：新格式直接用 days/itineraryDaysRaw；舊格式（|| 分隔）自動拆成對應天數，
+  // 方便直接存檔就完成轉換，也可以繼續手動調整
+  let days, texts;
+  if(a.days > 0){
+    days = a.days;
+    texts = a.itineraryDaysRaw.slice(0, days);
+  }else{
+    texts = a.itinerary.length ? a.itinerary : [""];
+    days = texts.length;
+  }
+  document.getElementById("days").value = String(Math.min(days, MAX_DAYS));
+  dayTexts = Array(MAX_DAYS).fill("");
+  texts.slice(0, MAX_DAYS).forEach((t, i) => { dayTexts[i] = t || ""; });
+  renderDayFields();
+
   document.getElementById("youtube_links").value = a.youtubeLinksRaw || "";
   document.getElementById("map_links").value = a.mapLinksRaw || "";
   document.getElementById("organizer_name").value = a.organizerName || "";
@@ -153,9 +201,11 @@ function renderContent(profile){
   app.innerHTML = formHtml;
 
   const preselectId = new URLSearchParams(location.search).get("id");
+  initDaysSelect();
   loadActivityOptions(preselectId);
 
   document.getElementById("activitySelect").addEventListener("change", (e)=> selectActivity(e.target.value));
+  document.getElementById("days").addEventListener("change", renderDayFields);
   document.getElementById("reshuffleCoverBtn").addEventListener("click", renderCoverPicker);
 
   document.getElementById("submitBtn").addEventListener("click", async ()=>{
@@ -164,6 +214,11 @@ function renderContent(profile){
     const msg = document.getElementById("msg");
     const fields = { id };
     fieldIds.forEach(fid => fields[fid] = document.getElementById(fid).value.trim());
+    fields.days = document.getElementById("days").value;
+    for(let i = 0; i < MAX_DAYS; i++){
+      fields["itinerary_day" + (i+1)] = dayTexts[i] || "";
+    }
+    fields.itinerary = ""; // 存檔後一律轉成新格式，把舊的 || 欄位清空，避免兩邊資料不一致
 
     const btn = document.getElementById("submitBtn");
     btn.disabled = true; btn.textContent = "儲存中…";
