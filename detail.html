@@ -5,279 +5,6 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>活動詳情</title>
 <link rel="stylesheet" href="assets/style.css">
-<style>
-  /* ── 黑底黃字主題 (Dark & Yellow Theme) ── */
-  :root {
-    --bg-main: #0f172a;          /* 深藍黑背景 */
-    --bg-surface: #1e293b;       /* 卡片碳黑背景 */
-    --bg-surface-hover: #334155;
-    
-    --primary-yellow: #facc15;   /* 主視覺亮黃色 */
-    --yellow-hover: #eab308;     /* 懸停琥珀黃 */
-    --yellow-muted: #fef08a;     /* 柔和次要黃 */
-    --accent-glow: rgba(250, 204, 21, 0.15);
-
-    --text-primary: #f8fafc;     /* 純白主內文 */
-    --text-sub: #94a3b8;         /* 灰藍次要文字 */
-    --text-dark: #0f172a;        /* 亮色按鈕上的深色字 */
-    
-    --border-color: #334155;
-    --border-yellow: rgba(250, 204, 21, 0.3);
-
-    --radius-lg: 16px;
-    --radius-md: 10px;
-    --shadow-dark: 0 10px 25px -5px rgba(0, 0, 0, 0.5), 0 8px 10px -6px rgba(0, 0, 0, 0.3);
-  }
-
-  body {
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-    color: var(--text-primary);
-    background-color: var(--bg-main);
-    margin: 0;
-    padding-bottom: 40px;
-  }
-
-  /* 頂部導覽列 */
-  .topbar {
-    background: rgba(15, 23, 42, 0.85);
-    backdrop-filter: blur(12px);
-    position: sticky;
-    top: 0;
-    z-index: 50;
-    border-bottom: 1px solid var(--border-color);
-    padding: 12px 20px;
-  }
-  .eyebrow {
-    font-size: 0.75rem;
-    font-weight: 700;
-    text-transform: uppercase;
-    color: var(--primary-yellow);
-    letter-spacing: 0.1em;
-  }
-  .topbar h1 {
-    margin: 2px 0 0;
-    font-size: 1.25rem;
-    font-weight: 700;
-    color: var(--text-primary);
-  }
-
-  /* 主容器 */
-  .detail-wrap {
-    max-width: 640px;
-    margin: 0 auto;
-    padding: 20px;
-  }
-
-  /* 主圖 */
-  .hero-img {
-    width: 100%;
-    max-height: 320px;
-    object-fit: cover;
-    border-radius: var(--radius-lg);
-    box-shadow: var(--shadow-dark);
-    border: 1px solid var(--border-color);
-    margin-bottom: 20px;
-  }
-
-  /* 標題與 Metas */
-  .detail-title {
-    font-size: 1.6rem;
-    font-weight: 800;
-    line-height: 1.3;
-    margin: 0 0 10px;
-    color: var(--primary-yellow);
-  }
-  .detail-meta {
-    font-size: 0.95rem;
-    color: var(--text-sub);
-    margin-bottom: 24px;
-  }
-
-  /* 區塊標籤 */
-  .section-label {
-    display: block;
-    font-size: 0.875rem;
-    font-weight: 700;
-    color: var(--primary-yellow);
-    margin: 24px 0 8px;
-    letter-spacing: 0.05em;
-    text-transform: uppercase;
-  }
-
-  /* 備註與行程清單 */
-  .notes-box {
-    background: var(--bg-surface);
-    border-left: 4px solid var(--primary-yellow);
-    padding: 14px 18px;
-    border-radius: 0 var(--radius-md) var(--radius-md) 0;
-    font-size: 0.95rem;
-    line-height: 1.6;
-    color: var(--text-primary);
-    box-shadow: var(--shadow-dark);
-  }
-
-  .itinerary-list {
-    background: var(--bg-surface);
-    border-radius: var(--radius-lg);
-    padding: 16px 20px 16px 40px;
-    box-shadow: var(--shadow-dark);
-    border: 1px solid var(--border-color);
-    line-height: 1.8;
-    color: var(--text-primary);
-  }
-
-  /* 連結與 Chips */
-  .chip-row {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
-    margin-top: 8px;
-  }
-  .chip-link {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    background: var(--accent-glow);
-    color: var(--primary-yellow);
-    border: 1px solid var(--border-yellow);
-    text-decoration: none;
-    padding: 8px 14px;
-    border-radius: 20px;
-    font-size: 0.875rem;
-    font-weight: 600;
-    transition: all 0.2s ease;
-  }
-  .chip-link:hover {
-    background: var(--primary-yellow);
-    color: var(--text-dark);
-    transform: translateY(-1px);
-  }
-
-  /* 底部卡片 */
-  .footer-card {
-    background: var(--bg-surface);
-    border-radius: var(--radius-lg);
-    padding: 20px;
-    box-shadow: var(--shadow-dark);
-    border: 1px solid var(--border-color);
-    margin-top: 32px;
-  }
-
-  /* 按鈕樣式複寫與美化 */
-  .btn-teal, .btn-primary {
-    background-color: var(--primary-yellow) !important;
-    color: var(--text-dark) !important;
-    font-weight: 700 !important;
-    border: none !important;
-    border-radius: var(--radius-md) !important;
-    padding: 12px 20px !important;
-    transition: all 0.2s ease !important;
-  }
-  .btn-teal:hover, .btn-primary:hover {
-    background-color: var(--yellow-hover) !important;
-    box-shadow: 0 0 15px var(--accent-glow);
-  }
-  .btn-ghost {
-    background: transparent !important;
-    color: var(--primary-yellow) !important;
-    border: 1px solid var(--border-yellow) !important;
-    border-radius: var(--radius-md) !important;
-  }
-  .btn-ghost:hover {
-    background: var(--accent-glow) !important;
-  }
-  .btn-block {
-    width: 100%;
-    display: block;
-    text-align: center;
-    box-sizing: border-box;
-  }
-
-  /* 彈窗（Modal）黑黃調整 */
-  .modal-overlay {
-    background: rgba(0, 0, 0, 0.75);
-    backdrop-filter: blur(6px);
-    position: fixed;
-    inset: 0;
-    z-index: 100;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 16px;
-  }
-  .modal-card {
-    background: var(--bg-surface);
-    border-radius: var(--radius-lg);
-    border: 1px solid var(--border-yellow);
-    padding: 24px;
-    width: 100%;
-    max-width: 480px;
-    position: relative;
-    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5);
-    color: var(--text-primary);
-  }
-  .modal-close {
-    position: absolute;
-    top: 16px;
-    right: 16px;
-    border: none;
-    background: var(--bg-main);
-    color: var(--text-sub);
-    border-radius: 50%;
-    width: 32px;
-    height: 32px;
-    cursor: pointer;
-  }
-  .modal-close:hover {
-    color: var(--primary-yellow);
-  }
-
-  /* ── 隱藏式/被動式管理員按鈕 (黑黃樣式) ── */
-  .admin-fab {
-    position: fixed;
-    bottom: 24px;
-    right: 24px;
-    z-index: 90;
-    background: var(--primary-yellow);
-    color: var(--text-dark);
-    border: none;
-    border-radius: 30px;
-    padding: 10px 18px;
-    font-size: 0.875rem;
-    font-weight: 700;
-    box-shadow: 0 10px 20px rgba(250, 204, 21, 0.3);
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    transition: transform 0.2s ease;
-  }
-  .admin-fab:hover {
-    transform: scale(1.05);
-  }
-
-  .admin-menu-popup {
-    position: fixed;
-    bottom: 75px;
-    right: 24px;
-    z-index: 91;
-    background: var(--bg-surface);
-    border-radius: var(--radius-lg);
-    box-shadow: var(--shadow-dark);
-    border: 1px solid var(--border-yellow);
-    padding: 12px;
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-    min-width: 200px;
-  }
-  .admin-menu-popup .btn {
-    text-align: left;
-    justify-content: flex-start;
-    padding: 8px 12px;
-    font-size: 0.875rem;
-  }
-</style>
 </head>
 <body>
 
@@ -289,16 +16,13 @@
 </div>
 
 <div class="detail-wrap" id="content">
-  <div class="loading" style="color:var(--primary-yellow);">載入中…</div>
+  <div class="loading">載入中…</div>
 </div>
-
-<!-- 管理員選單浮動區域（預設隱藏，驗證後才動態插入） -->
-<div id="adminFabContainer"></div>
 
 <div id="rsvpModal" class="modal-overlay" style="display:none;">
   <div class="modal-card modal-card-half">
     <button type="button" class="modal-close" id="rsvpModalClose">✕</button>
-    <p class="big" style="text-align:left; font-size: 1.25rem; font-weight: 700; margin-top:0; color:var(--primary-yellow);">報名情形</p>
+    <p class="big" style="text-align:left;">報名情形</p>
     <div id="rsvpModalBody" style="text-align:left;"></div>
   </div>
 </div>
@@ -306,6 +30,7 @@
 <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
 <script src="assets/main.js"></script>
 <script>
+// YouTube / Google Map 都用同一種「文字 chip，點了才跳轉」的呈現方式，多筆就並排、超出邊界自動換行
 function chipRow(items, icon){
   if(!items.length) return "";
   return `<div class="chip-row">
@@ -328,13 +53,13 @@ function joinBlock(a){
   if(!a.isFull){
     if(myStatus.joined){
       return `
-      <p class="join-note" style="color:var(--primary-yellow);">您已經參加這個活動了！</p>
+      <p class="join-note">您已經參加這個活動了！</p>
       ${a.groupUrl
         ? `<a class="btn btn-teal btn-block" href="${a.groupUrl}" target="_blank" rel="noopener">加入揪團群組 →</a>`
         : `<p class="join-note">主辦人尚未提供群組連結，請透過主辦人 LINE 聯繫。</p>`}`;
     }
     return `
-    <p class="join-note">目前已報名 <strong style="color:var(--primary-yellow);">${a.joined} / ${a.capacity}</strong> 人，尚有名額。</p>
+    <p class="join-note">目前已報名 ${a.joined} / ${a.capacity} 人，尚有名額。</p>
     <button class="btn btn-teal btn-block" id="joinBtn">參加活動</button>
     <div id="joinResult" style="margin-top:10px;"></div>`;
   }
@@ -342,7 +67,7 @@ function joinBlock(a){
     return `<p class="join-note">此活動人數已滿（${a.joined}/${a.capacity}），目前未開放候補，請直接聯繫主辦人。</p>`;
   }
   if(myStatus.waitlistStatus === "waiting" || myStatus.waitlistStatus === "notified"){
-    return `<p class="join-note" style="color:var(--primary-yellow);">您已經在候補名單中，請耐心等候 LINE 通知（記得先加官方帳號好友，不然收不到通知）。</p>`;
+    return `<p class="join-note">您已經在候補名單中，請耐心等候 LINE 通知（記得先加官方帳號好友，不然收不到通知）。</p>`;
   }
   if(myStatus.waitlistStatus === "expired"){
     return `<p class="join-note">您先前收到的候補通知已逾期，如果還想候補請直接聯繫主辦人。</p>`;
@@ -353,12 +78,39 @@ function joinBlock(a){
   return `
     <p class="join-note">此活動人數已滿（${a.joined}/${a.capacity}），可加入候補名單排隊。有名額釋出時，
     主辦人會透過 LINE 通知您，請於通知後 24 小時內回覆，逾時視為放棄名額。</p>
-    <div class="oa-reminder" style="background:var(--bg-main); padding:12px; border-radius:8px; border:1px solid var(--border-color); margin:10px 0;">
-      ⚠️ <b style="color:var(--primary-yellow);">請務必先加 LINE 官方帳號好友</b>，候補通知是用官方帳號推播的，沒加好友會收不到通知！
+    <div class="oa-reminder">
+      ⚠️ <b>請務必先加 LINE 官方帳號好友</b>，候補通知是用官方帳號推播的，沒加好友會收不到通知！
       <a class="btn btn-teal btn-block" href="${CONFIG.OA_LINE_URL}" target="_blank" rel="noopener" style="margin-top:8px;">加 LINE 官方帳號好友</a>
     </div>
-    <button class="btn btn-teal btn-block" id="waitlistBtn" style="margin-top:10px;">加入候補名單</button>
+    <button class="btn btn-stamp btn-block" id="waitlistBtn" style="margin-top:10px;">加入候補名單</button>
     <p class="join-note" id="waitlistStatus"></p>`;
+}
+
+// 行程逐行渲染：文字行照常顯示、換行就斷行；連結行如果有文字就顯示文字當連結，
+// 沒有文字就換成小圖示（YouTube 用▶️、Google Map 用📍）
+function itineraryLineHtml(item){
+  if(item.type === "text") return `<p>${item.text}</p>`;
+  const icon = item.isYoutube ? "▶️" : (item.isMap ? "📍" : "🔗");
+  const shown = item.label ? item.label : icon;
+  return `<p><a class="itinerary-inline-link" href="${item.url}" target="_blank" rel="noopener">${shown}</a></p>`;
+}
+
+function itineraryBlock(a){
+  // 新格式：有指定天數，每天各自一個區塊
+  if(a.days > 0 && a.itineraryDays.length){
+    return a.itineraryDays.map(day => `
+      <div class="itinerary-day">
+        <p class="itinerary-day-title">第 ${day.dayNumber} 天行程</p>
+        <div class="itinerary-day-body">
+          ${day.lines.length ? day.lines.map(itineraryLineHtml).join("") : "<p>行程資訊準備中</p>"}
+        </div>
+      </div>
+    `).join("");
+  }
+  // 舊格式：單一欄位用 || 分隔
+  return `<ul class="itinerary-list">
+    ${a.itinerary.length ? a.itinerary.map(step=>`<li>${step}</li>`).join("") : "<li>行程資訊準備中</li>"}
+  </ul>`;
 }
 
 function render(a){
@@ -366,25 +118,24 @@ function render(a){
   document.title = a.title;
   document.getElementById("content").innerHTML = `
     ${a.cover ? `<img class="hero-img" src="${a.cover}" alt="${a.title}">` : ""}
+    <div id="managerToolbar"></div>
     <p class="detail-title">${a.title}</p>
     <p class="detail-meta">${a.area}｜${a.date}${a.price ? `｜NT$ ${a.price}` : ""}</p>
 
-    ${a.notes ? `<span class="section-label">備註</span><div class="notes-box">${a.notes.split("\n").map(l=>`<p style="margin:0">${l}</p>`).join("")}</div>` : ""}
+    ${a.notes ? `<span class="section-label">備註</span><div class="notes-box">${a.notes.split("\n").map(l=>`<p>${l}</p>`).join("")}</div>` : ""}
 
     <span class="section-label">活動行程</span>
-    <ul class="itinerary-list">
-      ${a.itinerary.length ? a.itinerary.map(step=>`<li>${step}</li>`).join("") : "<li>行程資訊準備中</li>"}
-    </ul>
+    ${itineraryBlock(a)}
 
     ${videoBlock(a)}
     ${mapBlock(a)}
 
     <div class="footer-card">
-      <div class="organizer-row" style="display:flex; align-items:center; gap:12px; margin-bottom:12px;">
-        <div class="organizer-avatar" style="width:40px; height:40px; background:var(--border-color); border-radius:50%;"></div>
+      <div class="organizer-row">
+        <div class="organizer-avatar"></div>
         <div>
-          <strong style="color:var(--primary-yellow);">${a.organizerName}</strong><br>
-          <span style="font-size:0.8rem;color:var(--text-sub);">活動主辦人</span>
+          <strong>${a.organizerName}</strong><br>
+          <span style="font-size:0.8rem;color:#777;">活動主辦人</span>
         </div>
       </div>
       ${a.organizerLineUrl ? `<a class="btn btn-ghost btn-block" href="${a.organizerLineUrl}" target="_blank" rel="noopener">加主辦人 LINE 好友</a>` : ""}
@@ -395,7 +146,7 @@ function render(a){
     </div>
 
     <div class="actions" style="padding:20px 0 0;">
-      <button class="btn btn-primary" id="shareBtn" style="width:100%;">分享這個行程</button>
+      <button class="btn btn-primary" id="shareBtn">分享這個行程</button>
     </div>
   `;
   document.getElementById("shareBtn").addEventListener("click", ()=> shareOne(a));
@@ -425,14 +176,14 @@ function wireJoinButtons(a){
         a.myStatus = a.myStatus || {};
         a.myStatus.joined = true;
         resultEl.innerHTML = `
-          <p class="join-note" style="color:var(--primary-yellow);">${res.already ? "您已經參加這個活動了！" : "已為您報名這個活動！"}</p>
+          <p class="join-note">${res.already ? "您已經參加這個活動了！" : "已為您報名這個活動！"}</p>
           ${res.groupUrl
             ? `<a class="btn btn-teal btn-block" href="${res.groupUrl}" target="_blank" rel="noopener">加入揪團群組 →</a>`
             : `<p class="join-note">主辦人尚未提供群組連結，請透過主辦人 LINE 聯繫。</p>`}
         `;
       }catch(e){
         console.error(e);
-        resultEl.innerHTML = `<p class="join-note" style="color:#ef4444;">報名失敗：${e.message}</p>`;
+        resultEl.innerHTML = `<p class="join-note">報名失敗：${e.message}</p>`;
         joinBtn.disabled = false;
         joinBtn.textContent = "參加活動";
       }
@@ -452,8 +203,8 @@ function wireJoinButtons(a){
         statusEl.innerHTML = res.already
           ? "您已經在候補名單中，請耐心等候通知。"
           : `已加入候補名單！有名額釋出時，主辦人會用 LINE 通知您（通知後請於 24 小時內回覆）。<br>
-             <b style="color:var(--primary-yellow);">別忘了加 LINE 官方帳號好友</b>，不然收不到通知：
-             <a href="${CONFIG.OA_LINE_URL}" target="_blank" rel="noopener" style="color:var(--primary-yellow);">點此加好友</a>`;
+             <b>別忘了加 LINE 官方帳號好友</b>，不然收不到通知：
+             <a href="${CONFIG.OA_LINE_URL}" target="_blank" rel="noopener">點此加好友</a>`;
         waitlistBtn.textContent = "已加入候補";
       }catch(e){
         console.error(e);
@@ -465,51 +216,33 @@ function wireJoinButtons(a){
   }
 }
 
-/**
- * 非同步／被動式載入管理員工具列
- */
 async function loadManagerToolbar(a, userId){
+  const box = document.getElementById("managerToolbar");
+  if(!box) return;
   try{
     const { status } = await checkIsManager(userId);
-    if(status !== "approved") return; // 非管理員不渲染
-
-    const container = document.getElementById("adminFabContainer");
-    if(!container) return;
-
-    // 動態建構黑黃風格浮動按鈕面板
-    container.innerHTML = `
-      <button class="admin-fab" id="adminFabBtn">⚙️ 管理員工具</button>
-      <div class="admin-menu-popup" id="adminMenuPopup" style="display:none;">
-        <a class="btn btn-ghost" href="admin/edit-activity.html?id=${encodeURIComponent(a.id)}">✏️ 編輯活動</a>
+    if(status !== "approved") return;
+    box.innerHTML = `
+      <div class="manager-toolbar">
+        <a class="btn btn-ghost" href="index.html">← 回清單</a>
+        <a class="btn btn-ghost" href="admin/edit-activity.html?id=${encodeURIComponent(a.id)}">✏️ 編輯此活動</a>
         <a class="btn btn-ghost" id="waitlistCountLink" href="admin/waitlist.html?id=${encodeURIComponent(a.id)}">候補 … 人</a>
         <a class="btn btn-ghost" id="visitLogLink" href="admin/visit-log.html?activityId=${encodeURIComponent(a.id)}">閱讀記錄 …</a>
-        <button type="button" class="btn btn-ghost waitlist-toggle" id="waitlistToggleBtn"></button>
+        <button type="button" class="btn waitlist-toggle" id="waitlistToggleBtn"></button>
       </div>
     `;
-
-    const fabBtn = document.getElementById("adminFabBtn");
-    const popup = document.getElementById("adminMenuPopup");
-
-    fabBtn.addEventListener("click", () => {
-      popup.style.display = popup.style.display === "none" ? "flex" : "none";
-    });
-
-    // 取得進階統計數據
-    adminGetWaitlistCount(a.id, userId)
-      .then(({ count }) => {
-        const el = document.getElementById("waitlistCountLink");
-        if(el) el.textContent = `候補 ${count} 人 →`;
-      }).catch(e => console.warn("候補人數載入失敗", e));
-
-    adminGetVisitLog(userId, a.id)
-      .then(log => {
-        const el = document.getElementById("visitLogLink");
-        if(el) el.textContent = `閱讀記錄 (${log.length}) →`;
-      }).catch(e => console.warn("閱讀記錄筆數載入失敗", e));
+    try{
+      const { count } = await adminGetWaitlistCount(a.id, userId);
+      document.getElementById("waitlistCountLink").textContent = `候補 ${count} 人 →`;
+    }catch(e){ console.warn("候補人數載入失敗", e); }
+    try{
+      const log = await adminGetVisitLog(userId, a.id);
+      document.getElementById("visitLogLink").textContent = `閱讀記錄 (${log.length}) →`;
+    }catch(e){ console.warn("閱讀記錄筆數載入失敗", e); }
 
     renderWaitlistToggle(a, userId);
   }catch(e){
-    console.warn("管理者狀態驗證跳過或失敗", e);
+    console.warn("管理者狀態載入失敗", e);
   }
 }
 
@@ -518,6 +251,8 @@ function renderWaitlistToggle(a, userId){
   if(!btn) return;
   function paint(){
     btn.textContent = a.waitlistOpen ? "候補：開放中 ⇄" : "候補：已關閉 ⇄";
+    btn.classList.toggle("waitlist-toggle-on", a.waitlistOpen);
+    btn.classList.toggle("waitlist-toggle-off", !a.waitlistOpen);
   }
   paint();
   btn.addEventListener("click", async ()=>{
@@ -527,6 +262,7 @@ function renderWaitlistToggle(a, userId){
       await adminUpdateActivity({ id: a.id, waitlist_status: newValue }, userId);
       a.waitlistOpen = !a.waitlistOpen;
       paint();
+      // 候補開關會影響「加入候補名單」區塊是否顯示，如果報名情形彈窗現在是開著的就重新畫一次
       const modalBody = document.getElementById("rsvpModalBody");
       if(modalBody && document.getElementById("rsvpModal").style.display !== "none"){
         modalBody.innerHTML = joinBlock(a);
@@ -541,27 +277,19 @@ function renderWaitlistToggle(a, userId){
 }
 
 async function renderActivity(a, profile){
-  // 1. 優先繪製黑黃主題主畫面
-  render(a);
-
-  // 2. 個人狀態非同步獲取
   if(profile){
-    getMyActivityStatus(a.id).then(status => {
-      a.myStatus = status;
-    }).catch(e => console.warn("讀取個人狀態失敗", e));
-  }
-
-  // 3. 背景延遲檢查管理員身分 (不卡頓頁面)
-  if(profile) {
-    if ('requestIdleCallback' in window) {
-      requestIdleCallback(() => loadManagerToolbar(a, profile.userId));
-    } else {
-      setTimeout(() => loadManagerToolbar(a, profile.userId), 200);
+    try{
+      a.myStatus = await getMyActivityStatus(a.id);
+    }catch(e){
+      console.warn("讀取個人狀態失敗", e);
     }
   }
+  render(a);
+  if(profile) loadManagerToolbar(a, profile.userId);
 }
 
 async function main(){
+  // 開啟本頁一律先登入 LINE，取得 userId（候補/參加/進站記錄都需要識別使用者）
   let profile = null;
   try{
     profile = await requireLogin();
@@ -571,25 +299,25 @@ async function main(){
 
   const id = new URLSearchParams(location.search).get("id");
   if(!id){
-    document.getElementById("content").innerHTML = `<div class="empty" style="color:var(--text-sub);">缺少活動 id</div>`;
+    document.getElementById("content").innerHTML = `<div class="empty">缺少活動 id</div>`;
     return;
   }
   try{
     const a = await getActivityById(id);
     if(!a){
-      document.getElementById("content").innerHTML = `<div class="empty" style="color:var(--text-sub);">找不到這個活動</div>`;
+      document.getElementById("content").innerHTML = `<div class="empty">找不到這個活動</div>`;
       return;
     }
-    
     await renderActivity(a, profile);
 
+    // 如果是點了別人分享的連結進來（網址帶 refId/refName），記錄下來給「閱讀記錄」頁用
     const params = new URLSearchParams(location.search);
     const refUserId = params.get("refId");
     const refDisplayName = params.get("refName");
     recordVisit(a.id, refUserId ? { refUserId, refDisplayName } : null);
   }catch(e){
     console.error(e);
-    document.getElementById("content").innerHTML = `<div class="empty" style="color:#ef4444;">活動資料讀取失敗：${e.message || e}</div>`;
+    document.getElementById("content").innerHTML = `<div class="empty">活動資料讀取失敗：${e.message || e}</div>`;
   }
 }
 
@@ -597,7 +325,7 @@ main();
 
 document.getElementById("rsvpModalClose").addEventListener("click", closeRsvpModal);
 document.getElementById("rsvpModal").addEventListener("click", (e)=>{
-  if(e.target.id === "rsvpModal") closeRsvpModal();
+  if(e.target.id === "rsvpModal") closeRsvpModal(); // 點背景遮罩也能關閉
 });
 </script>
 </body>
