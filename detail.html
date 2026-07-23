@@ -86,13 +86,13 @@ function joinBlock(a){
     <p class="join-note" id="waitlistStatus"></p>`;
 }
 
-// 行程逐行渲染：文字行照常顯示、換行就斷行；連結行如果有文字就顯示文字當連結，
-// 沒有文字就換成小圖示（YouTube 用▶️、Google Map 用📍）
+// 行程逐行渲染：文字行照常顯示（綠點），連結行改用豎線標記；
+// 連結有文字就顯示文字當連結，沒有文字就換成小圖示（YouTube 用▶️、Google Map 用📍）
 function itineraryLineHtml(item){
-  if(item.type === "text") return `<p>${item.text}</p>`;
+  if(item.type === "text") return `<li>${item.text}</li>`;
   const icon = item.isYoutube ? "▶️" : (item.isMap ? "📍" : "🔗");
   const shown = item.label ? item.label : icon;
-  return `<p><a class="itinerary-inline-link" href="${item.url}" target="_blank" rel="noopener">${shown}</a></p>`;
+  return `<li class="link-line"><a class="itinerary-inline-link" href="${item.url}" target="_blank" rel="noopener">${shown}</a></li>`;
 }
 
 function itineraryBlock(a){
@@ -100,10 +100,10 @@ function itineraryBlock(a){
   if(a.days > 0 && a.itineraryDays.length){
     return a.itineraryDays.map(day => `
       <div class="itinerary-day">
-        <p class="itinerary-day-title">第 ${day.dayNumber} 天行程</p>
-        <div class="itinerary-day-body">
-          ${day.lines.length ? day.lines.map(itineraryLineHtml).join("") : "<p>行程資訊準備中</p>"}
-        </div>
+        <span class="section-label itinerary-day-title">第 ${day.dayNumber} 天行程</span>
+        <ul class="itinerary-list">
+          ${day.lines.length ? day.lines.map(itineraryLineHtml).join("") : "<li>行程資訊準備中</li>"}
+        </ul>
       </div>
     `).join("");
   }
