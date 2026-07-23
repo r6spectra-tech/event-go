@@ -113,24 +113,17 @@ function parseItinerary(text) {
 const YOUTUBE_URL_RE = /^(https?:\/\/)?(www\.)?(youtube\.com|youtu\.be)\//i;
 const GMAP_URL_RE = /^(https?:\/\/)?(www\.)?(maps\.google\.|maps\.app\.goo\.gl|google\.com\/maps|goo\.gl\/maps)/i;
 
-// 行程逐行解析：支援「文字|網址」插入 YouTube/Google Map 連結（文字變成連結文字），
-// 只有網址沒有文字的話，畫面上會用小圖示取代文字；純文字行照常顯示，換行就斷行。
+// 行程逐行解析：不管整行格式長怎樣，都直接找這一行裡有沒有網址，找到就抓出來當連結，
+// 其餘文字（含 | 或 ｜ 這種分隔符號）自動當標籤，比要求「整行必須剛好是網址」更不容易失敗
+// （例如從地圖 App 分享貼過來，網址前後常會帶看不見的字元，或用了全形｜）。
 function parseItineraryLine(rawLine) {
   const line = rawLine.trim();
   if (!line) return null;
-  const pipeIdx = line.indexOf("|");
-  if (pipeIdx > -1) {
-    const label = line.slice(0, pipeIdx).trim();
-    const url = line.slice(pipeIdx + 1).trim();
-    if (/^https?:\/\//i.test(url)) {
-      return { type: "link", label, url, isYoutube: YOUTUBE_URL_RE.test(url), isMap: GMAP_URL_RE.test(url) };
-    }
-    return { type: "text", text: line }; // 有 | 但後面不是網址，當純文字處理
-  }
-  if (/^https?:\/\//i.test(line)) {
-    return { type: "link", label: "", url: line, isYoutube: YOUTUBE_URL_RE.test(line), isMap: GMAP_URL_RE.test(line) };
-  }
-  return { type: "text", text: line };
+  const m = line.match(/(https?:\/\/\S+)/i);
+  if (!m) return { type: "text", text: line };
+  const url = m[1];
+  const label = line.replace(url, "").replace(/[|｜]\s*$/, "").replace(/^[|｜]\s*/, "").trim();
+  return { type: "link", label, url, isYoutube: YOUTUBE_URL_RE.test(url), isMap: GMAP_URL_RE.test(url) };
 }
 
 function parseItineraryDayText(text) {
