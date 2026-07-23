@@ -61,6 +61,8 @@ async function getActivityById(id, forceRefresh) {
 function normalizeActivity(raw) {
   const capacity = Number(raw.capacity) || 0;
   const joined = Number(raw.joined) || 0;
+  const days = Number(raw.days) || 0;
+  const itineraryDaysRaw = Array.isArray(raw.itineraryDays) ? raw.itineraryDays : [];
   return {
     id: String(raw.id || "").trim(),
     title: raw.title || "未命名活動",
@@ -74,6 +76,17 @@ function normalizeActivity(raw) {
     isFull: capacity > 0 && joined >= capacity,
     waitlistOpen: raw.waitlistOpen !== false,
     notes: raw.notes || "",
+    // 新格式：days=幾天，itineraryDays=每天的結構化行程（已逐行解析好文字/連結）
+    // itineraryDaysRaw=每天的原始文字（給編輯頁的 textarea 用）
+    days,
+    itineraryDays: days > 0
+      ? itineraryDaysRaw.slice(0, days).map((text, i) => ({
+          dayNumber: i + 1,
+          lines: parseItineraryDayText(text),
+        }))
+      : [],
+    itineraryDaysRaw: itineraryDaysRaw.slice(0, MAX_ITINERARY_DAYS),
+    // 舊格式：沒有 days 的活動，行程還是用 || 分隔單一欄位，給還沒轉換的舊資料用
     itinerary: parseItinerary(raw.itinerary),
     itineraryRaw: raw.itinerary || "",
     youtubeItems: parseLabeledLines(raw.youtubeLinks || raw.youtube_links),
@@ -86,11 +99,44 @@ function normalizeActivity(raw) {
   };
 }
 
-// 行程：用 || 分隔每一天
+const MAX_ITINERARY_DAYS = 10;
+
+// 行程：舊格式用 || 分隔每一天（只給還沒轉換的舊活動用）
 function parseItinerary(text) {
   return String(text || "")
     .split("||")
     .map(s => s.trim())
+    .filter(Boolean);
+}
+
+// 判斷一整行文字是不是純 YouTube / Google Map 連結（沒有「文字|」開頭）
+const YOUTUBE_URL_RE = /^(https?:\/\/)?(www\.)?(youtube\.com|youtu\.be)\//i;
+const GMAP_URL_RE = /^(https?:\/\/)?(www\.)?(maps\.google\.|maps\.app\.goo\.gl|google\.com\/maps|goo\.gl\/maps)/i;
+
+// 行程逐行解析：支援「文字|網址」插入 YouTube/Google Map 連結（文字變成連結文字），
+// 只有網址沒有文字的話，畫面上會用小圖示取代文字；純文字行照常顯示，換行就斷行。
+function parseItineraryLine(rawLine) {
+  const line = rawLine.trim();
+  if (!line) return null;
+  const pipeIdx = line.indexOf("|");
+  if (pipeIdx > -1) {
+    const label = line.slice(0, pipeIdx).trim();
+    const url = line.slice(pipeIdx + 1).trim();
+    if (/^https?:\/\//i.test(url)) {
+      return { type: "link", label, url, isYoutube: YOUTUBE_URL_RE.test(url), isMap: GMAP_URL_RE.test(url) };
+    }
+    return { type: "text", text: line }; // 有 | 但後面不是網址，當純文字處理
+  }
+  if (/^https?:\/\//i.test(line)) {
+    return { type: "link", label: "", url: line, isYoutube: YOUTUBE_URL_RE.test(line), isMap: GMAP_URL_RE.test(line) };
+  }
+  return { type: "text", text: line };
+}
+
+function parseItineraryDayText(text) {
+  return String(text || "")
+    .split("\n")
+    .map(parseItineraryLine)
     .filter(Boolean);
 }
 
