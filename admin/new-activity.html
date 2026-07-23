@@ -36,6 +36,10 @@ const formHtml = `
       <input id="title">
     </div>
     <div class="field">
+      <label>活動天數</label>
+      <select id="days"></select>
+    </div>
+    <div class="field">
       <label>地區</label>
       <input id="area" placeholder="例如 花蓮">
     </div>
@@ -80,10 +84,7 @@ const formHtml = `
       <label>備註（顯示在詳情頁行程之上，可留空）</label>
       <textarea id="notes" placeholder="例如：請自備泳具、活動當天若下雨則順延一週"></textarea>
     </div>
-    <div class="field">
-      <label>行程（每一天用 || 分隔）</label>
-      <textarea id="itinerary" placeholder="Day1 集合出發，前往太魯閣||Day2 早起賞日出，中午賦歸"></textarea>
-    </div>
+    <div id="itineraryDaysWrap"></div>
     <div class="field">
       <label>YouTube 連結（可多行，每行：說明文字 網址）</label>
       <textarea id="youtube_links" placeholder="行前說明會 https://youtu.be/xxxx
@@ -122,7 +123,40 @@ const formHtml = `
 `;
 
 const fieldIds = ["id","title","cover_image","area","date_text","event_date","price","capacity",
-  "waitlist_status","notes","itinerary","youtube_links","map_links","organizer_name","organizer_line_url","group_url"];
+  "waitlist_status","notes","youtube_links","map_links","organizer_name","organizer_line_url","group_url"];
+
+const MAX_DAYS = 10;
+const CN_NUM = ["一","二","三","四","五","六","七","八","九","十"];
+let dayTexts = Array(MAX_DAYS).fill("");
+
+function initDaysSelect(){
+  const sel = document.getElementById("days");
+  sel.innerHTML = CN_NUM.map((cn,i) => `<option value="${i+1}">${cn}日遊</option>`).join("");
+  sel.value = "1";
+}
+
+function renderDayFields(){
+  const days = Number(document.getElementById("days").value) || 1;
+  for(let i = days; i < MAX_DAYS; i++) dayTexts[i] = ""; // 天數變少時，把多出來的清掉
+  const wrap = document.getElementById("itineraryDaysWrap");
+  wrap.innerHTML = Array.from({length: days}, (_, i) => `
+    <div class="field">
+      <label>第 ${i+1} 天行程（換行就斷行，可用「文字|網址」插入 YouTube/Google Map 連結）</label>
+      <textarea class="dayTextarea" data-day="${i+1}" placeholder="早上08:00集合出發
+淡水漁人碼頭|https://youtu.be/xxxx
+https://maps.app.goo.gl/xxxx">${dayTexts[i] || ""}</textarea>
+    </div>
+  `).join("");
+  wrap.querySelectorAll(".dayTextarea").forEach(ta=>{
+    ta.addEventListener("input", ()=>{ dayTexts[Number(ta.dataset.day)-1] = ta.value; });
+  });
+}
+
+function resetDayFields(){
+  dayTexts = Array(MAX_DAYS).fill("");
+  document.getElementById("days").value = "1";
+  renderDayFields();
+}
 
 async function renderCoverPicker(){
   const picker = document.getElementById("coverPicker");
@@ -174,6 +208,9 @@ function renderContent(profile){
   fetchNextActivityId().then(id => { document.getElementById("id").value = id; }).catch(()=>{});
   renderCoverPicker();
   renderOrganizerPresets();
+  initDaysSelect();
+  renderDayFields();
+  document.getElementById("days").addEventListener("change", renderDayFields);
   document.getElementById("reshuffleCoverBtn").addEventListener("click", renderCoverPicker);
 
   document.getElementById("savePresetBtn").addEventListener("click", async ()=>{
@@ -192,6 +229,10 @@ function renderContent(profile){
     const msg = document.getElementById("msg");
     const fields = {};
     fieldIds.forEach(id => fields[id] = document.getElementById(id).value.trim());
+    fields.days = document.getElementById("days").value;
+    for(let i = 0; i < MAX_DAYS; i++){
+      fields["itinerary_day" + (i+1)] = dayTexts[i] || "";
+    }
 
     if(!fields.id || !fields.title){
       msg.textContent = "請至少填寫活動代碼與名稱";
@@ -208,6 +249,7 @@ function renderContent(profile){
         ? `⚠️ 活動已建立，但這些欄位在 Sheet 裡找不到對應欄名、沒有存進去：${res.unmapped.join("、")}（請檢查 activities 分頁的表頭）`
         : "✅ 活動已建立，可以到列表頁查看。") + newActivityLink;
       fieldIds.forEach(id => document.getElementById(id).value = "");
+      resetDayFields();
       fetchNextActivityId().then(id => { document.getElementById("id").value = id; }).catch(()=>{});
       renderCoverPicker();
     }catch(e){
