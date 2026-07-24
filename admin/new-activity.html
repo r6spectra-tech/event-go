@@ -82,17 +82,17 @@ const formHtml = `
     <p class="panel-title">行程與連結</p>
     <div class="field">
       <label>備註（顯示在詳情頁行程之上，可留空）</label>
-      <textarea id="notes" placeholder="例如：請自備泳具、活動當天若下雨則順延一週"></textarea>
+      <textarea id="notes" class="tall-textarea" placeholder="例如：請自備泳具、活動當天若下雨則順延一週"></textarea>
     </div>
     <div id="itineraryDaysWrap"></div>
     <div class="field">
       <label>YouTube 連結（可多行，每行：說明文字 網址）</label>
-      <textarea id="youtube_links" placeholder="行前說明會 https://youtu.be/xxxx
+      <textarea id="youtube_links" class="tall-textarea" placeholder="行前說明會 https://youtu.be/xxxx
 去年花絮 https://youtu.be/yyyy"></textarea>
     </div>
     <div class="field">
       <label>Google Map 連結（可多行，每行：說明文字 網址）</label>
-      <textarea id="map_links" placeholder="集合地點 https://maps.app.goo.gl/xxxx
+      <textarea id="map_links" class="tall-textarea" placeholder="集合地點 https://maps.app.goo.gl/xxxx
 午餐地點 https://maps.app.goo.gl/yyyy"></textarea>
     </div>
   </div>
@@ -142,7 +142,7 @@ function renderDayFields(){
   wrap.innerHTML = Array.from({length: days}, (_, i) => `
     <div class="field">
       <label>第 ${i+1} 天行程（換行就斷行，可用「文字|網址」插入 YouTube/Google Map 連結）</label>
-      <textarea class="dayTextarea" data-day="${i+1}" placeholder="早上08:00集合出發
+      <textarea class="dayTextarea itinerary-day-textarea" data-day="${i+1}" placeholder="早上08:00集合出發
 淡水漁人碼頭|https://youtu.be/xxxx
 https://maps.app.goo.gl/xxxx">${dayTexts[i] || ""}</textarea>
     </div>
@@ -164,7 +164,7 @@ async function renderCoverPicker(){
   try{
     const all = await fetchCoverImages();
     if(!all.length){ picker.innerHTML = `<span class="join-note">圖庫是空的（cover-image 分頁沒有圖片網址）</span>`; return; }
-    const sample = pickRandom(all, 3);
+    const sample = pickRandom(all, 4);
     picker.innerHTML = sample.map(url => `<img class="cover-thumb" src="${url}" data-url="${url}">`).join("");
     picker.querySelectorAll(".cover-thumb").forEach(img=>{
       img.addEventListener("click", ()=>{
