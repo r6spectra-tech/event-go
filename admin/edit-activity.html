@@ -48,7 +48,7 @@ function renderDayFields(){
   wrap.innerHTML = Array.from({length: days}, (_, i) => `
     <div class="field">
       <label>第 ${i+1} 天行程（換行就斷行，可用「文字|網址」插入 YouTube/Google Map 連結）</label>
-      <textarea class="dayTextarea" data-day="${i+1}">${dayTexts[i] || ""}</textarea>
+      <textarea class="dayTextarea itinerary-day-textarea" data-day="${i+1}">${dayTexts[i] || ""}</textarea>
     </div>
   `).join("");
   wrap.querySelectorAll(".dayTextarea").forEach(ta=>{
@@ -93,10 +93,10 @@ const formHtml = `
 
     <div class="panel">
       <p class="panel-title">行程與連結</p>
-      <div class="field"><label>備註（顯示在詳情頁行程之上）</label><textarea id="notes"></textarea></div>
+      <div class="field"><label>備註（顯示在詳情頁行程之上）</label><textarea id="notes" class="tall-textarea"></textarea></div>
       <div id="itineraryDaysWrap"></div>
-      <div class="field"><label>YouTube 連結（可多行，每行：說明文字 網址）</label><textarea id="youtube_links"></textarea></div>
-      <div class="field"><label>Google Map 連結（可多行，每行：說明文字 網址）</label><textarea id="map_links"></textarea></div>
+      <div class="field"><label>YouTube 連結（可多行，每行：說明文字 網址）</label><textarea id="youtube_links" class="tall-textarea"></textarea></div>
+      <div class="field"><label>Google Map 連結（可多行，每行：說明文字 網址）</label><textarea id="map_links" class="tall-textarea"></textarea></div>
     </div>
 
     <div class="panel">
@@ -117,7 +117,7 @@ async function renderCoverPicker(){
   try{
     const all = await fetchCoverImages();
     if(!all.length){ picker.innerHTML = `<span class="join-note">圖庫是空的</span>`; return; }
-    const sample = pickRandom(all, 3);
+    const sample = pickRandom(all, 4);
     picker.innerHTML = sample.map(url => `<img class="cover-thumb" src="${url}" data-url="${url}">`).join("");
     picker.querySelectorAll(".cover-thumb").forEach(img=>{
       img.addEventListener("click", ()=>{ document.getElementById("cover_image").value = img.dataset.url; });
