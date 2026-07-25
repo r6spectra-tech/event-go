@@ -11,7 +11,7 @@ const CONFIG = {
 };
 
 // 執行期才會拿到的設定值（來自 GAS）
-const RUNTIME = { liffId: null, siteUrl: null };
+const RUNTIME = { liffId: null, siteUrl: null, rawBaseUrl: null };
 
 /* ============================================================
    呼叫 GAS Web App
@@ -40,6 +40,7 @@ async function loadConfig() {
   const cfg = await apiGet("config");
   RUNTIME.liffId = cfg.liffId;
   RUNTIME.siteUrl = cfg.siteUrl;
+  RUNTIME.rawBaseUrl = cfg.rawBaseUrl;
   return cfg;
 }
 
@@ -433,11 +434,12 @@ function pickRandom(arr, n) {
 }
 
 /* ============================================================
-   前端快取：讀取用的資料才快取，寫入動作一律即時打 GAS。
-   用 localStorage（不是 sessionStorage）：LINE 內建瀏覽器/部分瀏覽器每次開新頁面
-   都可能視為新的瀏覽階段，sessionStorage 會被清空、等於每次都沒吃到快取；
-   localStorage 不受這個影響，會一直留著，直到按「更新」蓋過去，或使用者自己清瀏覽器資料。
-   資料本身不會自動過期——要新資料就是按「更新」，這是刻意的設計，不是 bug。
+   前端快取（localStorage）+ GitHub 輕量版本檔比對
+   - 頁面資料存在 localStorage：{ data, remoteVersion, fetchedAt }
+   - remoteVersion 是這筆活動在 GAS 端記錄到 GitHub 的「最後更新時間」戳記
+   - 「更新」按鈕先讀 GitHub 上的 data/last-updated.json（純靜態檔，沒有 GAS 冷啟動），
+     比對這個活動的時間戳記有沒有比本地存的 remoteVersion 新，有變動才呼叫 GAS，
+     沒有變動就直接跳過、不用等冷啟動
    ============================================================ */
 function cacheKey(name) {
   return `cache:${name}`;
@@ -447,16 +449,31 @@ function readCache(name) {
   try {
     const raw = localStorage.getItem(cacheKey(name));
     if (!raw) return null;
-    return JSON.parse(raw); // { data, fetchedAt }
+    return JSON.parse(raw);
   } catch (e) {
     return null;
   }
 }
 
-function writeCache(name, data) {
+function writeCache(name, data, remoteVersion) {
   try {
-    localStorage.setItem(cacheKey(name), JSON.stringify({ data, fetchedAt: Date.now() }));
+    localStorage.setItem(cacheKey(name), JSON.stringify({ data, remoteVersion: remoteVersion || null, fetchedAt: Date.now() }));
   } catch (e) { /* storage 滿了或被禁用，忽略即可，退化成每次都重新抓 */ }
+}
+
+// 讀 GitHub 上的輕量版本檔，回傳 { activityId: ISO時間字串, ... }；讀不到就回傳空物件
+// （檔案還不存在、或還沒設定 GH_TOKEN 導致從沒寫過，都算正常情況，不當作錯誤）
+async function fetchLastUpdatedMap() {
+  if (!RUNTIME.rawBaseUrl) await loadConfig();
+  if (!RUNTIME.rawBaseUrl) return {};
+  try {
+    const res = await fetch(`${RUNTIME.rawBaseUrl}/data/last-updated.json?_=${Date.now()}`, { cache: "no-store" });
+    if (!res.ok) return {};
+    return await res.json();
+  } catch (e) {
+    console.warn("讀取 GitHub 版本檔失敗，視為沒有更新資訊", e);
+    return {};
+  }
 }
 
 function formatCacheTime(ts) {
@@ -468,12 +485,12 @@ function formatCacheTime(ts) {
 const REFRESH_COOLDOWN_SEC = 60;
 
 // 幫「更新」按鈕接上：點擊→執行 onRefresh()→按鈕變灰倒數 60 秒→恢復可點
-// timeLabelEl 會被更新成「上次更新：HH:MM:SS」
+// timeLabelEl 會被更新成「頁面更新時間：HH:MM:SS」
 function setupRefreshButton(btnEl, timeLabelEl, fetchedAt, onRefresh) {
   let timer = null;
 
   function paintTime(ts) {
-    if (timeLabelEl) timeLabelEl.textContent = `上次更新：${formatCacheTime(ts)}`;
+    if (timeLabelEl) timeLabelEl.textContent = `頁面更新時間：${formatCacheTime(ts)}`;
   }
   paintTime(fetchedAt);
 
@@ -499,10 +516,10 @@ function setupRefreshButton(btnEl, timeLabelEl, fetchedAt, onRefresh) {
   btnEl.addEventListener("click", async () => {
     if (btnEl.disabled) return;
     btnEl.disabled = true;
-    btnEl.textContent = "更新中…";
+    btnEl.textContent = "檢查中…";
     try {
       const newFetchedAt = await onRefresh();
-      paintTime(newFetchedAt);
+      if (newFetchedAt) paintTime(newFetchedAt);
     } finally {
       startCooldown();
     }
