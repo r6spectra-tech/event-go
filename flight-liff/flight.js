@@ -108,7 +108,7 @@ function renderMyCard(direction) {
     rowsEl.innerHTML = list.map(r => `
       <div class="f-row ${r.isSelf ? "f-self" : ""}">
         <span class="f-name">${escapeHtml(r.name || "")}</span>
-        <span class="f-flight">${AIRLINES[r.airline]?.label.replace("立榮 ", "").replace("華信 ", "") || r.airline}｜${r.flightDate}｜${r.depTime}–${r.arrTime}</span>
+        <span class="f-flight">${(AIRLINES[r.airline]?.label || r.airline)}｜${r.flightDate}｜${r.depTime}–${r.arrTime}</span>
       </div>
     `).join("");
   }
