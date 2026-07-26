@@ -4,8 +4,8 @@
    依賴 ./flight-data.js（FLIGHT_SCHEDULE / AIRLINES / DIRECTION_LABEL）
    ============================================================ */
 
-/* FLIGHT_JS_VERSION: 20260726-2 */
-const FLIGHT_JS_VERSION = "20260726-2";
+/* FLIGHT_JS_VERSION: 20260726-3 */
+const FLIGHT_JS_VERSION = "20260726-3";
 
 function getActivityId() {
   return new URLSearchParams(location.search).get("activityId") || "";
@@ -319,9 +319,31 @@ async function deleteDirection(direction) {
   }
 }
 
-// 完成登記回報：分享一則帶流水號＋建立時間的文字訊息到群組，順便讓群組成員知道彼此的登記進度。
-// 用「文字訊息」而不是 flex，是因為 liff.shareTargetPicker 分享文字訊息時，
-// 內容會直接以「使用者自己傳送」的樣子出現在群組聊天室裡，不需要額外的 postback/webhook 機制。
+// 完成登記回報：分享一張含流水號＋建立時間的 flex 卡片到群組，附「前往登記」按鈕方便還沒填的人直接點進去。
+// 這個由團員自己觸發，跟管理頁的「宣傳登記邀請」不同：管理頁那則是主辦人主動廣播，重複發會讓人覺得吵；
+// 這則是團員各自完成登記後自然而然分享的，一人一則、時間點分散，不會有洗版感。
+function completionBubble(seq, displayName, dirLabel, timestampText) {
+  const link = `${RUNTIME.siteUrl}/flight-liff/index.html?activityId=${encodeURIComponent(PAGE.activityId)}`;
+  return {
+    type: "bubble",
+    body: {
+      type: "box", layout: "vertical", spacing: "sm",
+      contents: [
+        { type: "text", text: `第 ${seq} 人 ✅`, weight: "bold", size: "lg", color: "#2F7A72" },
+        { type: "text", text: `${displayName} 已完成${dirLabel}機票登記`, weight: "bold", size: "md", wrap: true, margin: "sm" },
+        { type: "text", text: timestampText, size: "xs", color: "#999999", margin: "sm" },
+      ],
+    },
+    footer: {
+      type: "box", layout: "vertical",
+      contents: [
+        { type: "button", style: "primary", color: "#17233D",
+          action: { type: "uri", label: "前往登記", uri: link } },
+      ],
+    },
+  };
+}
+
 async function shareCompletion(direction) {
   const list = PAGE.myData[direction] || [];
   const selfRow = list.find(r => r.isSelf === true || String(r.isSelf).toUpperCase() === "TRUE");
@@ -332,9 +354,11 @@ async function shareCompletion(direction) {
     return;
   }
   const dirText = direction === "go" ? "去程" : "回程";
-  const text = `第 ${selfRow.seq || "?"} 人 ✅ ${PAGE.profile.displayName} 已完成${dirText}機票登記　${selfRow.createdAt}`;
+  const seq = selfRow.seq || "?";
+  const bubble = completionBubble(seq, PAGE.profile.displayName, dirText, selfRow.createdAt);
+  const altText = `第${seq}人 ✅ ${PAGE.profile.displayName} 已完成${dirText}機票登記`;
   try {
-    await liff.shareTargetPicker([{ type: "text", text }]);
+    await liff.shareTargetPicker([{ type: "flex", altText, contents: bubble }]);
   } catch (e) { /* 使用者取消分享，不用特別處理 */ }
 }
 
@@ -388,7 +412,7 @@ function inviteBubble(activityTitle) {
       contents: [
         { type: "text", text: "✈️ 機票時刻登記", weight: "bold", size: "lg", color: "#2F7A72" },
         { type: "text", text: activityTitle, weight: "bold", size: "md", wrap: true, margin: "sm" },
-        { type: "text", text: "請登記您的去程／回程航班，方便安排接送與確認同行班機。", size: "sm", color: "#666666", wrap: true, margin: "md" },
+        { type: "text", text: "請登記您的去程／回程航班時刻。", size: "sm", color: "#666666", wrap: true, margin: "md" },
       ],
     },
     footer: {

@@ -1,5 +1,11 @@
-/* FLIGHT_CSS_VERSION: 20260726-2 */
+/* FLIGHT_CSS_VERSION: 20260726-3 */
 /* flight-liff 專屬樣式，沿用 assets/style.css 的 --ink / --paper / --teal / --stamp / --sand 色票 */
+
+/* 全域強制規則：任何有 hidden 屬性的元素一律不顯示，優先權設到最高。
+   沒有這條規則的話，像 .f-spinner-wrap{display:flex} 這種指定了 display 的 class，
+   跟瀏覽器內建的 [hidden]{display:none} 規則優先權相同，寫在後面的反而會蓋掉前者，
+   導致 JS 已經正確設定 el.hidden = true，畫面卻沒有真的隱藏（這正是 spinner 卡住不消失的根本原因）。*/
+[hidden]{ display:none !important; }
 
 .f-wrap{ max-width: 640px; margin: 0 auto; padding: 0 18px 60px; }
 
