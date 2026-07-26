@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>機票登記總覽</title>
+<link rel="stylesheet" href="../assets/style.css">
+<link rel="stylesheet" href="flight.css">
+<script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+</head>
+<body>
+  <div class="topbar">
+    <div>
+      <span class="f-eyebrow">機票登記總覽</span>
+      <h1 id="f-activity-title">載入中…</h1>
+    </div>
+  </div>
+
+  <div class="f-wrap" id="f-app">
+    <div class="f-dirbar">
+      <button data-dir="go" class="active">去程（松山→澎湖）</button>
+      <button data-dir="return">回程（澎湖→松山）</button>
+    </div>
+    <div class="f-tabbar">
+      <button data-tab="flight" class="active">依航班</button>
+      <button data-tab="hour">依時段</button>
+    </div>
+    <div id="f-overview-body"><div class="f-empty">載入中…</div></div>
+  </div>
+
+  <script src="../assets/main.js"></script>
+  <script src="flight-data.js"></script>
+  <script src="flight.js"></script>
+  <script>
+    document.addEventListener("DOMContentLoaded", initOverviewPage);
+  </script>
+</body>
+</html>
