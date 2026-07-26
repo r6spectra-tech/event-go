@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
-<meta name="page-version" content="20260726-11">
+<meta name="page-version" content="20260726-12">
 <title>flight-liff 診斷頁</title>
 <style>
   body{background:#0a0a0f;color:#e5e7eb;font-family:-apple-system,sans-serif;padding:16px;margin:0;font-size:14px;line-height:1.6}
@@ -40,7 +40,7 @@
 <div id="apiTest">尚未開始</div>
 
 <script>
-const EXPECTED = "20260726-11";
+const EXPECTED = "20260726-12";
 const versionsEl = document.getElementById('versions');
 const loadsEl = document.getElementById('loads');
 const apiEl = document.getElementById('apiTest');
@@ -254,6 +254,8 @@ async function checkEnvInfo() {
   }
   html += `<div class="row"><span>RUNTIME.liffId（目前實際會拿去 liff.init() 的值）</span><span class="ok">${RUNTIME.liffId || '(空白，異常)'}</span></div>`;
   push('RUNTIME.liffId', RUNTIME.liffId || '(空白，異常)');
+  html += `<div class="detail">精確內容（用來抓隱藏空白/換行等看不出來的字元）：長度=${(RUNTIME.liffId || '').length}，JSON=${JSON.stringify(RUNTIME.liffId)}</div>`;
+  push('RUNTIME.liffId 精確內容', `長度=${(RUNTIME.liffId || '').length}，JSON=${JSON.stringify(RUNTIME.liffId)}`);
 
   let ok = false;
   try {
