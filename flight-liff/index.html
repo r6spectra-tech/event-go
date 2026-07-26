@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>機票時刻登記</title>
+<link rel="stylesheet" href="../assets/style.css">
+<link rel="stylesheet" href="flight.css">
+<script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+</head>
+<body>
+  <div class="topbar">
+    <div>
+      <span class="f-eyebrow">機票時刻登記</span>
+      <h1 id="f-activity-title">載入中…</h1>
+    </div>
+  </div>
+
+  <div class="f-wrap" id="f-app">
+    <p class="f-sub" id="f-activity-sub"></p>
+
+    <div id="f-login-gate" class="f-login-gate" hidden>
+      <p>登入 LINE 後即可查看或填寫您的機票資訊。</p>
+      <button class="btn primary" id="f-login-btn">登入 LINE 開始登記</button>
+    </div>
+
+    <div id="f-my" hidden>
+      <div class="f-card" id="f-card-go">
+        <h3>去程（松山 → 澎湖）<span class="f-tag empty">尚未登記</span></h3>
+        <div class="f-rows"></div>
+        <div class="f-actions"></div>
+      </div>
+
+      <div class="f-card" id="f-card-return">
+        <h3>回程（澎湖 → 松山）<span class="f-tag empty">尚未登記</span></h3>
+        <div class="f-rows"></div>
+        <div class="f-actions"></div>
+      </div>
+
+      <p class="f-sub">
+        想看大家的登記狀況？<a href="overview.html" id="f-overview-link">查看總覽頁 →</a>
+      </p>
+    </div>
+
+    <div id="f-form-section" hidden>
+      <h2 class="f-title" id="f-form-title"></h2>
+      <div id="f-members"></div>
+      <button type="button" class="f-add-member" id="f-add-member">＋ 新增同行成員</button>
+      <div class="f-actions">
+        <button type="button" class="btn" id="f-form-cancel">取消</button>
+        <button type="button" class="btn primary" id="f-form-save">儲存</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="../assets/main.js"></script>
+  <script src="flight-data.js"></script>
+  <script src="flight.js"></script>
+  <script>
+    document.addEventListener("DOMContentLoaded", () => {
+      const link = document.getElementById("f-overview-link");
+      link.href = `overview.html?activityId=${encodeURIComponent(getActivityId())}`;
+      initIndexPage();
+    });
+  </script>
+</body>
+</html>
