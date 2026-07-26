@@ -68,10 +68,11 @@ a{color:inherit;}
 }
 
 .cache-bar{
-  display:flex; align-items:center; justify-content:space-between; gap:10px;
+  display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap;
   padding: 6px 20px 14px; font-family:'IBM Plex Mono', monospace; font-size:0.72rem; color:#999;
 }
-.cache-bar .btn{ font-size:0.75rem; padding:6px 14px; }
+.cache-bar .btn{ font-size:0.75rem; padding:6px 14px; margin-left:auto; }
+.cache-status-msg{ color: var(--teal); }
 
 .grid{
   display:grid; gap: 22px;
@@ -205,8 +206,24 @@ button, .btn{
   padding: 12px 14px; font-size:0.85rem; line-height:1.5; margin: 10px 0;
 }
 .oa-reminder b{ color: var(--stamp); }
-.manager-toolbar{ display:flex; gap:8px; flex-wrap:wrap; margin: 12px 0 4px; }
-.manager-toolbar .btn{ font-size:0.8rem; padding:7px 12px; }
+.manager-toolbar{ display:flex; flex-direction:column; gap:8px; }
+.manager-toolbar .btn{ font-size:0.85rem; padding:9px 12px; text-align:left; }
+
+/* ---- 管理員 FAB（浮動按鈕）+ 彈出選單 ---- */
+.manager-fab{
+  position:fixed; right:18px; bottom:24px; z-index:40;
+  width:52px; height:52px; border-radius:50%; border:none;
+  background: var(--ink); color:#fff; font-size:1.3rem;
+  box-shadow: 0 8px 20px rgba(23,35,61,0.35); cursor:pointer;
+  display:flex; align-items:center; justify-content:center;
+}
+.manager-fab:active{ transform: scale(0.94); }
+.manager-popover{
+  position:fixed; right:18px; bottom:84px; z-index:40;
+  width:min(260px, calc(100vw - 36px));
+  background:#fff; border-radius:14px; padding:14px;
+  box-shadow: 0 12px 30px rgba(23,35,61,0.28);
+}
 .waitlist-toggle{ font-weight:600; }
 .waitlist-toggle-on{ background: rgba(47,122,114,0.12); border:1.5px solid var(--teal); color: var(--teal); }
 .waitlist-toggle-off{ background: rgba(216,87,42,0.1); border:1.5px solid var(--stamp); color: var(--stamp); }
@@ -241,7 +258,7 @@ button, .btn{
   background:#fff; color: var(--ink);
 }
 .field textarea{ min-height:70px; font-family:'IBM Plex Mono', monospace; font-size:0.8rem; }
-.field textarea.itinerary-day-textarea{ min-height:160px; }
+.field textarea.itinerary-day-textarea, .field textarea.tall-textarea{ min-height:160px; }
 .field small{ color:#888; font-size:0.72rem; }
 
 .waitlist-row{
