@@ -84,9 +84,16 @@ async function afterLogin() {
 }
 
 async function refreshMyData() {
-  const data = await apiGet("flightMy", { activityId: PAGE.activityId, userId: PAGE.profile.userId });
-  PAGE.myData = data;
-  renderMyCards();
+  document.getElementById("f-my-loading").hidden = false;
+  document.getElementById("f-my-cards").hidden = true;
+  try {
+    const data = await apiGet("flightMy", { activityId: PAGE.activityId, userId: PAGE.profile.userId });
+    PAGE.myData = data;
+    renderMyCards();
+  } finally {
+    document.getElementById("f-my-loading").hidden = true;
+    document.getElementById("f-my-cards").hidden = false;
+  }
 }
 
 function renderMyCards() {
@@ -305,10 +312,13 @@ async function deleteDirection(direction) {
    ============================================================ */
 let OV = { activityId: "", data: null, tab: "flight", direction: "go" };
 
+const SPINNER_HTML = `<div class="f-spinner-wrap"><div class="f-spinner"></div></div>`;
+
 async function initOverviewPage() {
   OV.activityId = getActivityId();
+  const bodyEl = document.getElementById("f-overview-body");
   if (!OV.activityId) {
-    document.getElementById("f-app").innerHTML = `<div class="f-empty">網址缺少 activityId 參數。</div>`;
+    bodyEl.innerHTML = `<div class="f-empty">網址缺少 activityId 參數。</div>`;
     return;
   }
   await loadConfig();
@@ -317,6 +327,8 @@ async function initOverviewPage() {
     document.getElementById("f-activity-title").textContent = activity ? activity.title : OV.activityId;
   } catch (e) {}
 
+  // 只在初始化時綁定一次事件，之後切換分頁只更新 f-overview-body 的內容，
+  // 絕不整個重寫 f-app／按鈕所在的 DOM，避免事件監聽器被換掉的問題
   document.querySelectorAll("[data-tab]").forEach(btn => btn.addEventListener("click", () => {
     OV.tab = btn.dataset.tab;
     document.querySelectorAll("[data-tab]").forEach(b => b.classList.toggle("active", b === btn));
@@ -328,9 +340,13 @@ async function initOverviewPage() {
     renderOverview();
   }));
 
-  document.getElementById("f-app").innerHTML = `<div class="f-empty">載入中…</div>` + document.getElementById("f-app").innerHTML;
-  OV.data = await apiGet("flightOverview", { activityId: OV.activityId });
-  renderOverview();
+  bodyEl.innerHTML = SPINNER_HTML;
+  try {
+    OV.data = await apiGet("flightOverview", { activityId: OV.activityId });
+    renderOverview();
+  } catch (e) {
+    bodyEl.innerHTML = `<div class="f-empty">載入失敗，請重新整理再試一次</div>`;
+  }
 }
 
 function renderOverview() {
