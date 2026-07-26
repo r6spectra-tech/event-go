@@ -3,10 +3,10 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
-<meta name="page-version" content="20260726-9">
+<meta name="page-version" content="20260726-10">
 <title>機票時刻登記</title>
-<link rel="stylesheet" href="../assets/style.css?v=20260726-9">
-<link rel="stylesheet" href="flight.css?v=20260726-9">
+<link rel="stylesheet" href="../assets/style.css?v=20260726-10">
+<link rel="stylesheet" href="flight.css?v=20260726-10">
 <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
 </head>
 <body>
@@ -25,6 +25,7 @@
     <div id="f-login-gate" class="f-login-gate" hidden>
       <p>登入 LINE 後即可查看或填寫您的機票資訊。</p>
       <button class="btn primary" id="f-login-btn">登入 LINE 開始登記</button>
+      <p style="margin-top:20px;"><a href="debug.html" style="font-size:0.75rem;color:#999;">疑難排解</a></p>
     </div>
 
     <div id="f-my" hidden>
@@ -67,11 +68,11 @@
     </div>
   </div>
 
-  <div class="f-version-tag">flight.js v20260726-9</div>
+  <div class="f-version-tag">flight.js v20260726-10</div>
 
-  <script src="../assets/main.js?v=20260726-9"></script>
-  <script src="flight-data.js?v=20260726-9"></script>
-  <script src="flight.js?v=20260726-9"></script>
+  <script src="../assets/main.js?v=20260726-10"></script>
+  <script src="flight-data.js?v=20260726-10"></script>
+  <script src="flight.js?v=20260726-10"></script>
   <script>
     document.addEventListener("DOMContentLoaded", () => {
       const link = document.getElementById("f-overview-link");

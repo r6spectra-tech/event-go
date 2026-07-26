@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
-<meta name="page-version" content="20260726-9">
+<meta name="page-version" content="20260726-10">
 <title>flight-liff 診斷頁</title>
 <style>
   body{background:#0a0a0f;color:#e5e7eb;font-family:-apple-system,sans-serif;padding:16px;margin:0;font-size:14px;line-height:1.6}
@@ -40,11 +40,11 @@
 <div id="apiTest">尚未開始</div>
 
 <script>
-const EXPECTED = "20260726-9";
+const EXPECTED = "20260726-10";
 const versionsEl = document.getElementById('versions');
 const loadsEl = document.getElementById('loads');
 const apiEl = document.getElementById('apiTest');
-window.__diag = { versions: [], loads: [], api: [] };
+window.__diag = { versions: [], loads: [], api: [], env: [] };
 
 function qs(name) {
   return new URLSearchParams(location.search).get(name) || "";
@@ -152,7 +152,9 @@ async function checkLoads() {
 
 async function runApiTest() {
   let html = '';
-  const activityId = qs('activityId');
+  // activityId 現在是寫死在 flight-data.js 的 FIXED_ACTIVITY_ID，不透過網址參數，
+  // 跟其他頁面（index/overview/admin）保持一致的行為，這裡才能真的測到跟正式頁面一樣的結果
+  const activityId = (typeof FIXED_ACTIVITY_ID !== "undefined") ? FIXED_ACTIVITY_ID : qs('activityId');
   window.__diag.api = [];
 
   if (typeof apiGet !== 'function' || typeof ensureLiff !== 'function') {
@@ -211,6 +213,8 @@ function copyMarkdown() {
     md += `- ${name}: ${status}\n`;
     if (detail) md += '  ```\n  ' + detail.replace(/\n/g, '\n  ') + '\n  ```\n';
   });
+  md += '\n**LIFF 環境與登入狀態**\n\n';
+  (d.env || []).forEach(([k, v]) => { md += `- ${k}: ${v}\n`; });
   md += '\n**GAS 連線測試**\n\n';
   (d.api || []).forEach(([name, status]) => { md += `- ${name}: ${status}\n`; });
   md += `\n(裝置: ${navigator.userAgent})\n(網址: ${location.href})\n`;
@@ -233,8 +237,12 @@ function copyMarkdown() {
 document.getElementById('testTime').textContent = '測試時間：' + new Date().toLocaleString('zh-TW', { hour12: false });
 async function checkEnvInfo() {
   const el = document.getElementById('envInfo');
+  window.__diag.env = [];
+  const push = (k, v) => { window.__diag.env.push([k, String(v)]); };
+
   if (typeof ensureLiff === 'undefined') {
     el.innerHTML = '<div class="row"><span class="pending">main.js 尚未載入完成，請等「逐一載入腳本」跑完</span></div>';
+    push('狀態', 'main.js 尚未載入完成');
     return;
   }
   let html = '';
@@ -242,33 +250,44 @@ async function checkEnvInfo() {
     await loadFlightConfig();
   } catch (e) {
     html += `<div class="row"><span>loadFlightConfig()</span><span class="fail">✗ ${e.message}</span></div>`;
+    push('loadFlightConfig()', '✗ ' + e.message);
   }
   html += `<div class="row"><span>RUNTIME.liffId（目前實際會拿去 liff.init() 的值）</span><span class="ok">${RUNTIME.liffId || '(空白，異常)'}</span></div>`;
+  push('RUNTIME.liffId', RUNTIME.liffId || '(空白，異常)');
 
   let ok = false;
   try {
     ok = await ensureLiff();
   } catch (e) {
     html += `<div class="row"><span>liff.init()</span><span class="fail">✗ ${e.message}</span></div>`;
+    push('liff.init() 錯誤', e.message);
   }
   html += `<div class="row"><span>liff.init() 是否成功</span><span class="${ok ? 'ok' : 'fail'}">${ok ? '✓ 成功' : '✗ 失敗'}</span></div>`;
+  push('liff.init() 是否成功', ok ? '成功' : '失敗');
 
   if (ok) {
     html += `<div class="row"><span>liff.isInClient()</span><span>${liff.isInClient()}</span></div>`;
+    push('liff.isInClient()', liff.isInClient());
     html += `<div class="row"><span>liff.getLineVersion()</span><span>${liff.getLineVersion ? liff.getLineVersion() : '(無法取得)'}</span></div>`;
+    push('liff.getLineVersion()', liff.getLineVersion ? liff.getLineVersion() : '(無法取得)');
     const loggedIn = liff.isLoggedIn();
     html += `<div class="row"><span>liff.isLoggedIn()</span><span class="${loggedIn ? 'ok' : 'fail'}">${loggedIn}</span></div>`;
+    push('liff.isLoggedIn()', loggedIn);
     if (loggedIn) {
       try {
         const profile = await liff.getProfile();
         html += `<div class="row"><span>userId</span><span class="ok">${profile.userId}</span></div>`;
         html += `<div class="row"><span>displayName</span><span class="ok">${profile.displayName}</span></div>`;
+        push('userId', profile.userId);
+        push('displayName', profile.displayName);
       } catch (e) {
         html += `<div class="row"><span>liff.getProfile()</span><span class="fail">✗ ${e.message}</span></div>`;
+        push('liff.getProfile() 錯誤', e.message);
       }
     }
   }
   html += `<div class="detail">目前網址：${location.href}</div>`;
+  push('目前網址', location.href);
   el.innerHTML = html;
 }
 
