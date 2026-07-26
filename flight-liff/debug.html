@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
-<meta name="page-version" content="20260726-8">
+<meta name="page-version" content="20260726-9">
 <title>flight-liff 診斷頁</title>
 <style>
   body{background:#0a0a0f;color:#e5e7eb;font-family:-apple-system,sans-serif;padding:16px;margin:0;font-size:14px;line-height:1.6}
@@ -33,11 +33,14 @@
 <h2>2. 逐一載入腳本(找出哪個檔案執行時出錯)</h2>
 <div id="loads">尚未開始</div>
 
-<h2>3. GAS 連線測試</h2>
+<h2>3. LIFF 環境與登入狀態（這次問題最關鍵）</h2>
+<div id="envInfo">尚未檢查</div>
+
+<h2>4. GAS 連線測試</h2>
 <div id="apiTest">尚未開始</div>
 
 <script>
-const EXPECTED = "20260726-8";
+const EXPECTED = "20260726-9";
 const versionsEl = document.getElementById('versions');
 const loadsEl = document.getElementById('loads');
 const apiEl = document.getElementById('apiTest');
@@ -228,10 +231,51 @@ function copyMarkdown() {
 }
 
 document.getElementById('testTime').textContent = '測試時間：' + new Date().toLocaleString('zh-TW', { hour12: false });
+async function checkEnvInfo() {
+  const el = document.getElementById('envInfo');
+  if (typeof ensureLiff === 'undefined') {
+    el.innerHTML = '<div class="row"><span class="pending">main.js 尚未載入完成，請等「逐一載入腳本」跑完</span></div>';
+    return;
+  }
+  let html = '';
+  try {
+    await loadFlightConfig();
+  } catch (e) {
+    html += `<div class="row"><span>loadFlightConfig()</span><span class="fail">✗ ${e.message}</span></div>`;
+  }
+  html += `<div class="row"><span>RUNTIME.liffId（目前實際會拿去 liff.init() 的值）</span><span class="ok">${RUNTIME.liffId || '(空白，異常)'}</span></div>`;
+
+  let ok = false;
+  try {
+    ok = await ensureLiff();
+  } catch (e) {
+    html += `<div class="row"><span>liff.init()</span><span class="fail">✗ ${e.message}</span></div>`;
+  }
+  html += `<div class="row"><span>liff.init() 是否成功</span><span class="${ok ? 'ok' : 'fail'}">${ok ? '✓ 成功' : '✗ 失敗'}</span></div>`;
+
+  if (ok) {
+    html += `<div class="row"><span>liff.isInClient()</span><span>${liff.isInClient()}</span></div>`;
+    html += `<div class="row"><span>liff.getLineVersion()</span><span>${liff.getLineVersion ? liff.getLineVersion() : '(無法取得)'}</span></div>`;
+    const loggedIn = liff.isLoggedIn();
+    html += `<div class="row"><span>liff.isLoggedIn()</span><span class="${loggedIn ? 'ok' : 'fail'}">${loggedIn}</span></div>`;
+    if (loggedIn) {
+      try {
+        const profile = await liff.getProfile();
+        html += `<div class="row"><span>userId</span><span class="ok">${profile.userId}</span></div>`;
+        html += `<div class="row"><span>displayName</span><span class="ok">${profile.displayName}</span></div>`;
+      } catch (e) {
+        html += `<div class="row"><span>liff.getProfile()</span><span class="fail">✗ ${e.message}</span></div>`;
+      }
+    }
+  }
+  html += `<div class="detail">目前網址：${location.href}</div>`;
+  el.innerHTML = html;
+}
+
 checkVersions();
-checkLoads().then(runApiTest);
+checkLoads().then(() => Promise.all([checkEnvInfo(), runApiTest()]));
 </script>
-<h2>4. LIFF 分享功能測試（shareTargetPicker）</h2>
+<h2>5. LIFF 分享功能測試（shareTargetPicker）</h2>
 <p style="font-size:12px;color:#9ca3af;margin:-4px 0 8px">
   用最簡單的純文字訊息測試分享功能，藉此排除「是 LINE 帳號/Channel 設定問題」還是「是我們自己的 Flex 內容問題」。
   如果連這個最簡單的測試在 LINE App 裡都是空白，代表問題出在 LINE Developers Console 的 Share Target Picker 設定或帳號權限，

@@ -4,8 +4,8 @@
    依賴 ./flight-data.js（FLIGHT_SCHEDULE / AIRLINES / DIRECTION_LABEL）
    ============================================================ */
 
-/* FLIGHT_JS_VERSION: 20260726-8 */
-const FLIGHT_JS_VERSION = "20260726-8";
+/* FLIGHT_JS_VERSION: 20260726-9 */
+const FLIGHT_JS_VERSION = "20260726-9";
 
 // 透過 https://liff.line.me/{liffId}?activityId=xxx 這種網址帶參數時，LINE 不會把
 // ?activityId=xxx 直接透傳給我們的頁面，而是包成一個 liff.state 參數（例如
@@ -110,7 +110,18 @@ function showLoginGate() {
 }
 
 async function onLoginClick() {
-  await requireLogin(); // 會導頁登入，登入完成後頁面重新載入，帶回原本的 activityId 參數
+  const btn = document.getElementById("f-login-btn");
+  btn.disabled = true;
+  const originalText = btn.textContent;
+  btn.textContent = "登入中…";
+  try {
+    await requireLogin(); // 正常情況下這行會導頁登入，登入完成後頁面重新載入，帶回原本的 activityId 參數
+  } catch (e) {
+    // requireLogin() 失敗時不會自動導頁，把原因秀出來，不要讓使用者看到按鈕沒反應
+    toast("登入失敗：" + e.message);
+    btn.disabled = false;
+    btn.textContent = originalText;
+  }
 }
 
 async function afterLogin() {
