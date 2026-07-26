@@ -1,3 +1,6 @@
+/* FLIGHT_DATA_VERSION: 20260726-2 */
+const FLIGHT_DATA_VERSION = "20260726-2";
+
 /* ============================================================
    固定班表資料（寫死，非即時查詢）
    松山(TSA) <-> 澎湖(MZG)，立榮 UNI AIR／華信 Mandarin Airlines

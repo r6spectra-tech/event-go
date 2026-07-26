@@ -4,6 +4,9 @@
    依賴 ./flight-data.js（FLIGHT_SCHEDULE / AIRLINES / DIRECTION_LABEL）
    ============================================================ */
 
+/* FLIGHT_JS_VERSION: 20260726-2 */
+const FLIGHT_JS_VERSION = "20260726-2";
+
 function getActivityId() {
   return new URLSearchParams(location.search).get("activityId") || "";
 }
@@ -353,22 +356,27 @@ async function initAdminPage() {
   document.getElementById("f-admin-login-btn").addEventListener("click", () => requireLogin());
   document.getElementById("f-invite-share-btn").addEventListener("click", shareInvite);
 
-  const ok = await ensureLiff();
-  if (!ok || !liff.isLoggedIn()) {
-    document.getElementById("f-admin-loading").hidden = true;
-    document.getElementById("f-admin-login-gate").hidden = false;
-    return;
-  }
-  const profile = await liff.getProfile();
-  ADMIN.profile = { userId: profile.userId, displayName: profile.displayName };
+  try {
+    const ok = await ensureLiff();
+    if (!ok || !liff.isLoggedIn()) {
+      document.getElementById("f-admin-login-gate").hidden = false;
+      return;
+    }
+    const profile = await liff.getProfile();
+    ADMIN.profile = { userId: profile.userId, displayName: profile.displayName };
 
-  const { status } = await apiGet("isManager", { userId: ADMIN.profile.userId });
-  document.getElementById("f-admin-loading").hidden = true;
-  if (status !== "approved") {
+    const { status } = await apiGet("isManager", { userId: ADMIN.profile.userId });
+    if (status !== "approved") {
+      document.getElementById("f-admin-denied").hidden = false;
+      return;
+    }
+    document.getElementById("f-admin-panel").hidden = false;
+  } catch (e) {
     document.getElementById("f-admin-denied").hidden = false;
-    return;
+    document.getElementById("f-admin-denied").textContent = "載入失敗，請重新整理再試一次";
+  } finally {
+    document.getElementById("f-admin-loading").hidden = true;
   }
-  document.getElementById("f-admin-panel").hidden = false;
 }
 
 function inviteBubble(activityTitle) {

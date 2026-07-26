@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
+<meta name="page-version" content="20260726-2">
+<title>flight-liff 診斷頁</title>
+<style>
+  body{background:#0a0a0f;color:#e5e7eb;font-family:-apple-system,sans-serif;padding:16px;margin:0;font-size:14px;line-height:1.6}
+  h1{font-size:18px;margin:0 0 16px}
+  h2{font-size:14px;color:#f59e0b;margin:24px 0 8px;border-bottom:1px solid #333;padding-bottom:4px}
+  .row{display:flex;justify-content:space-between;gap:8px;padding:6px 0;border-bottom:1px solid #1a1a1f}
+  .ok{color:#10b981}
+  .fail{color:#ef4444;font-weight:bold}
+  .pending{color:#6b7280}
+  .detail{font-size:11px;color:#9ca3af;white-space:pre-wrap;word-break:break-all;background:#111;padding:8px;border-radius:6px;margin-top:4px}
+  button{background:#d97706;color:#fff;border:none;padding:10px 16px;border-radius:8px;font-size:14px;margin-bottom:16px;margin-right:8px}
+  a{color:#60a5fa}
+</style>
+</head>
+<body>
+<h1>🔧 flight-liff 部署診斷頁</h1>
+<p id="testTime" style="color:#6b7280;font-size:12px;margin:-8px 0 4px"></p>
+<p style="margin:0 0 12px"><a href="#" id="backLink">← 回登記頁</a></p>
+<button onclick="location.reload()">重新檢查</button>
+<button onclick="copyMarkdown()" style="background:#0891b2">📋 複製診斷結果(Markdown)</button>
+<button onclick="forceReload()" style="background:#dc2626">🔄 強制清快取重新整理</button>
+<span id="copyMsg" style="font-size:12px;color:#10b981;margin-left:8px"></span>
+
+<h2>1. 檔案版本(直接讀原始文字,不執行,壞了也讀得到)</h2>
+<div id="versions">檢查中…</div>
+
+<h2>2. 逐一載入腳本(找出哪個檔案執行時出錯)</h2>
+<div id="loads">尚未開始</div>
+
+<h2>3. GAS 連線測試</h2>
+<div id="apiTest">尚未開始</div>
+
+<script>
+const EXPECTED = "20260726-2";
+const versionsEl = document.getElementById('versions');
+const loadsEl = document.getElementById('loads');
+const apiEl = document.getElementById('apiTest');
+window.__diag = { versions: [], loads: [], api: [] };
+
+function qs(name) {
+  return new URLSearchParams(location.search).get(name) || "";
+}
+document.getElementById('backLink').href = 'index.html' + location.search;
+
+function extractVersion(text, patterns) {
+  for (const p of patterns) {
+    const m = text.match(p);
+    if (m) return m[1];
+  }
+  return null;
+}
+
+function verCell(ver) {
+  const ok = ver === EXPECTED;
+  return `<span class="${ok ? 'ok' : 'fail'}">${ver || '(讀不到)'} ${ok ? '✓' : (ver ? '✗ 舊版' : '')}</span>`;
+}
+
+async function checkVersions() {
+  const files = [
+    { name: 'index.html',     patterns: [/<meta\s+name=["']page-version["']\s+content=["']([^"']+)["']/i] },
+    { name: 'overview.html',  patterns: [/<meta\s+name=["']page-version["']\s+content=["']([^"']+)["']/i] },
+    { name: 'admin.html',     patterns: [/<meta\s+name=["']page-version["']\s+content=["']([^"']+)["']/i] },
+    { name: 'debug.html',     patterns: [/<meta\s+name=["']page-version["']\s+content=["']([^"']+)["']/i] },
+    { name: 'flight.js',      patterns: [/FLIGHT_JS_VERSION:\s*([^\s*]+)/] },
+    { name: 'flight-data.js', patterns: [/FLIGHT_DATA_VERSION:\s*([^\s*]+)/] },
+    { name: 'flight.css',     patterns: [/FLIGHT_CSS_VERSION:\s*([^\s*]+)/] },
+  ];
+  let html = '';
+  for (const f of files) {
+    try {
+      const res = await fetch('./' + f.name + '?t=' + Date.now(), { cache: 'no-store' });
+      if (!res.ok) { html += `<div class="row"><span>${f.name}</span><span class="fail">HTTP ${res.status}</span></div>`; window.__diag.versions.push([f.name, 'HTTP ' + res.status]); continue; }
+      const text = await res.text();
+      const ver = extractVersion(text, f.patterns);
+      html += `<div class="row"><span>${f.name}</span>${verCell(ver)}</div>`;
+      window.__diag.versions.push([f.name, ver || '找不到版號']);
+    } catch (e) {
+      html += `<div class="row"><span>${f.name}</span><span class="fail">讀取失敗: ${e.message}</span></div>`;
+      window.__diag.versions.push([f.name, '讀取失敗: ' + e.message]);
+    }
+  }
+  versionsEl.innerHTML = html;
+}
+
+function loadScript(src) {
+  return new Promise((resolve) => {
+    const el = document.createElement('script');
+    el.src = src + '?t=' + Date.now();
+    const timer = setTimeout(() => resolve({ ok: false, msg: '逾時(10秒無回應)' }), 10000);
+    el.onload = () => { clearTimeout(timer); resolve({ ok: true }); };
+    el.onerror = () => { clearTimeout(timer); resolve({ ok: false, msg: '載入失敗(網路或404)' }); };
+    document.body.appendChild(el);
+  });
+}
+
+async function checkLoads() {
+  let html = '';
+  const errors = [];
+  window.addEventListener('error', function (e) {
+    errors.push((e.message || 'Script error') + (e.filename ? (' @ ' + e.filename.split('/').pop() + ':' + e.lineno) : ''));
+  }, true);
+
+  // 依實際頁面的載入順序：LIFF SDK -> main.js -> flight-data.js -> flight.js
+  const steps = [
+    ['LIFF SDK(CDN)', 'https://static.line-scdn.net/liff/edge/2/sdk.js'],
+    ['../assets/main.js', '../assets/main.js'],
+    ['flight-data.js', './flight-data.js'],
+    ['flight.js', './flight.js'],
+  ];
+
+  for (const [label, src] of steps) {
+    const before = errors.length;
+    const r = await loadScript(src);
+    await new Promise(res => setTimeout(res, 200));
+    const newErrs = errors.slice(before);
+    const ok = r.ok && newErrs.length === 0;
+    const msg = r.ok ? (newErrs.length ? '✗ 執行時出錯' : '✓ 載入+執行成功') : '✗ ' + r.msg;
+    html += `<div class="row"><span>${label}</span><span class="${ok ? 'ok' : 'fail'}">${msg}</span></div>`;
+    if (newErrs.length) html += `<div class="detail">${newErrs.join('\n')}</div>`;
+    window.__diag.loads.push([label, msg, newErrs.join('\n')]);
+    loadsEl.innerHTML = html;
+    if (!r.ok && label.indexOf('CDN') >= 0) {
+      html += '<div class="detail">CDN載入失敗，後面的檢查會跳過（不影響判斷本機檔案問題）</div>';
+      loadsEl.innerHTML = html;
+      return;
+    }
+  }
+
+  // 完整性檢查：關鍵函式是否都存在（load沒報錯不代表內容完整，常見於檔案沒複製完整）
+  const needFns = ['apiGet', 'apiPost', 'ensureLiff', 'requireLogin', 'loadConfig', 'getActivityId', 'initIndexPage', 'initOverviewPage', 'initAdminPage', 'flightOptionsHtml'];
+  const missing = needFns.filter(n => typeof window[n] !== 'function');
+  const fnOk = missing.length === 0;
+  const fnMsg = fnOk ? '✓ 關鍵函式齊全' : '✗ 有缺漏(檔案可能沒複製完整或版本不同步)';
+  const fnDetail = missing.length ? '缺函式: ' + missing.join(', ') : '';
+  html += `<div class="row"><span>關鍵函式完整性</span><span class="${fnOk ? 'ok' : 'fail'}">${fnMsg}</span></div>`;
+  if (fnDetail) html += `<div class="detail">${fnDetail}</div>`;
+  window.__diag.loads.push(['關鍵函式完整性', fnMsg, fnDetail]);
+
+  html += '<div class="detail" style="margin-top:12px;color:#f59e0b">檢查完成。如果某項顯示✗，上面的詳細內容就是實際錯誤，按上面「複製診斷結果」直接貼給我即可。</div>';
+  loadsEl.innerHTML = html;
+}
+
+async function runApiTest() {
+  let html = '';
+  const activityId = qs('activityId');
+  window.__diag.api = [];
+
+  if (typeof apiGet !== 'function' || typeof ensureLiff !== 'function') {
+    apiEl.innerHTML = '<div class="row"><span class="pending">main.js 未成功載入，跳過連線測試</span></div>';
+    return;
+  }
+
+  try { await loadConfig(); } catch (e) {}
+
+  let userId = 'debug-test-user';
+  try {
+    const ok = await ensureLiff();
+    if (ok && liff.isLoggedIn && liff.isLoggedIn()) {
+      const profile = await liff.getProfile();
+      userId = profile.userId;
+    }
+  } catch (e) {}
+
+  const tests = [
+    { name: 'config', run: () => apiGet('config') },
+    { name: 'flightMy', run: () => apiGet('flightMy', { activityId, userId }) },
+    { name: 'flightOverview', run: () => apiGet('flightOverview', { activityId }) },
+  ];
+
+  for (const t of tests) {
+    const start = Date.now();
+    try {
+      const data = await t.run();
+      const ms = Date.now() - start;
+      html += `<div class="row"><span>${t.name}</span><span class="ok">✓ 成功 (${ms}ms)</span></div>`;
+      window.__diag.api.push([t.name, '✓ 成功', JSON.stringify(data).slice(0, 300)]);
+    } catch (e) {
+      const ms = Date.now() - start;
+      html += `<div class="row"><span>${t.name}</span><span class="fail">✗ ${e.message} (${ms}ms)</span></div>`;
+      html += `<div class="detail">${e.message}</div>`;
+      window.__diag.api.push([t.name, '✗ ' + e.message, '']);
+    }
+    apiEl.innerHTML = html;
+  }
+  html += `<div class="detail" style="margin-top:8px;color:#6b7280">activityId=${activityId || '(無，網址沒帶這個參數)'}／userId=${userId}</div>`;
+  apiEl.innerHTML = html;
+}
+
+function forceReload() {
+  const url = new URL(location.href);
+  url.searchParams.set('_r', Date.now());
+  location.href = url.toString();
+}
+
+function copyMarkdown() {
+  const d = window.__diag;
+  let md = '### flight-liff 部署診斷結果\n\n測試時間：' + new Date().toLocaleString('zh-TW', { hour12: false }) + '\n\n**檔案版本**\n\n';
+  d.versions.forEach(([name, ver]) => { md += `- ${name}: \`${ver}\`\n`; });
+  md += '\n**逐一載入腳本**\n\n';
+  d.loads.forEach(([name, status, detail]) => {
+    md += `- ${name}: ${status}\n`;
+    if (detail) md += '  ```\n  ' + detail.replace(/\n/g, '\n  ') + '\n  ```\n';
+  });
+  md += '\n**GAS 連線測試**\n\n';
+  (d.api || []).forEach(([name, status]) => { md += `- ${name}: ${status}\n`; });
+  md += `\n(裝置: ${navigator.userAgent})\n(網址: ${location.href})\n`;
+
+  const done = () => { document.getElementById('copyMsg').textContent = '✓ 已複製，可以直接貼給我了'; setTimeout(() => { document.getElementById('copyMsg').textContent = ''; }, 3000); };
+  const fail = () => {
+    try {
+      const ta = document.createElement('textarea');
+      ta.value = md; ta.style.position = 'fixed'; ta.style.opacity = '0';
+      document.body.appendChild(ta); ta.focus(); ta.select();
+      document.execCommand('copy'); document.body.removeChild(ta);
+      done();
+    } catch (e) { document.getElementById('copyMsg').textContent = '複製失敗，請手動截圖'; }
+  };
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(md).then(done).catch(fail);
+  } else { fail(); }
+}
+
+document.getElementById('testTime').textContent = '測試時間：' + new Date().toLocaleString('zh-TW', { hour12: false });
+checkVersions();
+checkLoads().then(runApiTest);
+</script>
+</body>
+</html>

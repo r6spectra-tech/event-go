@@ -3,9 +3,10 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<meta name="page-version" content="20260726-2">
 <title>機票時刻登記</title>
-<link rel="stylesheet" href="../assets/style.css">
-<link rel="stylesheet" href="flight.css">
+<link rel="stylesheet" href="../assets/style.css?v=20260726-2">
+<link rel="stylesheet" href="flight.css?v=20260726-2">
 <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
 </head>
 <body>
@@ -18,6 +19,8 @@
 
   <div class="f-wrap" id="f-app">
     <p class="f-sub" id="f-activity-sub"></p>
+
+    <div id="f-init-loading" class="f-spinner-wrap"><div class="f-spinner"></div></div>
 
     <div id="f-login-gate" class="f-login-gate" hidden>
       <p>登入 LINE 後即可查看或填寫您的機票資訊。</p>
@@ -32,17 +35,20 @@
           <h3>去程（松山 → 澎湖）<span class="f-tag empty">尚未登記</span></h3>
           <div class="f-rows"></div>
           <div class="f-actions"></div>
+          <div class="f-share-row"></div>
         </div>
 
         <div class="f-card" id="f-card-return">
           <h3>回程（澎湖 → 松山）<span class="f-tag empty">尚未登記</span></h3>
           <div class="f-rows"></div>
           <div class="f-actions"></div>
+          <div class="f-share-row"></div>
         </div>
 
         <p class="f-sub">
           想看大家的登記狀況？<a href="overview.html" id="f-overview-link">查看總覽頁 →</a>
         </p>
+        <p class="f-sub"><a href="admin.html" id="f-admin-link">主辦人管理入口 →</a></p>
       </div>
     </div>
 
@@ -57,13 +63,16 @@
     </div>
   </div>
 
-  <script src="../assets/main.js"></script>
-  <script src="flight-data.js"></script>
-  <script src="flight.js"></script>
+  <div class="f-version-tag">flight.js v20260726-2</div>
+
+  <script src="../assets/main.js?v=20260726-2"></script>
+  <script src="flight-data.js?v=20260726-2"></script>
+  <script src="flight.js?v=20260726-2"></script>
   <script>
     document.addEventListener("DOMContentLoaded", () => {
       const link = document.getElementById("f-overview-link");
       link.href = `overview.html?activityId=${encodeURIComponent(getActivityId())}`;
+      document.getElementById("f-admin-link").href = `admin.html?activityId=${encodeURIComponent(getActivityId())}`;
       initIndexPage();
     });
   </script>

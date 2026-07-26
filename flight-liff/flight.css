@@ -1,3 +1,4 @@
+/* FLIGHT_CSS_VERSION: 20260726-2 */
 /* flight-liff 專屬樣式，沿用 assets/style.css 的 --ink / --paper / --teal / --stamp / --sand 色票 */
 
 .f-wrap{ max-width: 640px; margin: 0 auto; padding: 0 18px 60px; }
@@ -105,6 +106,11 @@
 
 .f-login-gate{ text-align:center; padding:60px 20px; }
 .f-login-gate .btn{ margin-top:16px; }
+
+.f-version-tag{
+  position:fixed; bottom:4px; right:8px; font-family:'IBM Plex Mono', monospace;
+  font-size:0.62rem; color:#aaa; background:rgba(255,255,255,0.75); padding:1px 6px; border-radius:6px; z-index:2;
+}
 
 .f-toast{
   position:fixed; left:50%; bottom:24px; transform:translateX(-50%);
