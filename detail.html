@@ -33,6 +33,11 @@
   </div>
 </div>
 
+<button type="button" id="managerFab" class="manager-fab" style="display:none;">⚙️</button>
+<div id="managerPopover" class="manager-popover" style="display:none;">
+  <div id="managerPopoverContent"></div>
+</div>
+
 <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
 <script src="assets/main.js"></script>
 <script>
@@ -124,7 +129,6 @@ function render(a){
   document.title = a.title;
   document.getElementById("content").innerHTML = `
     ${a.cover ? `<img class="hero-img" src="${a.cover}" alt="${a.title}">` : ""}
-    <div id="managerToolbar"></div>
     <p class="detail-title">${a.title}</p>
     <p class="detail-meta">${a.area}｜${a.date}${a.price ? `｜NT$ ${a.price}` : ""}</p>
 
@@ -223,12 +227,13 @@ function wireJoinButtons(a){
 }
 
 async function loadManagerToolbar(a, userId){
-  const box = document.getElementById("managerToolbar");
-  if(!box) return;
+  const fab = document.getElementById("managerFab");
+  const content = document.getElementById("managerPopoverContent");
+  if(!fab || !content) return;
   try{
     const { status } = await checkIsManager(userId);
-    if(status !== "approved") return;
-    box.innerHTML = `
+    if(status !== "approved") return; // 不是管理者就完全不顯示 FAB，一般使用者不受影響
+    content.innerHTML = `
       <div class="manager-toolbar">
         <a class="btn btn-ghost" href="index.html">← 回清單</a>
         <a class="btn btn-ghost" href="admin/edit-activity.html?id=${encodeURIComponent(a.id)}">✏️ 編輯此活動</a>
@@ -237,6 +242,7 @@ async function loadManagerToolbar(a, userId){
         <button type="button" class="btn waitlist-toggle" id="waitlistToggleBtn"></button>
       </div>
     `;
+    fab.style.display = "flex"; // 背景驗證完成、確定是管理者，才把 FAB 顯示出來
     try{
       const { count } = await adminGetWaitlistCount(a.id, userId);
       document.getElementById("waitlistCountLink").textContent = `候補 ${count} 人 →`;
@@ -250,6 +256,12 @@ async function loadManagerToolbar(a, userId){
   }catch(e){
     console.warn("管理者狀態載入失敗", e);
   }
+}
+
+function toggleManagerPopover(){
+  const popover = document.getElementById("managerPopover");
+  const isOpen = popover.style.display !== "none";
+  popover.style.display = isOpen ? "none" : "block";
 }
 
 function renderWaitlistToggle(a, userId){
@@ -327,16 +339,33 @@ async function refreshActivity(id){
   return { changed: true, activity: a, fetchedAt: Date.now() };
 }
 
-async function renderActivity(a, profile){
-  if(profile){
-    try{
-      a.myStatus = await getMyActivityStatus(a.id);
-    }catch(e){
-      console.warn("讀取個人狀態失敗", e);
-    }
-  }
+// 先把頁面主要內容渲染出來，不等任何額外的 API 呼叫——一般使用者馬上就能看到活動內容跟照片。
+// 個人狀態（已參加/候補中...）在背景抓，抓到才局部更新「報名情形」彈窗（如果剛好開著）；
+// 管理員權限檢查完全排到背景執行（idle 時段），不會拖慢一般使用者的載入體驗。
+function renderActivity(a, profile){
   render(a);
-  if(profile) loadManagerToolbar(a, profile.userId);
+
+  if(profile){
+    getMyActivityStatus(a.id).then(status => {
+      a.myStatus = status;
+      const modal = document.getElementById("rsvpModal");
+      if(modal && modal.style.display !== "none"){
+        document.getElementById("rsvpModalBody").innerHTML = joinBlock(a);
+        wireJoinButtons(a);
+      }
+    }).catch(e => console.warn("讀取個人狀態失敗", e));
+
+    scheduleIdle(() => loadManagerToolbar(a, profile.userId));
+  }
+}
+
+// 優先用 requestIdleCallback（瀏覽器閒置時才執行），不支援的環境退回 setTimeout
+function scheduleIdle(fn){
+  if(window.requestIdleCallback){
+    requestIdleCallback(fn, { timeout: 2000 });
+  }else{
+    setTimeout(fn, 50);
+  }
 }
 
 async function main(){
@@ -359,7 +388,7 @@ async function main(){
       document.getElementById("content").innerHTML = `<div class="empty">找不到這個活動</div>`;
       return;
     }
-    await renderActivity(a, profile);
+    renderActivity(a, profile);
 
     // 如果是點了別人分享的連結進來（網址帶 refId/refName），記錄下來給「閱讀記錄」頁用
     const params = new URLSearchParams(location.search);
@@ -377,7 +406,7 @@ async function main(){
       }
       statusEl.textContent = "（已更新）";
       setTimeout(()=>{ statusEl.textContent = ""; }, 4000);
-      if(result.activity) await renderActivity(result.activity, profile);
+      if(result.activity) renderActivity(result.activity, profile);
       return result.fetchedAt;
     });
   }catch(e){
@@ -392,6 +421,7 @@ document.getElementById("rsvpModalClose").addEventListener("click", closeRsvpMod
 document.getElementById("rsvpModal").addEventListener("click", (e)=>{
   if(e.target.id === "rsvpModal") closeRsvpModal(); // 點背景遮罩也能關閉
 });
+document.getElementById("managerFab").addEventListener("click", toggleManagerPopover);
 </script>
 </body>
 </html>
