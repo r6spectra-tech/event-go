@@ -12,7 +12,7 @@
   <div class="topbar">
     <div>
       <span class="f-eyebrow">機票時刻登記</span>
-      <h1 id="f-activity-title">載入中…</h1>
+      <h1 id="f-activity-title"><span class="f-spinner-inline"></span></h1>
     </div>
   </div>
 
@@ -25,21 +25,25 @@
     </div>
 
     <div id="f-my" hidden>
-      <div class="f-card" id="f-card-go">
-        <h3>去程（松山 → 澎湖）<span class="f-tag empty">尚未登記</span></h3>
-        <div class="f-rows"></div>
-        <div class="f-actions"></div>
-      </div>
+      <div id="f-my-loading" class="f-spinner-wrap"><div class="f-spinner"></div></div>
 
-      <div class="f-card" id="f-card-return">
-        <h3>回程（澎湖 → 松山）<span class="f-tag empty">尚未登記</span></h3>
-        <div class="f-rows"></div>
-        <div class="f-actions"></div>
-      </div>
+      <div id="f-my-cards" hidden>
+        <div class="f-card" id="f-card-go">
+          <h3>去程（松山 → 澎湖）<span class="f-tag empty">尚未登記</span></h3>
+          <div class="f-rows"></div>
+          <div class="f-actions"></div>
+        </div>
 
-      <p class="f-sub">
-        想看大家的登記狀況？<a href="overview.html" id="f-overview-link">查看總覽頁 →</a>
-      </p>
+        <div class="f-card" id="f-card-return">
+          <h3>回程（澎湖 → 松山）<span class="f-tag empty">尚未登記</span></h3>
+          <div class="f-rows"></div>
+          <div class="f-actions"></div>
+        </div>
+
+        <p class="f-sub">
+          想看大家的登記狀況？<a href="overview.html" id="f-overview-link">查看總覽頁 →</a>
+        </p>
+      </div>
     </div>
 
     <div id="f-form-section" hidden>
