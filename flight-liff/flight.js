@@ -4,8 +4,8 @@
    依賴 ./flight-data.js（FLIGHT_SCHEDULE / AIRLINES / DIRECTION_LABEL）
    ============================================================ */
 
-/* FLIGHT_JS_VERSION: 20260726-10 */
-const FLIGHT_JS_VERSION = "20260726-10";
+/* FLIGHT_JS_VERSION: 20260726-12 */
+const FLIGHT_JS_VERSION = "20260726-12";
 
 // 透過 https://liff.line.me/{liffId}?activityId=xxx 這種網址帶參數時，LINE 不會把
 // ?activityId=xxx 直接透傳給我們的頁面，而是包成一個 liff.state 參數（例如
@@ -53,17 +53,21 @@ function toast(msg) {
   setTimeout(() => el.remove(), 2600);
 }
 
-function flightOptionsHtml(direction, selectedValue) {
+function flightOptionsHtml(direction, airport, selectedValue) {
   let html = `<option value="">請選擇航班</option>`;
   Object.values(AIRLINES).forEach(a => {
+    const list = (FLIGHT_SCHEDULE[direction][airport] && FLIGHT_SCHEDULE[direction][airport][a.key]) || [];
+    if (list.length === 0) return; // 這個機場這家航空沒有資料就不顯示這組
     html += `<optgroup label="${a.label}">`;
-    (FLIGHT_SCHEDULE[direction][a.key] || []).forEach(f => {
+    list.forEach(f => {
       const v = flightOptionValue(a.key, f);
       const sel = v === selectedValue ? "selected" : "";
       html += `<option value="${v}" ${sel}>${f.dep}–${f.arr}（${f.flightNo}）</option>`;
     });
     html += `</optgroup>`;
   });
+  const manualSel = selectedValue === "manual" ? "selected" : "";
+  html += `<option value="manual" ${manualSel}>其他（自行輸入航班資訊）</option>`;
   return html;
 }
 
@@ -237,7 +241,7 @@ function escapeHtml(s) {
 function openNewForm(direction) {
   PAGE.editingDirection = direction;
   PAGE.formMembers = [
-    { isSelf: true, name: PAGE.profile.displayName, date: DEFAULT_DATES[direction], airline: "", flightNo: "", dep: "", arr: "", removed: false },
+    { isSelf: true, name: PAGE.profile.displayName, date: DEFAULT_DATES[direction], airport: DEFAULT_AIRPORT, manual: false, airline: "", flightNo: "", dep: "", arr: "", removed: false },
   ];
   renderForm();
   showForm();
@@ -249,13 +253,21 @@ function openEditForm(direction) {
   const list = PAGE.myData[direction];
   const selfRow = list.find(r => r.isSelf === true || r.isSelf === "TRUE" || r.isSelf === "true");
   const others = list.filter(r => r !== selfRow);
+
+  function toMember(r, isSelf, sameAsSelf) {
+    const airport = findAirportForFlight(direction, r.airline, r.flightNo);
+    return {
+      isSelf, name: r.name, date: r.flightDate,
+      airport: airport || DEFAULT_AIRPORT,
+      manual: airport === null,
+      airline: r.airline, flightNo: r.flightNo, dep: r.depTime, arr: r.arrTime,
+      sameAsSelf, removed: false,
+    };
+  }
+
   PAGE.formMembers = [
-    { isSelf: true, name: selfRow.name, date: selfRow.flightDate, airline: selfRow.airline, flightNo: selfRow.flightNo, dep: selfRow.depTime, arr: selfRow.arrTime, removed: false },
-    ...others.map(r => ({
-      isSelf: false, name: r.name, date: r.flightDate, airline: r.airline, flightNo: r.flightNo, dep: r.depTime, arr: r.arrTime,
-      sameAsSelf: r.flightNo === selfRow.flightNo && r.flightDate === selfRow.flightDate,
-      removed: false,
-    })),
+    toMember(selfRow, true),
+    ...others.map(r => toMember(r, false, r.flightNo === selfRow.flightNo && r.flightDate === selfRow.flightDate)),
   ];
   renderForm();
   showForm();
@@ -278,6 +290,33 @@ function renderForm() {
   container.innerHTML = PAGE.formMembers.map((m, i) => renderMemberHtml(m, i)).join("");
 }
 
+function airportSelectHtml(direction, m) {
+  const label = direction === "go" ? "出發地" : "抵達地";
+  return `
+    <div class="f-field"><label>${label}</label>
+      <select data-role="airport">
+        ${Object.values(AIRPORTS).map(a => `<option value="${a.key}" ${a.key === (m.airport || DEFAULT_AIRPORT) ? "selected" : ""}>${a.label}</option>`).join("")}
+      </select>
+    </div>`;
+}
+
+function flightFieldsHtml(direction, m) {
+  const currentValue = m.manual
+    ? "manual"
+    : (m.airline && m.flightNo ? flightOptionValue(m.airline, { flightNo: m.flightNo, dep: m.dep, arr: m.arr }) : "");
+  const select = `
+    <div class="f-field"><label>航班</label>
+      <select data-role="flight">${flightOptionsHtml(direction, m.airport || DEFAULT_AIRPORT, currentValue)}</select>
+    </div>`;
+  const manualFields = m.manual ? `
+    <div class="f-field"><label>航空公司</label><input type="text" data-role="manualAirline" placeholder="例如：德安航空" value="${escapeHtml(m.airline || "")}"></div>
+    <div class="f-field"><label>航班編號</label><input type="text" data-role="manualFlightNo" placeholder="例如：GE123" value="${escapeHtml(m.flightNo || "")}"></div>
+    <div class="f-field"><label>起飛時間</label><input type="time" data-role="manualDep" value="${m.dep || ""}"></div>
+    <div class="f-field"><label>抵達時間</label><input type="time" data-role="manualArr" value="${m.arr || ""}"></div>
+  ` : "";
+  return select + manualFields;
+}
+
 function renderMemberHtml(m, idx) {
   const direction = PAGE.editingDirection;
   const removedClass = m.removed ? "removed" : "";
@@ -290,9 +329,8 @@ function renderMemberHtml(m, idx) {
         <div class="f-member-body">
           <div class="f-field"><label>姓名</label><input type="text" value="${escapeHtml(m.name)}" disabled></div>
           <div class="f-field"><label>日期</label><input type="date" data-role="date" value="${m.date || ""}"></div>
-          <div class="f-field"><label>航班</label>
-            <select data-role="flight">${flightOptionsHtml(direction, flightOptionValue(m.airline, { flightNo: m.flightNo, dep: m.dep, arr: m.arr }))}</select>
-          </div>
+          ${airportSelectHtml(direction, m)}
+          ${flightFieldsHtml(direction, m)}
         </div>
       </div>`;
   }
@@ -310,9 +348,8 @@ function renderMemberHtml(m, idx) {
         </label>
         <div class="f-own-flight" ${m.sameAsSelf !== false ? 'hidden' : ""}>
           <div class="f-field"><label>日期</label><input type="date" data-role="date" value="${m.date || DEFAULT_DATES[direction]}"></div>
-          <div class="f-field"><label>航班</label>
-            <select data-role="flight">${flightOptionsHtml(direction, flightOptionValue(m.airline, { flightNo: m.flightNo, dep: m.dep, arr: m.arr }))}</select>
-          </div>
+          ${airportSelectHtml(direction, m)}
+          ${flightFieldsHtml(direction, m)}
         </div>
       </div>
     </div>`;
@@ -339,10 +376,29 @@ function bindFormEvents() {
 
     if (role === "name") m.name = e.target.value;
     if (role === "date") m.date = e.target.value;
-    if (role === "flight") {
-      const parsed = parseFlightOptionValue(e.target.value);
-      if (parsed) { m.airline = parsed.airline; m.flightNo = parsed.flightNo; m.dep = parsed.dep; m.arr = parsed.arr; }
+    if (role === "airport") {
+      // 換機場後原本選的航班不一定還適用，清空重選比較不會誤植錯誤的班機資訊
+      m.airport = e.target.value;
+      m.manual = false;
+      m.airline = ""; m.flightNo = ""; m.dep = ""; m.arr = "";
+      renderForm();
     }
+    if (role === "flight") {
+      if (e.target.value === "manual") {
+        m.manual = true;
+        m.airline = ""; m.flightNo = ""; m.dep = ""; m.arr = "";
+      } else {
+        m.manual = false;
+        const parsed = parseFlightOptionValue(e.target.value);
+        if (parsed) { m.airline = parsed.airline; m.flightNo = parsed.flightNo; m.dep = parsed.dep; m.arr = parsed.arr; }
+        else { m.airline = ""; m.flightNo = ""; m.dep = ""; m.arr = ""; }
+      }
+      renderForm();
+    }
+    if (role === "manualAirline") m.airline = e.target.value;
+    if (role === "manualFlightNo") m.flightNo = e.target.value;
+    if (role === "manualDep") m.dep = e.target.value;
+    if (role === "manualArr") m.arr = e.target.value;
     if (role === "same") {
       m.sameAsSelf = e.target.checked;
       renderForm();
@@ -350,7 +406,10 @@ function bindFormEvents() {
   });
 
   document.getElementById("f-add-member").addEventListener("click", () => {
-    PAGE.formMembers.push({ isSelf: false, name: "", date: DEFAULT_DATES[PAGE.editingDirection], airline: "", flightNo: "", dep: "", arr: "", sameAsSelf: true, removed: false });
+    PAGE.formMembers.push({
+      isSelf: false, name: "", date: DEFAULT_DATES[PAGE.editingDirection], airport: DEFAULT_AIRPORT,
+      manual: false, airline: "", flightNo: "", dep: "", arr: "", sameAsSelf: true, removed: false,
+    });
     renderForm();
   });
 
@@ -362,7 +421,7 @@ async function submitForm() {
   const direction = PAGE.editingDirection;
   const self = PAGE.formMembers[0];
   if (!self.airline || !self.flightNo || !self.date) {
-    toast("請選擇您自己的航班與日期");
+    toast("請選擇您自己的航班與日期（自行輸入的話，航空公司／航班編號／時間都要填）");
     return;
   }
   const kept = PAGE.formMembers.filter(m => !m.removed);
@@ -412,7 +471,9 @@ async function deleteDirection(direction) {
 // 完成登記回報：分享一張自己的飛機資訊卡片到群組，附「前往登記」按鈕方便還沒填的人直接點進去。
 // 不寫分享者自己的 LINE 名稱，因為是自己分享自己的，看的人自然知道是誰傳的。
 function completionBubble(flightLine, timestampText) {
-  const link = `${RUNTIME.siteUrl}/flight-liff/index.html?activityId=${encodeURIComponent(PAGE.activityId)}`;
+  // 改用 liff.line.me 入口網址（不帶路徑/參數，activityId 已寫死不需要）,而不是純網址，
+  // 這樣點進去的人會有真正的 LIFF 原生環境（isInClient()=true），他們自己要用分享功能時才會正常。
+  const link = `https://liff.line.me/${RUNTIME.liffId}`;
   return {
     type: "bubble",
     body: {
@@ -632,7 +693,7 @@ async function initAdminPage() {
 }
 
 function inviteBubble(activityTitle) {
-  const link = `${RUNTIME.siteUrl}/flight-liff/index.html?activityId=${encodeURIComponent(ADMIN.activityId)}`;
+  const link = `https://liff.line.me/${RUNTIME.liffId}`;
   return {
     type: "bubble",
     body: {
@@ -821,7 +882,7 @@ function renderOverview() {
   } else {
     const dateGroups = dirData.byHour || [];
     if (dateGroups.length === 0) { el.innerHTML = `<div class="f-empty">目前還沒有人登記</div>`; return; }
-    const arrivalLabel = OV.direction === "go" ? "抵達澎湖" : "抵達松山";
+    const arrivalLabel = OV.direction === "go" ? "抵達澎湖" : "抵達目的地";
     el.innerHTML = dateGroups.map(dg => `
       <div class="f-date-caption">${dg.date}</div>
       ${dg.hours.map(h => {

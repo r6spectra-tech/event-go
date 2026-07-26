@@ -1,4 +1,4 @@
-/* FLIGHT_CSS_VERSION: 20260726-10 */
+/* FLIGHT_CSS_VERSION: 20260726-12 */
 /* flight-liff 專屬樣式，沿用 assets/style.css 的 --ink / --paper / --teal / --stamp / --sand 色票 */
 
 /* 全域強制規則：任何有 hidden 屬性的元素一律不顯示，優先權設到最高。
@@ -68,7 +68,7 @@
 
 .f-field{ margin-bottom:14px; }
 .f-field label{ display:block; font-size:0.78rem; color:#666; margin-bottom:5px; font-weight:600; }
-.f-field select, .f-field input[type="date"], .f-field input[type="text"]{
+.f-field select, .f-field input[type="date"], .f-field input[type="text"], .f-field input[type="time"]{
   width:100%; padding:10px 12px; border:1.5px solid var(--line); border-radius:9px;
   font-family:'Inter',sans-serif; font-size:0.92rem; background:#fff; color:var(--ink);
 }
