@@ -1,5 +1,5 @@
-/* FLIGHT_DATA_VERSION: 20260726-12 */
-const FLIGHT_DATA_VERSION = "20260726-12";
+/* FLIGHT_DATA_VERSION: 20260726-13 */
+const FLIGHT_DATA_VERSION = "20260726-13";
 
 // 目前先寫死指向這次的活動，不透過網址參數帶入，activityId 之後如果要做成通用系統
 // （支援多個不同活動各自登記機票）再改回從網址讀取。
@@ -8,10 +8,10 @@ const FIXED_ACTIVITY_TITLE = "澎湖四日遊(跳島吉貝嶼.桶盤嶼.虎井�
 
 /* ============================================================
    固定班表資料（寫死，非即時查詢）
-   目的地固定澎湖(MZG)，出發地（去程）／抵達地（回程）可選：松山／高雄／台南
+   目的地固定澎湖(MZG)，出發地（去程）／抵達地（回程）可選：松山／台中／高雄／台南
    班表異動時直接改這個檔案即可，不需要動其他程式碼。
-   目前只有松山<->澎湖有實際查到的班表資料；高雄／台南目前沒有現成時刻表，
-   選這兩個機場時航班下拉選單會是空的，一律用「其他（自行輸入）」手動填。
+   每個機場的航班下拉選單最後都固定有「其他（自行輸入）」選項，遇到查表以外的航班
+   （例如中秋連假加班機）直接選這個手動填即可，不用等資料補齊。
    ============================================================ */
 const AIRLINES = {
   uni: { key: "uni", label: "立榮 UNI AIR" },
@@ -20,12 +20,13 @@ const AIRLINES = {
 
 const AIRPORTS = {
   tsa: { key: "tsa", label: "松山 (TSA)" },
+  rmq: { key: "rmq", label: "台中 (RMQ)" },
   khh: { key: "khh", label: "高雄 (KHH)" },
   tnn: { key: "tnn", label: "台南 (TNN)" },
 };
 const DEFAULT_AIRPORT = "tsa";
 
-// go：（松山／高雄／台南） -> 澎湖（去程）／ return：澎湖 -> （松山／高雄／台南）（回程）
+// go：（松山／台中／高雄／台南） -> 澎湖（去程）／ return：澎湖 -> （松山／台中／高雄／台南）（回程）
 const FLIGHT_SCHEDULE = {
   go: {
     tsa: {
@@ -53,8 +54,52 @@ const FLIGHT_SCHEDULE = {
         { flightNo: "AE385", dep: "19:50", arr: "20:50" },
       ],
     },
-    khh: { uni: [], mandarin: [] },
-    tnn: { uni: [], mandarin: [] },
+    rmq: {
+      uni: [
+        { flightNo: "B7-8635", dep: "08:20", arr: "09:05" },
+        { flightNo: "B7-8637", dep: "10:25", arr: "11:10" },
+        { flightNo: "B7-8639", dep: "14:40", arr: "15:25" },
+        { flightNo: "B7-8655", dep: "18:30", arr: "19:15" },
+      ],
+      mandarin: [
+        { flightNo: "AE781", dep: "07:30", arr: "08:15" },
+        { flightNo: "AE783", dep: "08:30", arr: "09:15" },
+        { flightNo: "AE785", dep: "10:45", arr: "11:30" },
+        { flightNo: "AE787", dep: "13:30", arr: "14:15" },
+        { flightNo: "AE789", dep: "14:50", arr: "15:35" },
+        { flightNo: "AE791", dep: "16:05", arr: "16:50" },
+        { flightNo: "AE793", dep: "16:55", arr: "17:40" },
+        { flightNo: "AE797", dep: "19:00", arr: "19:45" },
+      ],
+    },
+    khh: {
+      uni: [
+        { flightNo: "B7-8689", dep: "07:00", arr: "07:45" },
+        { flightNo: "B7-8691", dep: "07:25", arr: "08:10" },
+        { flightNo: "B7-8695", dep: "09:30", arr: "10:15" },
+        { flightNo: "B7-8701", dep: "12:25", arr: "13:10" },
+        { flightNo: "B7-8705", dep: "13:30", arr: "14:15" },
+        { flightNo: "B7-8707", dep: "15:25", arr: "16:10" },
+        { flightNo: "B7-8709", dep: "18:00", arr: "18:45" },
+        { flightNo: "B7-8715", dep: "19:15", arr: "20:00" },
+        { flightNo: "B7-8717", dep: "20:40", arr: "21:25" },
+      ],
+      mandarin: [
+        { flightNo: "AE333", dep: "07:35", arr: "08:20" },
+        { flightNo: "AE335", dep: "10:50", arr: "11:35" },
+        { flightNo: "AE341", dep: "14:20", arr: "15:05" },
+        { flightNo: "AE345", dep: "17:10", arr: "17:55" },
+        { flightNo: "AE357", dep: "18:50", arr: "19:35" },
+      ],
+    },
+    tnn: {
+      uni: [
+        { flightNo: "B7-8675", dep: "07:20", arr: "07:50" },
+        { flightNo: "B7-8681", dep: "15:00", arr: "15:30" },
+        { flightNo: "B7-8683", dep: "18:05", arr: "18:35" },
+      ],
+      mandarin: [],
+    },
   },
   return: {
     tsa: {
@@ -82,8 +127,57 @@ const FLIGHT_SCHEDULE = {
         { flightNo: "AE386", dep: "21:20", arr: "22:15" },
       ],
     },
-    khh: { uni: [], mandarin: [] },
-    tnn: { uni: [], mandarin: [] },
+    rmq: {
+      uni: [
+        { flightNo: "B7-8636", dep: "09:45", arr: "10:25" },
+        { flightNo: "B7-8638", dep: "11:55", arr: "12:35" },
+        { flightNo: "B7-8652", dep: "16:05", arr: "16:45" },
+        { flightNo: "B7-8640", dep: "19:55", arr: "20:35" },
+      ],
+      mandarin: [
+        { flightNo: "AE782", dep: "08:50", arr: "09:30" },
+        { flightNo: "AE784", dep: "09:50", arr: "10:30" },
+        { flightNo: "AE786", dep: "12:15", arr: "12:55" },
+        { flightNo: "AE788", dep: "14:50", arr: "15:30" },
+        { flightNo: "AE790", dep: "16:20", arr: "17:00" },
+        { flightNo: "AE792", dep: "17:35", arr: "18:15" },
+        { flightNo: "AE794", dep: "18:20", arr: "19:00" },
+        { flightNo: "AE798", dep: "20:25", arr: "21:05" },
+      ],
+    },
+    khh: {
+      uni: [
+        { flightNo: "B7-8690", dep: "08:20", arr: "09:00" },
+        { flightNo: "B7-9162", dep: "08:45", arr: "09:25" },
+        { flightNo: "B7-8692", dep: "09:15", arr: "09:55" },
+        { flightNo: "B7-8696", dep: "11:00", arr: "11:40" },
+        { flightNo: "B7-8698", dep: "13:05", arr: "13:45" },
+        { flightNo: "B7-8702", dep: "16:15", arr: "16:55" },
+        { flightNo: "B7-9172", dep: "17:10", arr: "17:50" },
+        { flightNo: "B7-8712", dep: "17:40", arr: "18:20" },
+        { flightNo: "B7-8710", dep: "19:10", arr: "19:50" },
+        { flightNo: "B7-8716", dep: "20:00", arr: "20:40" },
+        { flightNo: "B7-8718", dep: "20:30", arr: "21:10" },
+      ],
+      mandarin: [
+        { flightNo: "AE332", dep: "09:00", arr: "09:40" },
+        { flightNo: "AE334", dep: "10:00", arr: "10:40" },
+        { flightNo: "AE336", dep: "12:00", arr: "12:40" },
+        { flightNo: "AE338", dep: "13:10", arr: "13:50" },
+        { flightNo: "AE340", dep: "15:00", arr: "15:40" },
+        { flightNo: "AE342", dep: "16:00", arr: "16:40" },
+        { flightNo: "AE344", dep: "17:30", arr: "18:10" },
+        { flightNo: "AE346", dep: "18:50", arr: "19:30" },
+      ],
+    },
+    tnn: {
+      uni: [
+        { flightNo: "B7-8676", dep: "08:30", arr: "09:05" },
+        { flightNo: "B7-8680", dep: "13:50", arr: "14:25" },
+        { flightNo: "B7-8682", dep: "16:50", arr: "17:25" },
+      ],
+      mandarin: [],
+    },
   },
 };
 
