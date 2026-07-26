@@ -1,4 +1,4 @@
-/* FLIGHT_CSS_VERSION: 20260726-12 */
+/* FLIGHT_CSS_VERSION: 20260726-14 */
 /* flight-liff 專屬樣式，沿用 assets/style.css 的 --ink / --paper / --teal / --stamp / --sand 色票 */
 
 /* 全域強制規則：任何有 hidden 屬性的元素一律不顯示，優先權設到最高。
@@ -54,6 +54,9 @@
 .f-actions .btn{ flex:1; text-align:center; }
 .f-share-row{ margin-top:8px; display:flex; flex-direction:column; gap:6px; }
 .f-share-row .btn{ width:100%; text-align:center; border-color:var(--line); color:#555; font-size:0.8rem; }
+
+#f-share-both{ margin:14px 0; }
+#f-share-both .btn{ width:100%; text-align:center; border-color:var(--teal); color:var(--teal); font-size:0.85rem; }
 
 .btn{
   display:inline-block; border:1.5px solid var(--ink); border-radius:10px;

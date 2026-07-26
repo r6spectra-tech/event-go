@@ -4,8 +4,8 @@
    依賴 ./flight-data.js（FLIGHT_SCHEDULE / AIRLINES / DIRECTION_LABEL）
    ============================================================ */
 
-/* FLIGHT_JS_VERSION: 20260726-12 */
-const FLIGHT_JS_VERSION = "20260726-12";
+/* FLIGHT_JS_VERSION: 20260726-14 */
+const FLIGHT_JS_VERSION = "20260726-14";
 
 // 透過 https://liff.line.me/{liffId}?activityId=xxx 這種網址帶參數時，LINE 不會把
 // ?activityId=xxx 直接透傳給我們的頁面，而是包成一個 liff.state 參數（例如
@@ -152,6 +152,7 @@ async function refreshMyData() {
 function renderMyCards() {
   renderMyCard("go");
   renderMyCard("return");
+  renderShareBothButton();
   renderClaimedCards();
 }
 
@@ -190,9 +191,19 @@ function renderMyCard(direction) {
   }
 
   const shareRow = card.querySelector(".f-share-row");
-  shareRow.innerHTML = hasData
-    ? `<button class="btn ghost" onclick="shareCompletion('${direction}')">📣 分享到群組，回報已完成登記</button>` +
-      (list.length > 1 ? `<button class="btn ghost" onclick="shareClaimInvite('${direction}')">👥 邀請同行人歸戶</button>` : "")
+  shareRow.innerHTML = hasData && list.length > 1
+    ? `<button class="btn ghost" onclick="shareClaimInvite('${direction}')">👥 邀請同行人歸戶</button>`
+    : "";
+}
+
+// 完成登記回報：去程／回程只要有登記，一次合併成一則訊息分享，不用分開點兩次
+function renderShareBothButton() {
+  const el = document.getElementById("f-share-both");
+  if (!el) return;
+  const hasGo = (PAGE.myData.go || []).length > 0;
+  const hasReturn = (PAGE.myData.return || []).length > 0;
+  el.innerHTML = (hasGo || hasReturn)
+    ? `<button class="btn ghost" onclick="shareCompletion()">📣 分享到群組，回報已完成登記</button>`
     : "";
 }
 
@@ -470,42 +481,53 @@ async function deleteDirection(direction) {
 
 // 完成登記回報：分享一張自己的飛機資訊卡片到群組，附「前往登記」按鈕方便還沒填的人直接點進去。
 // 不寫分享者自己的 LINE 名稱，因為是自己分享自己的，看的人自然知道是誰傳的。
-function completionBubble(flightLine, timestampText) {
+function buildFlightLine(r) {
+  return `${AIRLINES[r.airline]?.label || r.airline}｜${r.flightNo}｜${r.flightDate}｜${r.depTime}–${r.arrTime}`;
+}
+
+function completionBubble(entries, timestampText) {
   // 改用 liff.line.me 入口網址（不帶路徑/參數，activityId 已寫死不需要）,而不是純網址，
   // 這樣點進去的人會有真正的 LIFF 原生環境（isInClient()=true），他們自己要用分享功能時才會正常。
   const link = `https://liff.line.me/${RUNTIME.liffId}`;
+  const bodyContents = [
+    { type: "text", text: "完成登記飛機資訊！", weight: "bold", size: "lg", color: "#2F7A72", wrap: true },
+  ];
+  entries.forEach((e, i) => {
+    bodyContents.push({ type: "text", text: e.label, size: "sm", color: "#666666", margin: i === 0 ? "md" : "lg" });
+    bodyContents.push({ type: "text", text: e.flightLine, weight: "bold", size: "md", wrap: true, margin: "xs" });
+  });
   return {
     type: "bubble",
-    body: {
-      type: "box", layout: "vertical", spacing: "sm",
-      contents: [
-        { type: "text", text: "完成登記飛機資訊！", weight: "bold", size: "lg", color: "#2F7A72", wrap: true },
-        { type: "text", text: "我的飛機資訊：", size: "sm", color: "#666666", margin: "md" },
-        { type: "text", text: flightLine, weight: "bold", size: "md", wrap: true, margin: "xs" },
-      ],
-    },
+    body: { type: "box", layout: "vertical", spacing: "sm", contents: bodyContents },
     footer: {
       type: "box", layout: "vertical", spacing: "sm",
       contents: [
         { type: "button", style: "primary", color: "#17233D",
           action: { type: "uri", label: "前往登記", uri: link } },
-        { type: "text", text: timestampText, size: "xs", color: "#999999", align: "start" },
+        { type: "text", text: timestampText || "", size: "xs", color: "#999999", align: "start" },
       ],
     },
   };
 }
 
-async function shareCompletion(direction) {
-  const list = PAGE.myData[direction] || [];
-  const selfRow = list.find(r => r.isSelf === true || String(r.isSelf).toUpperCase() === "TRUE");
-  if (!selfRow) return;
+// 完成登記回報：去程／回程只要有登記就一起帶，不用分開分享兩次
+async function shareCompletion() {
+  const goRow = (PAGE.myData.go || []).find(r => r.isSelf === true || String(r.isSelf).toUpperCase() === "TRUE");
+  const returnRow = (PAGE.myData.return || []).find(r => r.isSelf === true || String(r.isSelf).toUpperCase() === "TRUE");
+  if (!goRow && !returnRow) return;
+
   const ok = await ensureLiff();
   if (!ok || !liff.isApiAvailable("shareTargetPicker")) {
     toast("目前環境不支援 LINE 分享");
     return;
   }
-  const flightLine = `${AIRLINES[selfRow.airline]?.label || selfRow.airline}｜${selfRow.flightNo}｜${selfRow.flightDate}｜${selfRow.depTime}–${selfRow.arrTime}`;
-  const bubble = completionBubble(flightLine, selfRow.createdAt);
+
+  const entries = [];
+  let timestampText = "";
+  if (goRow) { entries.push({ label: "去程：", flightLine: buildFlightLine(goRow) }); timestampText = goRow.createdAt; }
+  if (returnRow) { entries.push({ label: "回程：", flightLine: buildFlightLine(returnRow) }); timestampText = returnRow.createdAt; }
+
+  const bubble = completionBubble(entries, timestampText);
   try {
     await liff.shareTargetPicker([{ type: "flex", altText: "完成登記飛機資訊！", contents: bubble }]);
   } catch (e) { /* 使用者取消分享，不用特別處理 */ }
