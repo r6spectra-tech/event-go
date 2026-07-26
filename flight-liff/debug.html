@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
-<meta name="page-version" content="20260726-10">
+<meta name="page-version" content="20260726-11">
 <title>flight-liff 診斷頁</title>
 <style>
   body{background:#0a0a0f;color:#e5e7eb;font-family:-apple-system,sans-serif;padding:16px;margin:0;font-size:14px;line-height:1.6}
@@ -40,7 +40,7 @@
 <div id="apiTest">尚未開始</div>
 
 <script>
-const EXPECTED = "20260726-10";
+const EXPECTED = "20260726-11";
 const versionsEl = document.getElementById('versions');
 const loadsEl = document.getElementById('loads');
 const apiEl = document.getElementById('apiTest');
@@ -264,6 +264,12 @@ async function checkEnvInfo() {
   }
   html += `<div class="row"><span>liff.init() 是否成功</span><span class="${ok ? 'ok' : 'fail'}">${ok ? '✓ 成功' : '✗ 失敗'}</span></div>`;
   push('liff.init() 是否成功', ok ? '成功' : '失敗');
+  // ensureLiff() 自己內部把 liff.init() 的錯誤接住了，不會真的往外丟例外，
+  // 錯誤訊息存在 main.js 的 liffLastError 這個變數裡，這裡要另外抓出來顯示
+  if (!ok && typeof liffLastError !== 'undefined' && liffLastError) {
+    html += `<div class="row"><span>liff.init() 實際失敗原因</span><span class="fail">${liffLastError}</span></div>`;
+    push('liff.init() 實際失敗原因', liffLastError);
+  }
 
   if (ok) {
     html += `<div class="row"><span>liff.isInClient()</span><span>${liff.isInClient()}</span></div>`;
