@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
-<meta name="page-version" content="20260726-4">
+<meta name="page-version" content="20260726-8">
 <title>flight-liff 診斷頁</title>
 <style>
   body{background:#0a0a0f;color:#e5e7eb;font-family:-apple-system,sans-serif;padding:16px;margin:0;font-size:14px;line-height:1.6}
@@ -37,7 +37,7 @@
 <div id="apiTest">尚未開始</div>
 
 <script>
-const EXPECTED = "20260726-4";
+const EXPECTED = "20260726-8";
 const versionsEl = document.getElementById('versions');
 const loadsEl = document.getElementById('loads');
 const apiEl = document.getElementById('apiTest');
@@ -66,6 +66,7 @@ async function checkVersions() {
     { name: 'index.html',     patterns: [/<meta\s+name=["']page-version["']\s+content=["']([^"']+)["']/i] },
     { name: 'overview.html',  patterns: [/<meta\s+name=["']page-version["']\s+content=["']([^"']+)["']/i] },
     { name: 'admin.html',     patterns: [/<meta\s+name=["']page-version["']\s+content=["']([^"']+)["']/i] },
+    { name: 'claim.html',     patterns: [/<meta\s+name=["']page-version["']\s+content=["']([^"']+)["']/i] },
     { name: 'debug.html',     patterns: [/<meta\s+name=["']page-version["']\s+content=["']([^"']+)["']/i] },
     { name: 'flight.js',      patterns: [/FLIGHT_JS_VERSION:\s*([^\s*]+)/] },
     { name: 'flight-data.js', patterns: [/FLIGHT_DATA_VERSION:\s*([^\s*]+)/] },
@@ -230,5 +231,42 @@ document.getElementById('testTime').textContent = '測試時間：' + new Date()
 checkVersions();
 checkLoads().then(runApiTest);
 </script>
+<h2>4. LIFF 分享功能測試（shareTargetPicker）</h2>
+<p style="font-size:12px;color:#9ca3af;margin:-4px 0 8px">
+  用最簡單的純文字訊息測試分享功能，藉此排除「是 LINE 帳號/Channel 設定問題」還是「是我們自己的 Flex 內容問題」。
+  如果連這個最簡單的測試在 LINE App 裡都是空白，代表問題出在 LINE Developers Console 的 Share Target Picker 設定或帳號權限，
+  不是我們的程式碼；如果這個測試正常、只有實際分享按鈕空白，才需要回頭檢查 Flex 內容。
+</p>
+<div id="shareTest">尚未測試</div>
+<button onclick="testShareTargetPicker()" style="background:#7c3aed">🧪 測試純文字分享</button>
+
+<script>
+async function testShareTargetPicker() {
+  const el = document.getElementById('shareTest');
+  el.innerHTML = '測試中…';
+  try {
+    if (typeof liff === 'undefined') { el.innerHTML = '<span class="fail">✗ LIFF SDK 未載入</span>'; return; }
+    if (typeof ensureLiff === 'undefined') { el.innerHTML = '<span class="fail">✗ main.js 尚未載入完成，請等上方「逐一載入腳本」跑完再試一次</span>'; return; }
+    const ok = await ensureLiff();
+    if (!ok) { el.innerHTML = '<span class="fail">✗ liff.init() 失敗</span>'; return; }
+    if (!liff.isLoggedIn()) { el.innerHTML = '<span class="fail">✗ 尚未登入，請先登入再測試</span>'; return; }
+    const info = [];
+    info.push('isInClient(): ' + liff.isInClient());
+    info.push('getLineVersion(): ' + (liff.getLineVersion ? liff.getLineVersion() : '(無法取得)'));
+    info.push('isApiAvailable("shareTargetPicker"): ' + liff.isApiAvailable('shareTargetPicker'));
+    el.innerHTML = '<div class="detail">' + info.join('\n') + '</div><div>呼叫 shareTargetPicker 中，請留意畫面是否正常跳出好友選擇畫面…</div>';
+
+    if (!liff.isApiAvailable('shareTargetPicker')) {
+      el.innerHTML += '<div class="row"><span class="fail">✗ shareTargetPicker 在此環境不可用（多半是 Developers Console 的 Share Target Picker 尚未開啟/同意條款）</span></div>';
+      return;
+    }
+    const result = await liff.shareTargetPicker([{ type: 'text', text: '這是 flight-liff 的分享功能測試 ' + new Date().toLocaleTimeString('zh-TW') }]);
+    el.innerHTML += `<div class="row"><span class="ok">✓ shareTargetPicker 呼叫完成，回傳結果：${JSON.stringify(result)}</span></div>`;
+  } catch (e) {
+    el.innerHTML += `<div class="row"><span class="fail">✗ 發生例外：${e.message}</span></div>`;
+  }
+}
+</script>
+
 </body>
 </html>

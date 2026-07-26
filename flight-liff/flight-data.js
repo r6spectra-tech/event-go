@@ -1,5 +1,10 @@
-/* FLIGHT_DATA_VERSION: 20260726-4 */
-const FLIGHT_DATA_VERSION = "20260726-4";
+/* FLIGHT_DATA_VERSION: 20260726-8 */
+const FLIGHT_DATA_VERSION = "20260726-8";
+
+// 目前先寫死指向這次的活動，不透過網址參數帶入，activityId 之後如果要做成通用系統
+// （支援多個不同活動各自登記機票）再改回從網址讀取。
+const FIXED_ACTIVITY_ID = "trip002";
+const FIXED_ACTIVITY_TITLE = "澎湖四日遊(跳島吉貝嶼.桶盤嶼.虎井嶼)";
 
 /* ============================================================
    固定班表資料（寫死，非即時查詢）

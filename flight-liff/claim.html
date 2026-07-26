@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<meta name="page-version" content="20260726-8">
+<title>同行資訊確認</title>
+<link rel="stylesheet" href="../assets/style.css?v=20260726-8">
+<link rel="stylesheet" href="flight.css?v=20260726-8">
+<script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+</head>
+<body>
+  <div class="topbar">
+    <div>
+      <span class="f-eyebrow">同行資訊確認</span>
+      <h1><span class="f-spinner-inline"></span></h1>
+    </div>
+  </div>
+
+  <div class="f-wrap" id="f-app">
+    <a href="#" id="f-back-link" class="btn ghost" style="margin-bottom:14px; display:inline-block;">← 回登記頁</a>
+
+    <div id="f-claim-loading" class="f-spinner-wrap"><div class="f-spinner"></div></div>
+
+    <div id="f-claim-login-gate" class="f-login-gate" hidden>
+      <p>登入 LINE 後即可確認您的機票資訊。</p>
+      <button class="btn primary" id="f-claim-login-btn">登入 LINE</button>
+    </div>
+
+    <div id="f-claim-body" hidden></div>
+  </div>
+
+  <div class="f-version-tag">flight.js v20260726-8</div>
+
+  <script src="../assets/main.js?v=20260726-8"></script>
+  <script src="flight-data.js?v=20260726-8"></script>
+  <script src="flight.js?v=20260726-8"></script>
+  <script>
+    document.addEventListener("DOMContentLoaded", initClaimPage);
+  </script>
+</body>
+</html>

@@ -3,10 +3,10 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
-<meta name="page-version" content="20260726-4">
+<meta name="page-version" content="20260726-8">
 <title>機票登記管理</title>
-<link rel="stylesheet" href="../assets/style.css?v=20260726-4">
-<link rel="stylesheet" href="flight.css?v=20260726-4">
+<link rel="stylesheet" href="../assets/style.css?v=20260726-8">
+<link rel="stylesheet" href="flight.css?v=20260726-8">
 <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
 </head>
 <body>
@@ -38,14 +38,26 @@
         <p class="f-sub" style="margin-bottom:14px;">分享一則邀請卡片到活動群組，提醒大家完成機票時刻登記。</p>
         <button class="btn primary" id="f-invite-share-btn">📣 分享登記邀請到群組</button>
       </div>
+
+      <div class="f-card">
+        <h3>群組成員比對</h3>
+        <div id="f-group-setup"></div>
+        <div id="f-group-result" style="margin-top:12px;"></div>
+      </div>
+
+      <div class="f-card">
+        <h3>名單匯出</h3>
+        <p class="f-sub" style="margin-bottom:14px;">匯出這個活動目前所有登記資料成 CSV，可以用 Excel／Google 試算表開啟。</p>
+        <button class="btn primary" id="f-export-btn">⬇️ 匯出名單（CSV）</button>
+      </div>
     </div>
   </div>
 
-  <div class="f-version-tag">flight.js v20260726-4</div>
+  <div class="f-version-tag">flight.js v20260726-8</div>
 
-  <script src="../assets/main.js?v=20260726-4"></script>
-  <script src="flight-data.js?v=20260726-4"></script>
-  <script src="flight.js?v=20260726-4"></script>
+  <script src="../assets/main.js?v=20260726-8"></script>
+  <script src="flight-data.js?v=20260726-8"></script>
+  <script src="flight.js?v=20260726-8"></script>
   <script>
     document.addEventListener("DOMContentLoaded", () => {
       document.getElementById("f-back-link").href = "index.html" + location.search;

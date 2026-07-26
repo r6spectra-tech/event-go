@@ -4,11 +4,45 @@
    依賴 ./flight-data.js（FLIGHT_SCHEDULE / AIRLINES / DIRECTION_LABEL）
    ============================================================ */
 
-/* FLIGHT_JS_VERSION: 20260726-4 */
-const FLIGHT_JS_VERSION = "20260726-4";
+/* FLIGHT_JS_VERSION: 20260726-8 */
+const FLIGHT_JS_VERSION = "20260726-8";
 
+// 透過 https://liff.line.me/{liffId}?activityId=xxx 這種網址帶參數時，LINE 不會把
+// ?activityId=xxx 直接透傳給我們的頁面，而是包成一個 liff.state 參數（例如
+// ?liff.state=%3FactivityId%3Dxxx），LIFF SDK 不會自動幫忙解開，要自己手動解析。
+// 這支函式優先解開 liff.state，解不到才退回直接讀網址參數，兩種進入方式都能正確運作。
+function getRealQueryParams() {
+  const params = new URLSearchParams(location.search);
+  if (params.has("liff.state")) {
+    let state = params.get("liff.state");
+    if (state.startsWith("?")) state = state.slice(1);
+    try {
+      return new URLSearchParams(state);
+    } catch (e) { /* 解析失敗就退回原本的 params */ }
+  }
+  return params;
+}
+
+// 目前先寫死回傳固定的 activityId（見 flight-data.js 的 FIXED_ACTIVITY_ID），不透過網址參數帶入。
+// getRealQueryParams() 還是保留給 claim.html 讀 direction／ownerUserId 用（那兩個沒辦法寫死，
+// 每次分享的對象都不一樣），之後如果要恢復成「網址帶 activityId」的通用模式，把這裡改回
+// getRealQueryParams().get("activityId") 就好，其餘程式碼不用動。
 function getActivityId() {
-  return new URLSearchParams(location.search).get("activityId") || "";
+  return FIXED_ACTIVITY_ID;
+}
+
+// 先呼叫既有的 loadConfig()（拿 siteUrl 等其他共用設定），再問一次 GAS 有沒有設定
+// flight-liff 專屬的 FLIGHT_LIFF_ID，有的話覆蓋掉 RUNTIME.liffId。
+// 這一步一定要在第一次呼叫 ensureLiff() 之前完成，因為 ensureLiff() 只有在
+// RUNTIME.liffId 還沒設定時才會自己去問，之後就不會再變動了。
+async function loadFlightConfig() {
+  await loadConfig();
+  try {
+    const fc = await apiGet("flightConfig");
+    if (fc && fc.liffId) RUNTIME.liffId = fc.liffId;
+  } catch (e) {
+    // 拿不到就沿用既有的 LIFF_ID，不影響任何功能（例如舊版 Code.gs 還沒加這個 action 的過渡期）
+  }
 }
 
 function toast(msg) {
@@ -50,12 +84,9 @@ async function initIndexPage() {
     document.getElementById("f-app").innerHTML = `<div class="f-empty">網址缺少 activityId 參數，請透過活動分享的連結進入。</div>`;
     return;
   }
-  await loadConfig();
-  try {
-    const activity = await getActivityById(PAGE.activityId);
-    document.getElementById("f-activity-title").textContent = activity ? activity.title : PAGE.activityId;
-    document.getElementById("f-activity-sub").textContent = activity ? `${activity.area || ""}｜${activity.date || ""}` : "";
-  } catch (e) { /* 拿不到活動資訊不影響登記功能 */ }
+  await loadFlightConfig();
+  document.getElementById("f-activity-title").textContent = FIXED_ACTIVITY_TITLE;
+  document.getElementById("f-activity-sub").textContent = "";
 
   document.getElementById("f-login-btn").addEventListener("click", onLoginClick);
   bindFormEvents();
@@ -106,6 +137,7 @@ async function refreshMyData() {
 function renderMyCards() {
   renderMyCard("go");
   renderMyCard("return");
+  renderClaimedCards();
 }
 
 function renderMyCard(direction) {
@@ -133,10 +165,57 @@ function renderMyCard(direction) {
        <button class="btn danger" onclick="deleteDirection('${direction}')">刪除</button>`
     : `<button class="btn teal" onclick="openNewForm('${direction}')">填寫${direction === "go" ? "去程" : "回程"}</button>`;
 
+  const claims = (PAGE.myData.claimsOnMine && PAGE.myData.claimsOnMine[direction]) || [];
+  const claimInfoEl = card.querySelector(".f-claim-info");
+  if (claimInfoEl) {
+    claimInfoEl.innerHTML = claims.length
+      ? `<div class="f-claim-label">✅ 已確認歸戶（${claims.length}）</div>` +
+        claims.map(c => `<div class="f-claim-line">${escapeHtml(c.claimantDisplayName)}　${c.claimedAt}</div>`).join("")
+      : "";
+  }
+
   const shareRow = card.querySelector(".f-share-row");
   shareRow.innerHTML = hasData
-    ? `<button class="btn ghost" onclick="shareCompletion('${direction}')">📣 分享到群組，回報已完成登記</button>`
+    ? `<button class="btn ghost" onclick="shareCompletion('${direction}')">📣 分享到群組，回報已完成登記</button>` +
+      (list.length > 1 ? `<button class="btn ghost" onclick="shareClaimInvite('${direction}')">👥 邀請同行人歸戶</button>` : "")
     : "";
+}
+
+// 我認領（歸戶）過的別人的批次，顯示成額外的唯讀卡片
+function renderClaimedCards() {
+  const container = document.getElementById("f-claimed-cards");
+  if (!container) return;
+  const list = PAGE.myData.claimedByMe || [];
+  if (list.length === 0) { container.innerHTML = ""; return; }
+  container.innerHTML = list.map(c => {
+    const dirLabel = DIRECTION_LABEL[c.direction] || c.direction;
+    const rows = c.members.map(m => `
+      <div class="f-row-2 ${m.isSelf === true || String(m.isSelf).toUpperCase() === "TRUE" ? "f-self" : ""}">
+        <div class="f-name">${escapeHtml(m.name || "")}</div>
+        <div class="f-flight2">${AIRLINES[m.airline]?.label || m.airline}｜${m.flightNo}｜${m.flightDate}｜${m.depTime}–${m.arrTime}</div>
+      </div>
+    `).join("");
+    return `
+      <div class="f-card">
+        <h3>${dirLabel}<span class="f-tag">已歸戶</span></h3>
+        <p class="f-sub" style="margin:0 0 8px;">由 ${escapeHtml(c.ownerDisplayName)} 管理，您於 ${c.claimedAt} 確認</p>
+        ${rows}
+        <div class="f-actions" style="margin-top:12px;">
+          <button class="btn ghost" onclick="unclaimFromMyPage('${c.direction}','${c.ownerUserId}')">解除確認</button>
+        </div>
+      </div>
+    `;
+  }).join("");
+}
+
+async function unclaimFromMyPage(direction, ownerUserId) {
+  try {
+    await apiPost("flightUnclaim", { activityId: PAGE.activityId, direction, ownerUserId, claimantUserId: PAGE.profile.userId });
+    toast("已解除確認");
+    await refreshMyData();
+  } catch (e) {
+    toast("操作失敗：" + e.message);
+  }
 }
 
 function escapeHtml(s) {
@@ -360,6 +439,147 @@ async function shareCompletion(direction) {
   } catch (e) { /* 使用者取消分享，不用特別處理 */ }
 }
 
+// 邀請同行人歸戶：把連結分享給指定好友（liff.shareTargetPicker 讓填表人自己選要傳給誰），
+// 連結只帶 activityId + direction + ownerUserId，不綁定特定一列，對方點開後自己確認是不是他的行程
+function claimInviteBubble(direction) {
+  const link = `${RUNTIME.siteUrl}/flight-liff/claim.html?activityId=${encodeURIComponent(PAGE.activityId)}&direction=${direction}&ownerUserId=${encodeURIComponent(PAGE.profile.userId)}`;
+  const dirLabel = direction === "go" ? "去程" : "回程";
+  return {
+    type: "bubble",
+    body: {
+      type: "box", layout: "vertical", spacing: "sm",
+      contents: [
+        { type: "text", text: "🎫 同行資訊確認", weight: "bold", size: "lg", color: "#2F7A72" },
+        { type: "text", text: `${PAGE.profile.displayName} 已幫您登記了${dirLabel}機票，請確認資訊是否正確`, wrap: true, size: "sm", margin: "md" },
+      ],
+    },
+    footer: {
+      type: "box", layout: "vertical",
+      contents: [
+        { type: "button", style: "primary", color: "#17233D",
+          action: { type: "uri", label: "確認我的資訊", uri: link } },
+      ],
+    },
+  };
+}
+
+async function shareClaimInvite(direction) {
+  const ok = await ensureLiff();
+  if (!ok || !liff.isApiAvailable("shareTargetPicker")) {
+    toast("目前環境不支援 LINE 分享");
+    return;
+  }
+  try {
+    await liff.shareTargetPicker([{ type: "flex", altText: "同行資訊確認", contents: claimInviteBubble(direction) }]);
+  } catch (e) { /* 使用者取消分享，不用特別處理 */ }
+}
+
+/* ============================================================
+   claim.html：同行人歸戶認領頁
+   認領綁定的是「填表人＋方向」這個整批，不綁特定一列，所以填表人之後怎麼編輯內容都不影響認領關係。
+   ============================================================ */
+let CLAIM = { activityId: "", direction: "", ownerUserId: "", profile: null, info: null };
+
+async function initClaimPage() {
+  const params = getRealQueryParams();
+  CLAIM.activityId = params.get("activityId") || "";
+  CLAIM.direction = params.get("direction") || "";
+  CLAIM.ownerUserId = params.get("ownerUserId") || "";
+  document.getElementById("f-back-link").href = "index.html?activityId=" + encodeURIComponent(CLAIM.activityId);
+
+  if (!CLAIM.activityId || !CLAIM.direction || !CLAIM.ownerUserId) {
+    document.getElementById("f-claim-loading").hidden = true;
+    const body = document.getElementById("f-claim-body");
+    body.hidden = false;
+    body.innerHTML = `<div class="f-empty">連結參數不完整，請透過分享連結進入。</div>`;
+    return;
+  }
+
+  await loadFlightConfig();
+  document.getElementById("f-claim-login-btn").addEventListener("click", () => requireLogin());
+
+  try {
+    const ok = await ensureLiff();
+    if (!ok || !liff.isLoggedIn()) {
+      document.getElementById("f-claim-login-gate").hidden = false;
+      return;
+    }
+    const profile = await liff.getProfile();
+    CLAIM.profile = { userId: profile.userId, displayName: profile.displayName };
+    await loadClaimInfo();
+  } catch (e) {
+    const body = document.getElementById("f-claim-body");
+    body.hidden = false;
+    body.innerHTML = `<div class="f-empty">載入失敗，請重新整理再試一次</div>`;
+  } finally {
+    document.getElementById("f-claim-loading").hidden = true;
+  }
+}
+
+async function loadClaimInfo() {
+  const info = await apiGet("flightBatchInfo", {
+    activityId: CLAIM.activityId, direction: CLAIM.direction,
+    ownerUserId: CLAIM.ownerUserId, viewerUserId: CLAIM.profile.userId,
+  });
+  CLAIM.info = info;
+  renderClaimBody();
+}
+
+function renderClaimBody() {
+  const el = document.getElementById("f-claim-body");
+  el.hidden = false;
+  const info = CLAIM.info;
+  const dirLabel = DIRECTION_LABEL[CLAIM.direction] || CLAIM.direction;
+
+  const rowsHtml = info.members.map(m => `
+    <div class="f-row-2 ${m.isSelf === true || String(m.isSelf).toUpperCase() === "TRUE" ? "f-self" : ""}">
+      <div class="f-name">${escapeHtml(m.name || "")}</div>
+      <div class="f-flight2">${AIRLINES[m.airline]?.label || m.airline}｜${m.flightNo}｜${m.flightDate}｜${m.depTime}–${m.arrTime}</div>
+    </div>
+  `).join("");
+
+  const actionHtml = info.alreadyClaimed
+    ? `<p class="f-sub">您已於 ${info.claimedAt} 確認過這份行程。</p>
+       <button class="btn danger" onclick="doUnclaim()">解除確認</button>`
+    : `<button class="btn primary" onclick="doClaim()">✅ 這是我的行程，確認</button>`;
+
+  el.innerHTML = `
+    <div class="f-card">
+      <h3>${escapeHtml(info.ownerDisplayName)} 幫您登記了${dirLabel}</h3>
+      ${rowsHtml}
+    </div>
+    <div class="f-actions" style="flex-direction:column; gap:10px;">${actionHtml}</div>
+    <p class="f-sub" style="margin-top:14px;">這份行程由 ${escapeHtml(info.ownerDisplayName)} 管理，確認後您可以隨時回來查看，但無法自行編輯內容。如果內容有需要修改，請聯絡 ${escapeHtml(info.ownerDisplayName)}。</p>
+  `;
+}
+
+async function doClaim() {
+  try {
+    await apiPost("flightClaim", {
+      activityId: CLAIM.activityId, direction: CLAIM.direction, ownerUserId: CLAIM.ownerUserId,
+      ownerDisplayName: CLAIM.info.ownerDisplayName,
+      claimantUserId: CLAIM.profile.userId, claimantDisplayName: CLAIM.profile.displayName,
+    });
+    toast("已確認");
+    await loadClaimInfo();
+  } catch (e) {
+    toast("操作失敗：" + e.message);
+  }
+}
+
+async function doUnclaim() {
+  try {
+    await apiPost("flightUnclaim", {
+      activityId: CLAIM.activityId, direction: CLAIM.direction, ownerUserId: CLAIM.ownerUserId,
+      claimantUserId: CLAIM.profile.userId,
+    });
+    toast("已解除確認");
+    await loadClaimInfo();
+  } catch (e) {
+    toast("操作失敗：" + e.message);
+  }
+}
+
 /* ============================================================
    admin.html：主辦人管理頁
    權限檢查只在使用者「主動進入這個頁面」時才觸發，不會在登記頁背景自動偵測身分，
@@ -369,11 +589,8 @@ let ADMIN = { activityId: "", profile: null };
 
 async function initAdminPage() {
   ADMIN.activityId = getActivityId();
-  await loadConfig();
-  try {
-    const activity = await getActivityById(ADMIN.activityId);
-    document.getElementById("f-activity-title").textContent = activity ? activity.title : ADMIN.activityId;
-  } catch (e) {}
+  await loadFlightConfig();
+  document.getElementById("f-activity-title").textContent = FIXED_ACTIVITY_TITLE;
 
   document.getElementById("f-admin-login-btn").addEventListener("click", () => requireLogin());
   document.getElementById("f-invite-share-btn").addEventListener("click", shareInvite);
@@ -393,6 +610,8 @@ async function initAdminPage() {
       return;
     }
     document.getElementById("f-admin-panel").hidden = false;
+    document.getElementById("f-export-btn").addEventListener("click", exportCsv);
+    await loadGroupSection();
   } catch (e) {
     document.getElementById("f-admin-denied").hidden = false;
     document.getElementById("f-admin-denied").textContent = "載入失敗，請重新整理再試一次";
@@ -436,6 +655,100 @@ async function shareInvite() {
     toast("已送出分享");
   } catch (e) { /* 使用者取消分享，不用特別處理 */ }
 }
+
+// 群組成員比對：先讓主辦人挑一個「這個活動對應的群組」，再拿群組已知成員清單跟已登記名單比對
+async function loadGroupSection() {
+  const setupEl = document.getElementById("f-group-setup");
+  const resultEl = document.getElementById("f-group-result");
+  setupEl.innerHTML = `<div class="f-spinner-wrap"><div class="f-spinner"></div></div>`;
+  try {
+    const [groups, compare] = await Promise.all([
+      apiGet("flightKnownGroups", { requestedBy: ADMIN.profile.userId }),
+      apiGet("flightGroupCompare", { requestedBy: ADMIN.profile.userId, activityId: ADMIN.activityId }),
+    ]);
+
+    if (groups.length === 0) {
+      setupEl.innerHTML = `<p class="f-sub">目前還沒有偵測到任何群組成員紀錄。請確認 LINE Webhook 已設定好（詳見 README），並讓群組裡的人講幾句話，蒐集才會開始累積。</p>`;
+    } else {
+      setupEl.innerHTML = `
+        <p class="f-sub" style="margin-bottom:8px;">選擇這個活動對應的 LINE 群組：</p>
+        ${groups.map(g => `
+          <label style="display:block; margin-bottom:8px; font-size:0.85rem;">
+            <input type="radio" name="f-group-radio" value="${g.groupId}" ${g.groupId === compare.groupId ? "checked" : ""}>
+            ${escapeHtml(g.groupId.slice(0, 12))}…（${g.memberCount} 人${g.sampleNames.length ? "，例如：" + g.sampleNames.map(escapeHtml).join("、") : ""}）
+          </label>
+        `).join("")}
+        <button class="btn primary" id="f-group-set-btn" style="margin-top:6px;">設定為此活動的群組</button>
+      `;
+      document.getElementById("f-group-set-btn").addEventListener("click", async () => {
+        const checked = document.querySelector('input[name="f-group-radio"]:checked');
+        if (!checked) { toast("請先選一個群組"); return; }
+        try {
+          await apiPost("flightSetActivityGroup", { requestedBy: ADMIN.profile.userId, activityId: ADMIN.activityId, groupId: checked.value });
+          toast("已設定");
+          await loadGroupSection();
+        } catch (e) {
+          toast("設定失敗：" + e.message);
+        }
+      });
+    }
+
+    renderGroupCompareResult(compare);
+  } catch (e) {
+    setupEl.innerHTML = `<div class="f-empty">載入失敗：${e.message}</div>`;
+    resultEl.innerHTML = "";
+  }
+}
+
+function renderGroupCompareResult(compare) {
+  const el = document.getElementById("f-group-result");
+  if (!compare.groupId) { el.innerHTML = ""; return; }
+  el.innerHTML = `
+    <p class="f-sub">群組已知成員 ${compare.groupMemberCount} 人／已登記 ${compare.registeredCount} 人</p>
+    ${compare.notRegistered.length === 0
+      ? `<p class="f-sub" style="color:var(--teal);">✅ 群組裡已知的成員都已經登記了</p>`
+      : `<p class="f-sub" style="margin-bottom:6px;">尚未登記（${compare.notRegistered.length} 人）：</p>
+         <div class="f-flight-group">${compare.notRegistered.map(u => `<div style="padding:3px 0;">${escapeHtml(u.displayName)}</div>`).join("")}</div>`
+    }
+  `;
+}
+
+// 名單匯出：純前端組 CSV，加 UTF-8 BOM 讓 Excel 開啟時中文不會亂碼
+async function exportCsv() {
+  const btn = document.getElementById("f-export-btn");
+  btn.disabled = true;
+  try {
+    const rows = await apiGet("flightExport", { requestedBy: ADMIN.profile.userId, activityId: ADMIN.activityId });
+    if (rows.length === 0) {
+      toast("目前沒有資料可以匯出");
+      return;
+    }
+    const cols = ["direction", "ownerDisplayName", "name", "isSelf", "airline", "flightNo", "flightDate", "depTime", "arrTime", "seq", "createdAt", "updatedAt"];
+    const header = cols.join(",");
+    const lines = rows.map(r => cols.map(c => csvEscape(r[c])).join(","));
+    const csv = "\uFEFF" + [header, ...lines].join("\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `flight-${ADMIN.activityId}-${Date.now()}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  } catch (e) {
+    toast("匯出失敗：" + e.message);
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+function csvEscape(v) {
+  const s = String(v == null ? "" : v);
+  if (/[",\n]/.test(s)) return '"' + s.replace(/"/g, '""') + '"';
+  return s;
+}
+
 let OV = { activityId: "", data: null, tab: "flight", direction: "go" };
 
 const SPINNER_HTML = `<div class="f-spinner-wrap"><div class="f-spinner"></div></div>`;
@@ -449,11 +762,8 @@ async function initOverviewPage() {
     bodyEl.innerHTML = `<div class="f-empty">網址缺少 activityId 參數。</div>`;
     return;
   }
-  await loadConfig();
-  try {
-    const activity = await getActivityById(OV.activityId);
-    document.getElementById("f-activity-title").textContent = activity ? activity.title : OV.activityId;
-  } catch (e) {}
+  await loadFlightConfig();
+  document.getElementById("f-activity-title").textContent = FIXED_ACTIVITY_TITLE;
 
   // 只在初始化時綁定一次事件，之後切換分頁只更新 f-overview-body 的內容，
   // 絕不整個重寫 f-app／按鈕所在的 DOM，避免事件監聽器被換掉的問題
