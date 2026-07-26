@@ -57,11 +57,15 @@ async function initIndexPage() {
   document.getElementById("f-login-btn").addEventListener("click", onLoginClick);
   bindFormEvents();
 
-  const ok = await ensureLiff();
-  if (ok && liff.isLoggedIn()) {
-    await afterLogin();
-  } else {
-    showLoginGate();
+  try {
+    const ok = await ensureLiff();
+    if (ok && liff.isLoggedIn()) {
+      await afterLogin();
+    } else {
+      showLoginGate();
+    }
+  } finally {
+    document.getElementById("f-init-loading").hidden = true;
   }
 }
 
@@ -113,9 +117,9 @@ function renderMyCard(direction) {
     rowsEl.innerHTML = `<div class="f-empty">尚未填寫${DIRECTION_LABEL[direction]}</div>`;
   } else {
     rowsEl.innerHTML = list.map(r => `
-      <div class="f-row ${r.isSelf ? "f-self" : ""}">
-        <span class="f-name">${escapeHtml(r.name || "")}</span>
-        <span class="f-flight">${(AIRLINES[r.airline]?.label || r.airline)}｜${r.flightDate}｜${r.depTime}–${r.arrTime}</span>
+      <div class="f-row-2 ${r.isSelf === true || String(r.isSelf).toUpperCase() === "TRUE" ? "f-self" : ""}">
+        <div class="f-name">${escapeHtml(r.name || "")}</div>
+        <div class="f-flight2">${AIRLINES[r.airline]?.label || r.airline}｜${r.flightNo}｜${r.flightDate}｜${r.depTime}–${r.arrTime}</div>
       </div>
     `).join("");
   }
@@ -125,6 +129,11 @@ function renderMyCard(direction) {
     ? `<button class="btn primary" onclick="openEditForm('${direction}')">編輯</button>
        <button class="btn danger" onclick="deleteDirection('${direction}')">刪除</button>`
     : `<button class="btn teal" onclick="openNewForm('${direction}')">填寫${direction === "go" ? "去程" : "回程"}</button>`;
+
+  const shareRow = card.querySelector(".f-share-row");
+  shareRow.innerHTML = hasData
+    ? `<button class="btn ghost" onclick="shareCompletion('${direction}')">📣 分享到群組，回報已完成登記</button>`
+    : "";
 }
 
 function escapeHtml(s) {
@@ -307,9 +316,96 @@ async function deleteDirection(direction) {
   }
 }
 
+// 完成登記回報：分享一則帶流水號＋建立時間的文字訊息到群組，順便讓群組成員知道彼此的登記進度。
+// 用「文字訊息」而不是 flex，是因為 liff.shareTargetPicker 分享文字訊息時，
+// 內容會直接以「使用者自己傳送」的樣子出現在群組聊天室裡，不需要額外的 postback/webhook 機制。
+async function shareCompletion(direction) {
+  const list = PAGE.myData[direction] || [];
+  const selfRow = list.find(r => r.isSelf === true || String(r.isSelf).toUpperCase() === "TRUE");
+  if (!selfRow) return;
+  const ok = await ensureLiff();
+  if (!ok || !liff.isApiAvailable("shareTargetPicker")) {
+    toast("目前環境不支援 LINE 分享");
+    return;
+  }
+  const dirText = direction === "go" ? "去程" : "回程";
+  const text = `第 ${selfRow.seq || "?"} 人 ✅ ${PAGE.profile.displayName} 已完成${dirText}機票登記　${selfRow.createdAt}`;
+  try {
+    await liff.shareTargetPicker([{ type: "text", text }]);
+  } catch (e) { /* 使用者取消分享，不用特別處理 */ }
+}
+
 /* ============================================================
-   overview.html：總覽頁（依航班 / 依時段）
+   admin.html：主辦人管理頁
+   權限檢查只在使用者「主動進入這個頁面」時才觸發，不會在登記頁背景自動偵測身分，
+   避免一般使用者每次開登記頁都多一次不必要的 API 呼叫。
    ============================================================ */
+let ADMIN = { activityId: "", profile: null };
+
+async function initAdminPage() {
+  ADMIN.activityId = getActivityId();
+  await loadConfig();
+  try {
+    const activity = await getActivityById(ADMIN.activityId);
+    document.getElementById("f-activity-title").textContent = activity ? activity.title : ADMIN.activityId;
+  } catch (e) {}
+
+  document.getElementById("f-admin-login-btn").addEventListener("click", () => requireLogin());
+  document.getElementById("f-invite-share-btn").addEventListener("click", shareInvite);
+
+  const ok = await ensureLiff();
+  if (!ok || !liff.isLoggedIn()) {
+    document.getElementById("f-admin-loading").hidden = true;
+    document.getElementById("f-admin-login-gate").hidden = false;
+    return;
+  }
+  const profile = await liff.getProfile();
+  ADMIN.profile = { userId: profile.userId, displayName: profile.displayName };
+
+  const { status } = await apiGet("isManager", { userId: ADMIN.profile.userId });
+  document.getElementById("f-admin-loading").hidden = true;
+  if (status !== "approved") {
+    document.getElementById("f-admin-denied").hidden = false;
+    return;
+  }
+  document.getElementById("f-admin-panel").hidden = false;
+}
+
+function inviteBubble(activityTitle) {
+  const link = `${RUNTIME.siteUrl}/flight-liff/index.html?activityId=${encodeURIComponent(ADMIN.activityId)}`;
+  return {
+    type: "bubble",
+    body: {
+      type: "box", layout: "vertical", spacing: "sm",
+      contents: [
+        { type: "text", text: "✈️ 機票時刻登記", weight: "bold", size: "lg", color: "#2F7A72" },
+        { type: "text", text: activityTitle, weight: "bold", size: "md", wrap: true, margin: "sm" },
+        { type: "text", text: "請登記您的去程／回程航班，方便安排接送與確認同行班機。", size: "sm", color: "#666666", wrap: true, margin: "md" },
+      ],
+    },
+    footer: {
+      type: "box", layout: "vertical",
+      contents: [
+        { type: "button", style: "primary", color: "#17233D",
+          action: { type: "uri", label: "前往登記", uri: link } },
+      ],
+    },
+  };
+}
+
+async function shareInvite() {
+  if (!liff.isApiAvailable("shareTargetPicker")) {
+    toast("目前環境不支援 LINE 分享");
+    return;
+  }
+  const title = document.getElementById("f-activity-title").textContent || ADMIN.activityId;
+  try {
+    await liff.shareTargetPicker([
+      { type: "flex", altText: `【機票時刻登記】${title}`, contents: inviteBubble(title) },
+    ]);
+    toast("已送出分享");
+  } catch (e) { /* 使用者取消分享，不用特別處理 */ }
+}
 let OV = { activityId: "", data: null, tab: "flight", direction: "go" };
 
 const SPINNER_HTML = `<div class="f-spinner-wrap"><div class="f-spinner"></div></div>`;
@@ -317,7 +413,8 @@ const SPINNER_HTML = `<div class="f-spinner-wrap"><div class="f-spinner"></div><
 async function initOverviewPage() {
   OV.activityId = getActivityId();
   const bodyEl = document.getElementById("f-overview-body");
-  document.getElementById("f-back-link").href = `index.html?activityId=${encodeURIComponent(OV.activityId)}`;
+  // 用目前網址原封不動的查詢字串組連結，不靠相對路徑解析，避免連結組錯
+  document.getElementById("f-back-link").href = "index.html" + location.search;
   if (!OV.activityId) {
     bodyEl.innerHTML = `<div class="f-empty">網址缺少 activityId 參數。</div>`;
     return;
@@ -352,49 +449,46 @@ async function initOverviewPage() {
 
 function renderOverview() {
   const el = document.getElementById("f-overview-body");
+  const dateEl = document.getElementById("f-overview-date");
   const dirData = OV.data[OV.direction];
   if (!dirData) { el.innerHTML = `<div class="f-empty">尚無資料</div>`; return; }
 
+  dateEl.textContent = dirData.primaryDate || DEFAULT_DATES[OV.direction] || "";
+
   if (OV.tab === "flight") {
-    const dateGroups = dirData.byFlight || [];
-    if (dateGroups.length === 0) { el.innerHTML = `<div class="f-empty">目前還沒有人登記</div>`; return; }
-    el.innerHTML = dateGroups.map(dg => `
-      <div class="f-date-block">
-        <div class="f-date-header">${dg.date}</div>
-        ${dg.flights.map(g => `
-          <div class="f-flight-group">
-            <div class="f-fg-head">
-              <span class="f-fg-time">${g.depTime}–${g.arrTime}</span>
-              <span class="f-fg-meta">${AIRLINES[g.airline]?.label || g.airline}｜${g.flightNo}｜共 ${g.names.length} 人</span>
-            </div>
-            <div class="f-fg-names">${g.names.map(escapeHtml).join("、")}</div>
-          </div>
-        `).join("")}
+    const list = dirData.byFlight || [];
+    if (list.length === 0) { el.innerHTML = `<div class="f-empty">目前還沒有人登記</div>`; return; }
+    el.innerHTML = list.map(g => `
+      <div class="f-flight-group">
+        <div class="f-fg-head">
+          <span class="f-fg-time">${g.depTime}–${g.arrTime}</span>
+          <span class="f-fg-meta">${AIRLINES[g.airline]?.label || g.airline}｜${g.flightNo}｜共 ${g.names.length} 人</span>
+        </div>
+        <div class="f-fg-names">${g.names.map(escapeHtml).join("、")}</div>
       </div>
     `).join("");
   } else {
-    const dateGroups = dirData.byHour || [];
-    if (dateGroups.length === 0) { el.innerHTML = `<div class="f-empty">目前還沒有人登記</div>`; return; }
+    const byHour = dirData.byHour || {};
+    const hours = Object.keys(byHour).sort();
+    if (hours.length === 0) { el.innerHTML = `<div class="f-empty">目前還沒有人登記</div>`; return; }
     const arrivalLabel = OV.direction === "go" ? "抵達澎湖" : "抵達松山";
-    el.innerHTML = dateGroups.map(dg => `
-      <div class="f-date-block">
-        <div class="f-date-header">${dg.date}</div>
-        ${dg.hours.map(h => {
-          const total = h.airlines.reduce((s, a) => s + a.total, 0);
-          const hourEnd = h.hour.split(":")[0] + ":59";
-          const airlineBlocks = h.airlines.map(a => `
-            <div class="f-hour-airline">${AIRLINES[a.airline]?.label || a.airline} ${a.total}人</div>
-            ${a.flights.map(f => `
-              <div class="f-hour-flight"><span class="f-hf-code">${f.depTime}–${f.arrTime}／${f.flightNo}</span>${f.names.map(escapeHtml).join("、")}</div>
-            `).join("")}
-          `).join("");
-          return `
-            <div class="f-hour-block">
-              <div class="f-hour-title">${h.hour}~${hourEnd}（${arrivalLabel}）共 ${total} 人</div>
-              ${airlineBlocks}
-            </div>`;
-        }).join("")}
-      </div>
-    `).join("");
+    el.innerHTML = hours.map(hour => {
+      const airlines = byHour[hour];
+      const total = Object.values(airlines).reduce((sum, flights) => sum + Object.values(flights).reduce((s, f) => s + f.names.length, 0), 0);
+      const airlineBlocks = Object.keys(airlines).map(aKey => {
+        const flights = airlines[aKey];
+        const aTotal = Object.values(flights).reduce((s, f) => s + f.names.length, 0);
+        const flightLines = Object.values(flights).map(f => `
+          <div class="f-hour-flight"><span class="f-hf-code">${f.depTime}–${f.arrTime}／${f.flightNo}</span>${f.names.map(escapeHtml).join("、")}</div>
+        `).join("");
+        return `<div class="f-hour-airline">${AIRLINES[aKey]?.label || aKey} ${aTotal}人</div>${flightLines}`;
+      }).join("");
+      const hourEnd = hour.split(":")[0] + ":59";
+      return `
+        <div class="f-hour-block">
+          <div class="f-hour-title">${hour}~${hourEnd}（${arrivalLabel}）共 ${total} 人</div>
+          ${airlineBlocks}
+        </div>`;
+    }).join("");
   }
 }

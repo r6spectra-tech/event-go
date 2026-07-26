@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>機票登記管理</title>
+<link rel="stylesheet" href="../assets/style.css">
+<link rel="stylesheet" href="flight.css">
+<script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+</head>
+<body>
+  <div class="topbar">
+    <div>
+      <span class="f-eyebrow">主辦人管理</span>
+      <h1 id="f-activity-title"><span class="f-spinner-inline"></span></h1>
+    </div>
+  </div>
+
+  <div class="f-wrap" id="f-app">
+    <a href="#" id="f-back-link" class="btn ghost" style="margin-bottom:10px; display:inline-block;">← 回登記頁</a>
+
+    <div id="f-admin-loading" class="f-spinner-wrap"><div class="f-spinner"></div></div>
+
+    <div id="f-admin-login-gate" class="f-login-gate" hidden>
+      <p>登入 LINE 後才能確認管理權限。</p>
+      <button class="btn primary" id="f-admin-login-btn">登入 LINE</button>
+    </div>
+
+    <div id="f-admin-denied" class="f-empty" hidden>
+      您的帳號目前沒有管理權限。<br>
+      如需申請，請至 <a href="../admin/managers.html" target="_blank">管理申請頁</a>。
+    </div>
+
+    <div id="f-admin-panel" hidden>
+      <div class="f-card">
+        <h3>宣傳登記邀請</h3>
+        <p class="f-sub" style="margin-bottom:14px;">分享一則邀請卡片到活動群組，提醒大家完成機票時刻登記。</p>
+        <button class="btn primary" id="f-invite-share-btn">📣 分享登記邀請到群組</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="../assets/main.js"></script>
+  <script src="flight-data.js"></script>
+  <script src="flight.js"></script>
+  <script>
+    document.addEventListener("DOMContentLoaded", () => {
+      document.getElementById("f-back-link").href = "index.html" + location.search;
+      initAdminPage();
+    });
+  </script>
+</body>
+</html>

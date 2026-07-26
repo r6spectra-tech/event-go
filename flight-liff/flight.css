@@ -32,8 +32,16 @@
 .f-row .f-flight{ font-family:'IBM Plex Mono', monospace; font-size:0.78rem; color:#555; text-align:right; }
 .f-row.f-self .f-name::after{ content:"（本人）"; font-weight:400; font-size:0.72rem; color:#999; }
 
+.f-row-2{ padding:9px 0; border-bottom:1px dashed var(--line); }
+.f-row-2:last-child{ border-bottom:none; }
+.f-row-2 .f-name{ font-weight:600; margin-bottom:3px; }
+.f-row-2.f-self .f-name::after{ content:"（本人）"; font-weight:400; font-size:0.72rem; color:#999; }
+.f-row-2 .f-flight2{ font-family:'IBM Plex Mono', monospace; font-size:0.78rem; color:#555; }
+
 .f-actions{ display:flex; gap:8px; margin-top:12px; }
 .f-actions .btn{ flex:1; text-align:center; }
+.f-share-row{ margin-top:8px; }
+.f-share-row .btn{ width:100%; text-align:center; border-color:var(--line); color:#555; font-size:0.8rem; }
 
 .btn{
   display:inline-block; border:1.5px solid var(--ink); border-radius:10px;
@@ -119,15 +127,14 @@
 }
 .f-dirbar button.active{ border-color:var(--teal); color:var(--teal); background: rgba(47,122,114,0.08); }
 
-.f-date-block{ margin-bottom:22px; }
-.f-date-header{
-  display:inline-block; font-family:'IBM Plex Mono', monospace; font-weight:700; font-size:0.82rem;
-  color:#fff; background:var(--ink); padding:5px 12px; border-radius:8px 8px 0 0;
-  margin-bottom:0; letter-spacing:0.03em;
+.f-date-caption{
+  font-family:'IBM Plex Mono', monospace; font-weight:700; font-size:0.82rem;
+  color:#fff; background:var(--ink); display:inline-block; padding:5px 12px; border-radius:8px;
+  margin-bottom:12px;
 }
 
 .f-flight-group{
-  background:#fff; border:1.5px solid var(--line); border-radius:0 12px 12px 12px; padding:14px 16px; margin-bottom:10px;
+  background:#fff; border:1.5px solid var(--line); border-radius:12px; padding:14px 16px; margin-bottom:10px;
 }
 .f-flight-group .f-fg-head{ display:flex; justify-content:space-between; align-items:baseline; margin-bottom:6px; }
 .f-flight-group .f-fg-time{ font-family:'Fraunces', serif; font-size:1.05rem; font-weight:700; }
