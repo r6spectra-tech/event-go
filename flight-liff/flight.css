@@ -1,4 +1,4 @@
-/* FLIGHT_CSS_VERSION: 20260726-3 */
+/* FLIGHT_CSS_VERSION: 20260726-4 */
 /* flight-liff 專屬樣式，沿用 assets/style.css 的 --ink / --paper / --teal / --stamp / --sand 色票 */
 
 /* 全域強制規則：任何有 hidden 屬性的元素一律不顯示，優先權設到最高。
@@ -43,7 +43,7 @@
 .f-row-2:last-child{ border-bottom:none; }
 .f-row-2 .f-name{ font-weight:600; margin-bottom:3px; }
 .f-row-2.f-self .f-name::after{ content:"（本人）"; font-weight:400; font-size:0.72rem; color:#999; }
-.f-row-2 .f-flight2{ font-family:'IBM Plex Mono', monospace; font-size:0.78rem; color:#555; }
+.f-row-2 .f-flight2{ font-family:'IBM Plex Mono', monospace; font-size:0.78rem; color:#555; text-align:right; }
 
 .f-actions{ display:flex; gap:8px; margin-top:12px; }
 .f-actions .btn{ flex:1; text-align:center; }
@@ -142,8 +142,9 @@
 .f-date-caption{
   font-family:'IBM Plex Mono', monospace; font-weight:700; font-size:0.82rem;
   color:#fff; background:var(--ink); display:inline-block; padding:5px 12px; border-radius:8px;
-  margin-bottom:12px;
+  margin:16px 0 10px;
 }
+.f-date-caption:first-child{ margin-top:0; }
 
 .f-flight-group{
   background:#fff; border:1.5px solid var(--line); border-radius:12px; padding:14px 16px; margin-bottom:10px;

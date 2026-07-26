@@ -1,5 +1,5 @@
-/* FLIGHT_DATA_VERSION: 20260726-2 */
-const FLIGHT_DATA_VERSION = "20260726-2";
+/* FLIGHT_DATA_VERSION: 20260726-4 */
+const FLIGHT_DATA_VERSION = "20260726-4";
 
 /* ============================================================
    固定班表資料（寫死，非即時查詢）

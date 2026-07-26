@@ -4,8 +4,8 @@
    依賴 ./flight-data.js（FLIGHT_SCHEDULE / AIRLINES / DIRECTION_LABEL）
    ============================================================ */
 
-/* FLIGHT_JS_VERSION: 20260726-3 */
-const FLIGHT_JS_VERSION = "20260726-3";
+/* FLIGHT_JS_VERSION: 20260726-4 */
+const FLIGHT_JS_VERSION = "20260726-4";
 
 function getActivityId() {
   return new URLSearchParams(location.search).get("activityId") || "";
@@ -319,26 +319,26 @@ async function deleteDirection(direction) {
   }
 }
 
-// 完成登記回報：分享一張含流水號＋建立時間的 flex 卡片到群組，附「前往登記」按鈕方便還沒填的人直接點進去。
-// 這個由團員自己觸發，跟管理頁的「宣傳登記邀請」不同：管理頁那則是主辦人主動廣播，重複發會讓人覺得吵；
-// 這則是團員各自完成登記後自然而然分享的，一人一則、時間點分散，不會有洗版感。
-function completionBubble(seq, displayName, dirLabel, timestampText) {
+// 完成登記回報：分享一張自己的飛機資訊卡片到群組，附「前往登記」按鈕方便還沒填的人直接點進去。
+// 不寫分享者自己的 LINE 名稱，因為是自己分享自己的，看的人自然知道是誰傳的。
+function completionBubble(flightLine, timestampText) {
   const link = `${RUNTIME.siteUrl}/flight-liff/index.html?activityId=${encodeURIComponent(PAGE.activityId)}`;
   return {
     type: "bubble",
     body: {
       type: "box", layout: "vertical", spacing: "sm",
       contents: [
-        { type: "text", text: `第 ${seq} 人 ✅`, weight: "bold", size: "lg", color: "#2F7A72" },
-        { type: "text", text: `${displayName} 已完成${dirLabel}機票登記`, weight: "bold", size: "md", wrap: true, margin: "sm" },
-        { type: "text", text: timestampText, size: "xs", color: "#999999", margin: "sm" },
+        { type: "text", text: "完成登記飛機資訊！", weight: "bold", size: "lg", color: "#2F7A72", wrap: true },
+        { type: "text", text: "我的飛機資訊：", size: "sm", color: "#666666", margin: "md" },
+        { type: "text", text: flightLine, weight: "bold", size: "md", wrap: true, margin: "xs" },
       ],
     },
     footer: {
-      type: "box", layout: "vertical",
+      type: "box", layout: "vertical", spacing: "sm",
       contents: [
         { type: "button", style: "primary", color: "#17233D",
           action: { type: "uri", label: "前往登記", uri: link } },
+        { type: "text", text: timestampText, size: "xs", color: "#999999", align: "start" },
       ],
     },
   };
@@ -353,12 +353,10 @@ async function shareCompletion(direction) {
     toast("目前環境不支援 LINE 分享");
     return;
   }
-  const dirText = direction === "go" ? "去程" : "回程";
-  const seq = selfRow.seq || "?";
-  const bubble = completionBubble(seq, PAGE.profile.displayName, dirText, selfRow.createdAt);
-  const altText = `第${seq}人 ✅ ${PAGE.profile.displayName} 已完成${dirText}機票登記`;
+  const flightLine = `${AIRLINES[selfRow.airline]?.label || selfRow.airline}｜${selfRow.flightNo}｜${selfRow.flightDate}｜${selfRow.depTime}–${selfRow.arrTime}`;
+  const bubble = completionBubble(flightLine, selfRow.createdAt);
   try {
-    await liff.shareTargetPicker([{ type: "flex", altText, contents: bubble }]);
+    await liff.shareTargetPicker([{ type: "flex", altText: "完成登記飛機資訊！", contents: bubble }]);
   } catch (e) { /* 使用者取消分享，不用特別處理 */ }
 }
 
@@ -481,46 +479,45 @@ async function initOverviewPage() {
 
 function renderOverview() {
   const el = document.getElementById("f-overview-body");
-  const dateEl = document.getElementById("f-overview-date");
   const dirData = OV.data[OV.direction];
   if (!dirData) { el.innerHTML = `<div class="f-empty">尚無資料</div>`; return; }
 
-  dateEl.textContent = dirData.primaryDate || DEFAULT_DATES[OV.direction] || "";
-
   if (OV.tab === "flight") {
-    const list = dirData.byFlight || [];
-    if (list.length === 0) { el.innerHTML = `<div class="f-empty">目前還沒有人登記</div>`; return; }
-    el.innerHTML = list.map(g => `
-      <div class="f-flight-group">
-        <div class="f-fg-head">
-          <span class="f-fg-time">${g.depTime}–${g.arrTime}</span>
-          <span class="f-fg-meta">${AIRLINES[g.airline]?.label || g.airline}｜${g.flightNo}｜共 ${g.names.length} 人</span>
+    const dateGroups = dirData.byFlight || [];
+    if (dateGroups.length === 0) { el.innerHTML = `<div class="f-empty">目前還沒有人登記</div>`; return; }
+    el.innerHTML = dateGroups.map(dg => `
+      <div class="f-date-caption">${dg.date}</div>
+      ${dg.flights.map(g => `
+        <div class="f-flight-group">
+          <div class="f-fg-head">
+            <span class="f-fg-time">${g.depTime}–${g.arrTime}</span>
+            <span class="f-fg-meta">${AIRLINES[g.airline]?.label || g.airline}｜${g.flightNo}｜共 ${g.names.length} 人</span>
+          </div>
+          <div class="f-fg-names">${g.names.map(escapeHtml).join("、")}</div>
         </div>
-        <div class="f-fg-names">${g.names.map(escapeHtml).join("、")}</div>
-      </div>
+      `).join("")}
     `).join("");
   } else {
-    const byHour = dirData.byHour || {};
-    const hours = Object.keys(byHour).sort();
-    if (hours.length === 0) { el.innerHTML = `<div class="f-empty">目前還沒有人登記</div>`; return; }
+    const dateGroups = dirData.byHour || [];
+    if (dateGroups.length === 0) { el.innerHTML = `<div class="f-empty">目前還沒有人登記</div>`; return; }
     const arrivalLabel = OV.direction === "go" ? "抵達澎湖" : "抵達松山";
-    el.innerHTML = hours.map(hour => {
-      const airlines = byHour[hour];
-      const total = Object.values(airlines).reduce((sum, flights) => sum + Object.values(flights).reduce((s, f) => s + f.names.length, 0), 0);
-      const airlineBlocks = Object.keys(airlines).map(aKey => {
-        const flights = airlines[aKey];
-        const aTotal = Object.values(flights).reduce((s, f) => s + f.names.length, 0);
-        const flightLines = Object.values(flights).map(f => `
-          <div class="f-hour-flight"><span class="f-hf-code">${f.depTime}–${f.arrTime}／${f.flightNo}</span>${f.names.map(escapeHtml).join("、")}</div>
+    el.innerHTML = dateGroups.map(dg => `
+      <div class="f-date-caption">${dg.date}</div>
+      ${dg.hours.map(h => {
+        const total = h.airlines.reduce((s, a) => s + a.total, 0);
+        const hourEnd = h.hour.split(":")[0] + ":59";
+        const airlineBlocks = h.airlines.map(a => `
+          <div class="f-hour-airline">${AIRLINES[a.airline]?.label || a.airline} ${a.total}人</div>
+          ${a.flights.map(f => `
+            <div class="f-hour-flight"><span class="f-hf-code">${f.depTime}–${f.arrTime}／${f.flightNo}</span>${f.names.map(escapeHtml).join("、")}</div>
+          `).join("")}
         `).join("");
-        return `<div class="f-hour-airline">${AIRLINES[aKey]?.label || aKey} ${aTotal}人</div>${flightLines}`;
-      }).join("");
-      const hourEnd = hour.split(":")[0] + ":59";
-      return `
-        <div class="f-hour-block">
-          <div class="f-hour-title">${hour}~${hourEnd}（${arrivalLabel}）共 ${total} 人</div>
-          ${airlineBlocks}
-        </div>`;
-    }).join("");
+        return `
+          <div class="f-hour-block">
+            <div class="f-hour-title">${h.hour}~${hourEnd}（${arrivalLabel}）共 ${total} 人</div>
+            ${airlineBlocks}
+          </div>`;
+      }).join("")}
+    `).join("");
   }
 }
