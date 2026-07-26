@@ -64,6 +64,10 @@ const FLIGHT_SCHEDULE = {
 
 const DIRECTION_LABEL = { go: "去程（松山 → 澎湖）", return: "回程（澎湖 → 松山）" };
 
+// 去程/回程預設日期，表單開啟時自動帶入，使用者仍可自行點日期選擇器改成別的日期
+// （例如提前一天抵達、延後一天離開），活動日期異動時直接改這裡即可。
+const DEFAULT_DATES = { go: "2026-09-25", return: "2026-09-28" };
+
 // 找出某方向/航空公司/航班編號對應的班表資料（編輯既有登記時，用來回填下拉選單）
 function findFlightOption(direction, airline, flightNo) {
   const list = (FLIGHT_SCHEDULE[direction] && FLIGHT_SCHEDULE[direction][airline]) || [];

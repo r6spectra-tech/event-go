@@ -135,7 +135,7 @@ function escapeHtml(s) {
 function openNewForm(direction) {
   PAGE.editingDirection = direction;
   PAGE.formMembers = [
-    { isSelf: true, name: PAGE.profile.displayName, date: todayStr(), airline: "", flightNo: "", dep: "", arr: "", removed: false },
+    { isSelf: true, name: PAGE.profile.displayName, date: DEFAULT_DATES[direction], airline: "", flightNo: "", dep: "", arr: "", removed: false },
   ];
   renderForm();
   showForm();
@@ -207,7 +207,7 @@ function renderMemberHtml(m, idx) {
           同第 1 人班機
         </label>
         <div class="f-own-flight" ${m.sameAsSelf !== false ? 'hidden' : ""}>
-          <div class="f-field"><label>日期</label><input type="date" data-role="date" value="${m.date || todayStr()}"></div>
+          <div class="f-field"><label>日期</label><input type="date" data-role="date" value="${m.date || DEFAULT_DATES[direction]}"></div>
           <div class="f-field"><label>航班</label>
             <select data-role="flight">${flightOptionsHtml(direction, flightOptionValue(m.airline, { flightNo: m.flightNo, dep: m.dep, arr: m.arr }))}</select>
           </div>
@@ -248,7 +248,7 @@ function bindFormEvents() {
   });
 
   document.getElementById("f-add-member").addEventListener("click", () => {
-    PAGE.formMembers.push({ isSelf: false, name: "", date: todayStr(), airline: "", flightNo: "", dep: "", arr: "", sameAsSelf: true, removed: false });
+    PAGE.formMembers.push({ isSelf: false, name: "", date: DEFAULT_DATES[PAGE.editingDirection], airline: "", flightNo: "", dep: "", arr: "", sameAsSelf: true, removed: false });
     renderForm();
   });
 
@@ -317,6 +317,7 @@ const SPINNER_HTML = `<div class="f-spinner-wrap"><div class="f-spinner"></div><
 async function initOverviewPage() {
   OV.activityId = getActivityId();
   const bodyEl = document.getElementById("f-overview-body");
+  document.getElementById("f-back-link").href = `index.html?activityId=${encodeURIComponent(OV.activityId)}`;
   if (!OV.activityId) {
     bodyEl.innerHTML = `<div class="f-empty">網址缺少 activityId 參數。</div>`;
     return;
@@ -355,39 +356,45 @@ function renderOverview() {
   if (!dirData) { el.innerHTML = `<div class="f-empty">尚無資料</div>`; return; }
 
   if (OV.tab === "flight") {
-    const list = dirData.byFlight || [];
-    if (list.length === 0) { el.innerHTML = `<div class="f-empty">目前還沒有人登記</div>`; return; }
-    el.innerHTML = list.map(g => `
-      <div class="f-flight-group">
-        <div class="f-fg-head">
-          <span class="f-fg-time">${g.depTime}–${g.arrTime}</span>
-          <span class="f-fg-meta">${AIRLINES[g.airline]?.label || g.airline}｜${g.flightNo}｜${g.flightDate}｜共 ${g.names.length} 人</span>
-        </div>
-        <div class="f-fg-names">${g.names.map(escapeHtml).join("、")}</div>
+    const dateGroups = dirData.byFlight || [];
+    if (dateGroups.length === 0) { el.innerHTML = `<div class="f-empty">目前還沒有人登記</div>`; return; }
+    el.innerHTML = dateGroups.map(dg => `
+      <div class="f-date-block">
+        <div class="f-date-header">${dg.date}</div>
+        ${dg.flights.map(g => `
+          <div class="f-flight-group">
+            <div class="f-fg-head">
+              <span class="f-fg-time">${g.depTime}–${g.arrTime}</span>
+              <span class="f-fg-meta">${AIRLINES[g.airline]?.label || g.airline}｜${g.flightNo}｜共 ${g.names.length} 人</span>
+            </div>
+            <div class="f-fg-names">${g.names.map(escapeHtml).join("、")}</div>
+          </div>
+        `).join("")}
       </div>
     `).join("");
   } else {
-    const byHour = dirData.byHour || {};
-    const hours = Object.keys(byHour).sort();
-    if (hours.length === 0) { el.innerHTML = `<div class="f-empty">目前還沒有人登記</div>`; return; }
+    const dateGroups = dirData.byHour || [];
+    if (dateGroups.length === 0) { el.innerHTML = `<div class="f-empty">目前還沒有人登記</div>`; return; }
     const arrivalLabel = OV.direction === "go" ? "抵達澎湖" : "抵達松山";
-    el.innerHTML = hours.map(hour => {
-      const airlines = byHour[hour];
-      const total = Object.values(airlines).reduce((sum, flights) => sum + Object.values(flights).reduce((s, f) => s + f.names.length, 0), 0);
-      const airlineBlocks = Object.keys(airlines).map(aKey => {
-        const flights = airlines[aKey];
-        const aTotal = Object.values(flights).reduce((s, f) => s + f.names.length, 0);
-        const flightLines = Object.values(flights).map(f => `
-          <div class="f-hour-flight"><span class="f-hf-code">${f.depTime}–${f.arrTime}／${f.flightNo}</span>${f.names.map(escapeHtml).join("、")}</div>
-        `).join("");
-        return `<div class="f-hour-airline">${AIRLINES[aKey]?.label || aKey} ${aTotal}人</div>${flightLines}`;
-      }).join("");
-      const hourEnd = String(Number(hour.split(":")[0]) ).padStart(2, "0") + ":59";
-      return `
-        <div class="f-hour-block">
-          <div class="f-hour-title">${hour}~${hourEnd}（${arrivalLabel}）共 ${total} 人</div>
-          ${airlineBlocks}
-        </div>`;
-    }).join("");
+    el.innerHTML = dateGroups.map(dg => `
+      <div class="f-date-block">
+        <div class="f-date-header">${dg.date}</div>
+        ${dg.hours.map(h => {
+          const total = h.airlines.reduce((s, a) => s + a.total, 0);
+          const hourEnd = h.hour.split(":")[0] + ":59";
+          const airlineBlocks = h.airlines.map(a => `
+            <div class="f-hour-airline">${AIRLINES[a.airline]?.label || a.airline} ${a.total}人</div>
+            ${a.flights.map(f => `
+              <div class="f-hour-flight"><span class="f-hf-code">${f.depTime}–${f.arrTime}／${f.flightNo}</span>${f.names.map(escapeHtml).join("、")}</div>
+            `).join("")}
+          `).join("");
+          return `
+            <div class="f-hour-block">
+              <div class="f-hour-title">${h.hour}~${hourEnd}（${arrivalLabel}）共 ${total} 人</div>
+              ${airlineBlocks}
+            </div>`;
+        }).join("")}
+      </div>
+    `).join("");
   }
 }
