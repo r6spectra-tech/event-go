@@ -4,8 +4,8 @@
    依賴 ./flight-data.js（FLIGHT_SCHEDULE / AIRLINES / DIRECTION_LABEL）
    ============================================================ */
 
-/* FLIGHT_JS_VERSION: 20260726-16 */
-const FLIGHT_JS_VERSION = "20260726-16";
+/* FLIGHT_JS_VERSION: 20260726-17 */
+const FLIGHT_JS_VERSION = "20260726-17";
 
 // 透過 https://liff.line.me/{liffId}?activityId=xxx 這種網址帶參數時，LINE 不會把
 // ?activityId=xxx 直接透傳給我們的頁面，而是包成一個 liff.state 參數（例如
@@ -778,12 +778,21 @@ function buildOverviewSectionsForHour(dateGroups, showCount, showNames) {
   dateGroups.forEach(dg => {
     dg.hours.forEach(h => {
       const hourEnd = h.hour.split(":")[0] + ":59";
-      h.airlines.forEach(a => {
-        let title = `${h.hour}~${hourEnd}　${AIRLINES[a.airline]?.label || a.airline}`;
-        if (showCount) title += `　${a.total}人`;
-        const body = showNames ? a.flights.map(f => `${f.depTime}–${f.arrTime}／${f.flightNo}：${f.names.join("、")}`).join("\n") : "";
-        sections.push({ date: dg.date, title, body });
+      const total = h.airlines.reduce((s, a) => s + a.total, 0);
+      let title = `${h.hour}~${hourEnd}`;
+      if (showCount) title += `　共${total}人`;
+      // 同一個時段裡的各家航空公司都收進同一段的 body 裡，時段標題（title）只印一次，
+      // 不會像之前那樣每家航空公司各自重複印一次時段範圍
+      const airlineLines = h.airlines.map(a => {
+        let line = `${AIRLINES[a.airline]?.label || a.airline}`;
+        if (showCount) line += `　${a.total}人`;
+        if (showNames) {
+          const detail = a.flights.map(f => `${f.depTime}–${f.arrTime}／${f.flightNo}：${f.names.join("、")}`).join("\n");
+          line += "\n" + detail;
+        }
+        return line;
       });
+      sections.push({ date: dg.date, title, body: airlineLines.join("\n") });
     });
   });
   return sections;
@@ -797,14 +806,22 @@ function overviewSectionsToBubble(sections, headerText) {
     contents.push({ type: "text", text: "目前還沒有人登記", size: "sm", color: "#999999", margin: "md" });
   }
   let lastDate = null;
+  let rowIdx = 0;
   sections.forEach(s => {
     if (s.date !== lastDate) {
       contents.push({ type: "separator", margin: "lg" });
       contents.push({ type: "text", text: s.date, weight: "bold", size: "sm", color: "#17233D", margin: "lg" });
       lastDate = s.date;
+      rowIdx = 0; // 每個日期底下重新起算斑馬紋，第一格固定同一底色，比較好對照
     }
-    contents.push({ type: "text", text: s.title, size: "sm", wrap: true, margin: "sm" });
-    if (s.body) contents.push({ type: "text", text: s.body, size: "xs", color: "#666666", wrap: true, margin: "xs" });
+    const zebra = rowIdx % 2 === 0 ? "#F6F1E4" : "#FFFFFF";
+    const boxContents = [{ type: "text", text: s.title, size: "sm", weight: "bold", wrap: true }];
+    if (s.body) boxContents.push({ type: "text", text: s.body, size: "xs", color: "#666666", wrap: true, margin: "xs" });
+    contents.push({
+      type: "box", layout: "vertical", backgroundColor: zebra, cornerRadius: "6px",
+      paddingAll: "8px", margin: "sm", contents: boxContents,
+    });
+    rowIdx++;
   });
   return {
     type: "bubble",
@@ -813,7 +830,7 @@ function overviewSectionsToBubble(sections, headerText) {
       type: "box", layout: "vertical",
       contents: [
         { type: "button", style: "primary", color: "#17233D",
-          action: { type: "uri", label: "查看完整總表", uri: `${RUNTIME.siteUrl}/flight-liff/overview.html` } },
+          action: { type: "uri", label: "前往登記", uri: `https://liff.line.me/${RUNTIME.liffId}` } },
       ],
     },
   };
