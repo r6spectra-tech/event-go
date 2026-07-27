@@ -1,5 +1,5 @@
-/* FLIGHT_DATA_VERSION: 20260726-13 */
-const FLIGHT_DATA_VERSION = "20260726-13";
+/* FLIGHT_DATA_VERSION: 20260726-20 */
+const FLIGHT_DATA_VERSION = "20260726-20";
 
 // 目前先寫死指向這次的活動，不透過網址參數帶入，activityId 之後如果要做成通用系統
 // （支援多個不同活動各自登記機票）再改回從網址讀取。
@@ -85,9 +85,11 @@ const FLIGHT_SCHEDULE = {
         { flightNo: "B7-8717", dep: "20:40", arr: "21:25" },
       ],
       mandarin: [
-        { flightNo: "AE333", dep: "07:35", arr: "08:20" },
-        { flightNo: "AE335", dep: "10:50", arr: "11:35" },
-        { flightNo: "AE341", dep: "14:20", arr: "15:05" },
+        { flightNo: "AE331", dep: "07:35", arr: "08:20" },
+        { flightNo: "AE333", dep: "08:45", arr: "09:30" },
+        { flightNo: "AE335", dep: "10:35", arr: "11:20" },
+        { flightNo: "AE339", dep: "13:40", arr: "14:25" },
+        { flightNo: "AE343", dep: "16:10", arr: "16:55" },
         { flightNo: "AE345", dep: "17:10", arr: "17:55" },
         { flightNo: "AE357", dep: "18:50", arr: "19:35" },
       ],
