@@ -4,8 +4,8 @@
    依賴 ./flight-data.js（FLIGHT_SCHEDULE / AIRLINES / DIRECTION_LABEL）
    ============================================================ */
 
-/* FLIGHT_JS_VERSION: 20260727-2 */
-const FLIGHT_JS_VERSION = "20260727-2";
+/* FLIGHT_JS_VERSION: 20260727-6 */
+const FLIGHT_JS_VERSION = "20260727-6";
 
 // 透過 https://liff.line.me/{liffId}?activityId=xxx 這種網址帶參數時，LINE 不會把
 // ?activityId=xxx 直接透傳給我們的頁面，而是包成一個 liff.state 參數（例如
@@ -442,8 +442,8 @@ function bindFormEvents() {
 async function submitForm() {
   const direction = PAGE.editingDirection;
   const self = PAGE.formMembers[0];
-  if (!self.airline || !self.flightNo || !self.date) {
-    toast("請選擇您自己的航班與日期（自行輸入的話，航空公司／航班編號／時間都要填）");
+  if (!self.airline || !self.flightNo || !self.date || !self.dep || !self.arr) {
+    toast("請完整選擇您自己的航班、日期、出發／抵達時間（自行輸入的話也都要填）");
     return;
   }
   const kept = PAGE.formMembers.filter(m => !m.removed);
@@ -451,7 +451,7 @@ async function submitForm() {
     if (m.isSelf) return { name: self.name, airline: self.airline, flightNo: self.flightNo, flightDate: self.date, depTime: self.dep, arrTime: self.arr, airport: self.airport, waitlisted: !!self.waitlisted };
     const useOwn = m.sameAsSelf === false;
     if (!m.name || !m.name.trim()) throw new Error("同行者稱呼不可空白");
-    if (useOwn && (!m.airline || !m.flightNo || !m.date)) throw new Error(`「${m.name}」請選擇航班與日期`);
+    if (useOwn && (!m.airline || !m.flightNo || !m.date || !m.dep || !m.arr)) throw new Error(`「${m.name}」請完整選擇航班、日期、出發／抵達時間`);
     return {
       name: m.name.trim(),
       airline: useOwn ? m.airline : self.airline,
@@ -890,6 +890,16 @@ async function shareOverview() {
   const showNames = document.getElementById("f-ov-names").checked;
   const showAirport = document.getElementById("f-ov-airport").checked;
 
+  const showConfirmed = document.getElementById("f-ov-confirmed").checked;
+  const showWaitlisted = document.getElementById("f-ov-waitlisted").checked;
+  if (!showConfirmed && !showWaitlisted) {
+    toast("候補篩選請至少勾一個");
+    return;
+  }
+  // 兩個都勾＝不篩選（傳 all，跟既有 overview.html 的預設行為一致）；
+  // 只勾一個才真的把另一種人從統計裡排除掉
+  const waitlistFilter = (showConfirmed && showWaitlisted) ? "all" : (showWaitlisted ? "waitlisted" : "confirmed");
+
   const ok = await ensureLiff();
   if (!ok || !liff.isApiAvailable("shareTargetPicker")) {
     toast("目前環境不支援 LINE 分享");
@@ -899,7 +909,7 @@ async function shareOverview() {
   const btn = document.getElementById("f-ov-share-btn");
   btn.disabled = true;
   try {
-    const data = await apiGet("flightOverview", { activityId: ADMIN.activityId });
+    const data = await apiGet("flightOverview", { activityId: ADMIN.activityId, waitlistFilter });
     const tabLabel = tab === "flight" ? "依航班" : "依時段";
 
     // 去程/回程各自產生自己的頁面，再依序接在一起：去程幾頁、接著回程幾頁，
@@ -912,7 +922,8 @@ async function shareOverview() {
       const sections = tab === "flight"
         ? buildOverviewSectionsForFlight(dateGroups, showCount, showNames, showAirport)
         : buildOverviewSectionsForHour(dateGroups, showCount, showNames, showAirport);
-      const bubbles = buildOverviewBubbles(sections, `📋 ${dirLabel}總表・${tabLabel}`);
+      const filterLabel = waitlistFilter === "waitlisted" ? "・只看候補" : waitlistFilter === "confirmed" ? "・不含候補" : "";
+      const bubbles = buildOverviewBubbles(sections, `📋 ${dirLabel}總表・${tabLabel}${filterLabel}`);
       allBubbles = allBubbles.concat(bubbles);
     });
 
@@ -996,20 +1007,40 @@ async function exportCsv() {
   const btn = document.getElementById("f-export-btn");
   btn.disabled = true;
   try {
-    const rows = await apiGet("flightExport", { requestedBy: ADMIN.profile.userId, activityId: ADMIN.activityId });
+    const direction = document.querySelector('input[name="f-export-dir"]:checked').value;
+    const rows = await apiGet("flightExport", {
+      requestedBy: ADMIN.profile.userId, activityId: ADMIN.activityId,
+      direction: direction === "all" ? "" : direction,
+    });
     if (rows.length === 0) {
       toast("目前沒有資料可以匯出");
       return;
     }
-    const cols = ["direction", "ownerDisplayName", "name", "isSelf", "airline", "flightNo", "flightDate", "depTime", "arrTime", "seq", "createdAt", "updatedAt"];
-    const header = cols.join(",");
-    const lines = rows.map(r => cols.map(c => csvEscape(r[c])).join(","));
+    // 技術欄名 -> CSV 表頭中文字，以及部分欄位要轉成可讀文字（不是存進 Sheet 的原始代碼值）
+    const cols = [
+      ["direction", "方向", v => (v === "go" ? "去程" : v === "return" ? "回程" : v)],
+      ["ownerDisplayName", "填表人", v => v],
+      ["name", "姓名", v => v],
+      ["isSelf", "本人", v => (v === true || String(v).toUpperCase() === "TRUE" ? "是" : "否")],
+      ["airport", "出發/抵達地", v => (AIRPORTS[v] ? AIRPORTS[v].label : v)],
+      ["airline", "航空公司", v => (AIRLINES[v] ? AIRLINES[v].label : v)],
+      ["flightNo", "航班編號", v => v],
+      ["waitlisted", "候補中", v => (v === true || String(v).toUpperCase() === "TRUE" ? "是" : "否")],
+      ["flightDate", "日期", v => v],
+      ["depTime", "起飛", v => v],
+      ["arrTime", "抵達", v => v],
+      ["seq", "流水號", v => v],
+      ["createdAt", "建立時間", v => v],
+      ["updatedAt", "更新時間", v => v],
+    ];
+    const header = cols.map(c => c[1]).join(",");
+    const lines = rows.map(r => cols.map(([key, , fmt]) => csvEscape(fmt(r[key]))).join(","));
     const csv = "\uFEFF" + [header, ...lines].join("\n");
     const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `flight-${ADMIN.activityId}-${Date.now()}.csv`;
+    a.download = `flight-${ADMIN.activityId}-${direction}-${Date.now()}.csv`;
     document.body.appendChild(a);
     a.click();
     a.remove();

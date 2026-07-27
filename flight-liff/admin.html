@@ -3,10 +3,10 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
-<meta name="page-version" content="20260727-2">
+<meta name="page-version" content="20260727-6">
 <title>機票登記管理</title>
-<link rel="stylesheet" href="../assets/style.css?v=20260727-2">
-<link rel="stylesheet" href="flight.css?v=20260727-2">
+<link rel="stylesheet" href="../assets/style.css?v=20260727-6">
+<link rel="stylesheet" href="flight.css?v=20260727-6">
 <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
 </head>
 <body>
@@ -19,6 +19,7 @@
 
   <div class="f-wrap" id="f-app">
     <a href="#" id="f-back-link" class="btn ghost" style="margin-bottom:10px; display:inline-block;">← 回登記頁</a>
+    <a href="debug.html" style="margin-bottom:10px; margin-left:10px; font-size:0.8rem; color:#999;">🔧 除錯頁</a>
 
     <div id="f-admin-loading" class="f-spinner-wrap"><div class="f-spinner"></div></div>
 
@@ -58,6 +59,11 @@
           <label style="margin-right:16px; font-size:0.85rem; font-weight:400;"><input type="checkbox" id="f-ov-names"> 顯示姓名</label>
           <label style="font-size:0.85rem; font-weight:400;"><input type="checkbox" id="f-ov-airport" checked> 顯示出發/抵達地</label>
         </div>
+        <div class="f-field">
+          <label>候補篩選（可複選，兩個都勾＝全部都要）</label>
+          <label style="margin-right:16px; font-size:0.85rem; font-weight:400;"><input type="checkbox" id="f-ov-confirmed" checked> 顯示已確定</label>
+          <label style="font-size:0.85rem; font-weight:400;"><input type="checkbox" id="f-ov-waitlisted" checked> 顯示候補中</label>
+        </div>
 
         <button class="btn primary" id="f-ov-share-btn" style="margin-top:6px;">📊 分享總表到群組</button>
       </div>
@@ -70,17 +76,23 @@
 
       <div class="f-card">
         <h3>名單匯出</h3>
-        <p class="f-sub" style="margin-bottom:14px;">匯出這個活動目前所有登記資料成 CSV，可以用 Excel／Google 試算表開啟。</p>
-        <button class="btn primary" id="f-export-btn">⬇️ 匯出名單（CSV）</button>
+        <p class="f-sub" style="margin-bottom:10px;">匯出這個活動目前所有登記資料成 CSV，可以用 Excel／Google 試算表開啟。</p>
+        <div class="f-field">
+          <label>方向</label>
+          <label style="margin-right:16px; font-size:0.85rem;"><input type="radio" name="f-export-dir" value="all" checked> 全部</label>
+          <label style="margin-right:16px; font-size:0.85rem;"><input type="radio" name="f-export-dir" value="go"> 去程</label>
+          <label style="font-size:0.85rem;"><input type="radio" name="f-export-dir" value="return"> 回程</label>
+        </div>
+        <button class="btn primary" id="f-export-btn" style="margin-top:6px;">⬇️ 匯出名單（CSV）</button>
       </div>
     </div>
   </div>
 
-  <div class="f-version-tag">flight.js v20260727-2</div>
+  <div class="f-version-tag">flight.js v20260727-6</div>
 
-  <script src="../assets/main.js?v=20260727-2"></script>
-  <script src="flight-data.js?v=20260727-2"></script>
-  <script src="flight.js?v=20260727-2"></script>
+  <script src="../assets/main.js?v=20260727-6"></script>
+  <script src="flight-data.js?v=20260727-6"></script>
+  <script src="flight.js?v=20260727-6"></script>
   <script>
     document.addEventListener("DOMContentLoaded", () => {
       document.getElementById("f-back-link").href = "index.html" + location.search;

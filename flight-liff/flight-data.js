@@ -1,5 +1,5 @@
-/* FLIGHT_DATA_VERSION: 20260727-2 */
-const FLIGHT_DATA_VERSION = "20260727-2";
+/* FLIGHT_DATA_VERSION: 20260727-6 */
+const FLIGHT_DATA_VERSION = "20260727-6";
 
 // 目前先寫死指向這次的活動，不透過網址參數帶入，activityId 之後如果要做成通用系統
 // （支援多個不同活動各自登記機票）再改回從網址讀取。
@@ -16,6 +16,8 @@ const FIXED_ACTIVITY_TITLE = "澎湖四日遊(跳島吉貝嶼.桶盤嶼.虎井�
 const AIRLINES = {
   uni: { key: "uni", label: "立榮 UNI AIR" },
   mandarin: { key: "mandarin", label: "華信 Mandarin" },
+  bailey: { key: "bailey", label: "百麗航運（船）" },
+  penghulun: { key: "penghulun", label: "澎湖輪（船）" },
 };
 
 const AIRPORTS = {
@@ -23,6 +25,7 @@ const AIRPORTS = {
   rmq: { key: "rmq", label: "台中 (RMQ)" },
   khh: { key: "khh", label: "高雄 (KHH)" },
   tnn: { key: "tnn", label: "台南 (TNN)" },
+  budai: { key: "budai", label: "布袋（船）" },
 };
 const DEFAULT_AIRPORT = "tsa";
 
@@ -93,6 +96,11 @@ const FLIGHT_SCHEDULE = {
         { flightNo: "AE345", dep: "17:10", arr: "17:55" },
         { flightNo: "AE357", dep: "18:50", arr: "19:35" },
       ],
+      // 澎湖輪每天出發時間不固定（不是每天重複的班表），沒辦法完整放進固定選單，
+      // 這裡先內建最常用的夜航班次，其他日期/時段選「其他（自行輸入）」自己填
+      penghulun: [
+        { flightNo: "-", dep: "23:30", arr: "06:00" },
+      ],
     },
     tnn: {
       uni: [
@@ -101,6 +109,15 @@ const FLIGHT_SCHEDULE = {
         { flightNo: "B7-8683", dep: "18:05", arr: "18:35" },
       ],
       mandarin: [],
+    },
+    budai: {
+      // 百麗航運，布袋 -> 馬公（澎湖），船班沒有「航班編號」，flightNo 統一用 "-" 表示
+      bailey: [
+        { flightNo: "-", dep: "07:30", arr: "08:45" },
+        { flightNo: "-", dep: "08:00", arr: "09:15" },
+        { flightNo: "-", dep: "10:30", arr: "11:45" },
+        { flightNo: "-", dep: "11:00", arr: "12:15" },
+      ],
     },
   },
   return: {
@@ -171,6 +188,10 @@ const FLIGHT_SCHEDULE = {
         { flightNo: "AE344", dep: "17:30", arr: "18:10" },
         { flightNo: "AE346", dep: "18:50", arr: "19:30" },
       ],
+      // 澎湖輪回程一樣每天出發時間不固定，先內建最常用的下午班次，其他選「其他（自行輸入）」
+      penghulun: [
+        { flightNo: "-", dep: "16:00", arr: "21:00" },
+      ],
     },
     tnn: {
       uni: [
@@ -179,6 +200,14 @@ const FLIGHT_SCHEDULE = {
         { flightNo: "B7-8682", dep: "16:50", arr: "17:25" },
       ],
       mandarin: [],
+    },
+    budai: {
+      // 百麗航運，馬公（澎湖）-> 布袋
+      bailey: [
+        { flightNo: "-", dep: "13:00", arr: "14:15" },
+        { flightNo: "-", dep: "16:15", arr: "17:30" },
+        { flightNo: "-", dep: "16:45", arr: "18:00" },
+      ],
     },
   },
 };
