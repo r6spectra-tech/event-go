@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
-<meta name="page-version" content="20260726-12">
+<meta name="page-version" content="20260727-1">
 <title>flight-liff 診斷頁</title>
 <style>
   body{background:#0a0a0f;color:#e5e7eb;font-family:-apple-system,sans-serif;padding:16px;margin:0;font-size:14px;line-height:1.6}
@@ -36,15 +36,24 @@
 <h2>3. LIFF 環境與登入狀態（這次問題最關鍵）</h2>
 <div id="envInfo">尚未檢查</div>
 
-<h2>4. GAS 連線測試</h2>
+<h2>4. GAS 後端版本與 Sheet 欄位檢查</h2>
+<p style="font-size:12px;color:#9ca3af;margin:-4px 0 8px">
+  直接問 GAS 自己「你是哪個版本」「每個分頁實際有哪些欄位」，不用再靠猜的或翻 Google Sheet 對照。
+  如果 GAS 版本顯示舊的，代表 Apps Script 還沒重新部署；如果 flight_registrations 沒有 airport 欄位，
+  代表 Sheet 還沒手動加這一欄。
+</p>
+<div id="gasSchema">尚未檢查</div>
+
+<h2>5. GAS 連線測試</h2>
 <div id="apiTest">尚未開始</div>
 
 <script>
-const EXPECTED = "20260726-12";
+const EXPECTED = "20260727-1";
+const EXPECTED_GAS_VERSION = "20260727-1";
 const versionsEl = document.getElementById('versions');
 const loadsEl = document.getElementById('loads');
 const apiEl = document.getElementById('apiTest');
-window.__diag = { versions: [], loads: [], api: [], env: [] };
+window.__diag = { versions: [], loads: [], api: [], env: [], gasSchema: [] };
 
 function qs(name) {
   return new URLSearchParams(location.search).get(name) || "";
@@ -150,6 +159,44 @@ async function checkLoads() {
   loadsEl.innerHTML = html;
 }
 
+async function checkGasSchema() {
+  const el = document.getElementById('gasSchema');
+  window.__diag.gasSchema = [];
+  const push = (k, v) => { window.__diag.gasSchema.push([k, v]); };
+
+  if (typeof apiGet !== 'function') {
+    el.innerHTML = '<div class="row"><span class="pending">main.js 未成功載入，跳過檢查</span></div>';
+    return;
+  }
+  try {
+    const info = await apiGet('flightDebugInfo');
+    let html = '';
+
+    const gasOk = info.gasVersion === EXPECTED_GAS_VERSION;
+    html += `<div class="row"><span>GAS 版本</span><span class="${gasOk ? 'ok' : 'fail'}">${info.gasVersion || '(讀不到)'} ${gasOk ? '✓ 最新' : '✗ 舊版，Apps Script 需要重新部署'}</span></div>`;
+    push('GAS 版本', `${info.gasVersion || '(讀不到)'}（期望：${EXPECTED_GAS_VERSION}）`);
+
+    const sheets = info.sheets || {};
+    Object.keys(sheets).forEach(name => {
+      const headers = sheets[name] || [];
+      html += `<div class="row"><span>${name}</span><span class="${headers.length ? 'ok' : 'fail'}">${headers.length} 個欄位</span></div>`;
+      html += `<div class="detail">${headers.join(', ') || '(空的或讀取失敗)'}</div>`;
+      push(name, headers.join(', ') || '(空的或讀取失敗)');
+    });
+
+    if (sheets.flight_registrations) {
+      const hasAirport = sheets.flight_registrations.includes('airport');
+      html += `<div class="row"><span>flight_registrations 是否有 airport 欄位</span><span class="${hasAirport ? 'ok' : 'fail'}">${hasAirport ? '✓ 有' : '✗ 沒有，請去 Sheet 最後一欄手動新增'}</span></div>`;
+      push('flight_registrations 有 airport 欄位', hasAirport ? '有' : '沒有');
+    }
+
+    el.innerHTML = html;
+  } catch (e) {
+    el.innerHTML = `<div class="row"><span class="fail">✗ ${e.message}</span></div>`;
+    push('錯誤', e.message);
+  }
+}
+
 async function runApiTest() {
   let html = '';
   // activityId 現在是寫死在 flight-data.js 的 FIXED_ACTIVITY_ID，不透過網址參數，
@@ -215,6 +262,8 @@ function copyMarkdown() {
   });
   md += '\n**LIFF 環境與登入狀態**\n\n';
   (d.env || []).forEach(([k, v]) => { md += `- ${k}: ${v}\n`; });
+  md += '\n**GAS 後端版本與 Sheet 欄位**\n\n';
+  (d.gasSchema || []).forEach(([k, v]) => { md += `- ${k}: ${v}\n`; });
   md += '\n**GAS 連線測試**\n\n';
   (d.api || []).forEach(([name, status]) => { md += `- ${name}: ${status}\n`; });
   md += `\n(裝置: ${navigator.userAgent})\n(網址: ${location.href})\n`;
@@ -300,9 +349,9 @@ async function checkEnvInfo() {
 }
 
 checkVersions();
-checkLoads().then(() => Promise.all([checkEnvInfo(), runApiTest()]));
+checkLoads().then(() => Promise.all([checkEnvInfo(), checkGasSchema(), runApiTest()]));
 </script>
-<h2>5. LIFF 分享功能測試（shareTargetPicker）</h2>
+<h2>6. LIFF 分享功能測試（shareTargetPicker）</h2>
 <p style="font-size:12px;color:#9ca3af;margin:-4px 0 8px">
   用最簡單的純文字訊息測試分享功能，藉此排除「是 LINE 帳號/Channel 設定問題」還是「是我們自己的 Flex 內容問題」。
   如果連這個最簡單的測試在 LINE App 裡都是空白，代表問題出在 LINE Developers Console 的 Share Target Picker 設定或帳號權限，
