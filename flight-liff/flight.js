@@ -4,8 +4,8 @@
    依賴 ./flight-data.js（FLIGHT_SCHEDULE / AIRLINES / DIRECTION_LABEL）
    ============================================================ */
 
-/* FLIGHT_JS_VERSION: 20260726-15 */
-const FLIGHT_JS_VERSION = "20260726-15";
+/* FLIGHT_JS_VERSION: 20260726-16 */
+const FLIGHT_JS_VERSION = "20260726-16";
 
 // 透過 https://liff.line.me/{liffId}?activityId=xxx 這種網址帶參數時，LINE 不會把
 // ?activityId=xxx 直接透傳給我們的頁面，而是包成一個 liff.state 參數（例如
@@ -819,24 +819,30 @@ function overviewSectionsToBubble(sections, headerText) {
   };
 }
 
-function buildOverviewFlexContents(sections, titleBase) {
+// 回傳「一組 bubble 陣列」而不是直接包成 carousel，方便呼叫端把去程/回程的頁面串在一起
+// 再一起決定要不要包 carousel。titleBase 不含頁碼，頁碼是這支函式自己加的。
+function buildOverviewBubbles(sections, titleBase) {
   if (sections.length === 0) {
-    return overviewSectionsToBubble([], titleBase);
+    return [overviewSectionsToBubble([], titleBase + "（目前還沒有人登記）")];
   }
   const chunks = [];
   for (let i = 0; i < sections.length; i += OV_SECTIONS_PER_BUBBLE) {
     chunks.push(sections.slice(i, i + OV_SECTIONS_PER_BUBBLE));
   }
   if (chunks.length === 1) {
-    return overviewSectionsToBubble(chunks[0], titleBase);
+    return [overviewSectionsToBubble(chunks[0], titleBase)];
   }
-  const limitedChunks = chunks.slice(0, OV_MAX_BUBBLES);
-  const bubbles = limitedChunks.map((chunk, i) => overviewSectionsToBubble(chunk, `${titleBase}（${i + 1}/${limitedChunks.length}）`));
-  return { type: "carousel", contents: bubbles };
+  return chunks.map((chunk, i) => overviewSectionsToBubble(chunk, `${titleBase}（${i + 1}/${chunks.length}）`));
 }
 
 async function shareOverview() {
-  const direction = document.querySelector('input[name="f-ov-dir"]:checked').value;
+  const directions = [];
+  if (document.getElementById("f-ov-dir-go").checked) directions.push("go");
+  if (document.getElementById("f-ov-dir-return").checked) directions.push("return");
+  if (directions.length === 0) {
+    toast("請至少選一個方向");
+    return;
+  }
   const tab = document.querySelector('input[name="f-ov-tab"]:checked').value;
   const showCount = document.getElementById("f-ov-count").checked;
   const showNames = document.getElementById("f-ov-names").checked;
@@ -851,16 +857,33 @@ async function shareOverview() {
   btn.disabled = true;
   try {
     const data = await apiGet("flightOverview", { activityId: ADMIN.activityId });
-    const dirData = data[direction];
-    const dirLabel = direction === "go" ? "去程" : "回程";
     const tabLabel = tab === "flight" ? "依航班" : "依時段";
-    const dateGroups = (tab === "flight" ? dirData.byFlight : dirData.byHour) || [];
-    const sections = tab === "flight"
-      ? buildOverviewSectionsForFlight(dateGroups, showCount, showNames)
-      : buildOverviewSectionsForHour(dateGroups, showCount, showNames);
-    const contents = buildOverviewFlexContents(sections, `📋 ${dirLabel}總表・${tabLabel}`);
-    await liff.shareTargetPicker([{ type: "flex", altText: `${dirLabel}總表（${tabLabel}）`, contents }]);
-    toast("已送出分享");
+
+    // 去程/回程各自產生自己的頁面，再依序接在一起：去程幾頁、接著回程幾頁，
+    // 不是把兩個方向的資料混在同一頁裡。
+    let allBubbles = [];
+    directions.forEach(direction => {
+      const dirData = data[direction];
+      const dirLabel = direction === "go" ? "去程" : "回程";
+      const dateGroups = (tab === "flight" ? dirData.byFlight : dirData.byHour) || [];
+      const sections = tab === "flight"
+        ? buildOverviewSectionsForFlight(dateGroups, showCount, showNames)
+        : buildOverviewSectionsForHour(dateGroups, showCount, showNames);
+      const bubbles = buildOverviewBubbles(sections, `📋 ${dirLabel}總表・${tabLabel}`);
+      allBubbles = allBubbles.concat(bubbles);
+    });
+
+    let truncated = false;
+    if (allBubbles.length > OV_MAX_BUBBLES) {
+      allBubbles = allBubbles.slice(0, OV_MAX_BUBBLES);
+      truncated = true;
+    }
+
+    const contents = allBubbles.length === 1 ? allBubbles[0] : { type: "carousel", contents: allBubbles };
+    const dirLabelAll = directions.map(d => d === "go" ? "去程" : "回程").join("＋");
+    const altText = `${dirLabelAll}總表（${tabLabel}）`;
+    await liff.shareTargetPicker([{ type: "flex", altText, contents }]);
+    toast(truncated ? "已送出分享（內容過多，只帶前12頁）" : "已送出分享");
   } catch (e) {
     toast("分享失敗：" + e.message);
   } finally {

@@ -3,10 +3,10 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
-<meta name="page-version" content="20260726-15">
+<meta name="page-version" content="20260726-16">
 <title>機票登記管理</title>
-<link rel="stylesheet" href="../assets/style.css?v=20260726-15">
-<link rel="stylesheet" href="flight.css?v=20260726-15">
+<link rel="stylesheet" href="../assets/style.css?v=20260726-16">
+<link rel="stylesheet" href="flight.css?v=20260726-16">
 <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
 </head>
 <body>
@@ -44,9 +44,9 @@
         <p class="f-sub" style="margin-bottom:10px;">內容會直接嵌進訊息裡（不只是連結），選人多時會自動分成多頁。</p>
 
         <div class="f-field">
-          <label>方向</label>
-          <label style="margin-right:16px; font-size:0.85rem;"><input type="radio" name="f-ov-dir" value="go" checked> 去程</label>
-          <label style="font-size:0.85rem;"><input type="radio" name="f-ov-dir" value="return"> 回程</label>
+          <label>方向（可複選）</label>
+          <label style="margin-right:16px; font-size:0.85rem;"><input type="checkbox" id="f-ov-dir-go" checked> 去程</label>
+          <label style="font-size:0.85rem;"><input type="checkbox" id="f-ov-dir-return"> 回程</label>
         </div>
         <div class="f-field">
           <label>檢視方式</label>
@@ -75,11 +75,11 @@
     </div>
   </div>
 
-  <div class="f-version-tag">flight.js v20260726-15</div>
+  <div class="f-version-tag">flight.js v20260726-16</div>
 
-  <script src="../assets/main.js?v=20260726-15"></script>
-  <script src="flight-data.js?v=20260726-15"></script>
-  <script src="flight.js?v=20260726-15"></script>
+  <script src="../assets/main.js?v=20260726-16"></script>
+  <script src="flight-data.js?v=20260726-16"></script>
+  <script src="flight.js?v=20260726-16"></script>
   <script>
     document.addEventListener("DOMContentLoaded", () => {
       document.getElementById("f-back-link").href = "index.html" + location.search;
