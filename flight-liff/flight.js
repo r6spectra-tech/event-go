@@ -4,8 +4,8 @@
    依賴 ./flight-data.js（FLIGHT_SCHEDULE / AIRLINES / DIRECTION_LABEL）
    ============================================================ */
 
-/* FLIGHT_JS_VERSION: 20260726-17 */
-const FLIGHT_JS_VERSION = "20260726-17";
+/* FLIGHT_JS_VERSION: 20260726-19 */
+const FLIGHT_JS_VERSION = "20260726-19";
 
 // 透過 https://liff.line.me/{liffId}?activityId=xxx 這種網址帶參數時，LINE 不會把
 // ?activityId=xxx 直接透傳給我們的頁面，而是包成一個 liff.state 參數（例如
@@ -170,7 +170,7 @@ function renderMyCard(direction) {
     rowsEl.innerHTML = list.map(r => `
       <div class="f-row-2 ${r.isSelf === true || String(r.isSelf).toUpperCase() === "TRUE" ? "f-self" : ""}">
         <div class="f-name">${escapeHtml(r.name || "")}</div>
-        <div class="f-flight2">${AIRLINES[r.airline]?.label || r.airline}｜${r.flightNo}｜${r.flightDate}｜${r.depTime}–${r.arrTime}</div>
+        <div class="f-flight2">${buildFlightLine(r)}</div>
       </div>
     `).join("");
   }
@@ -218,7 +218,7 @@ function renderClaimedCards() {
     const rows = c.members.map(m => `
       <div class="f-row-2 ${m.isSelf === true || String(m.isSelf).toUpperCase() === "TRUE" ? "f-self" : ""}">
         <div class="f-name">${escapeHtml(m.name || "")}</div>
-        <div class="f-flight2">${AIRLINES[m.airline]?.label || m.airline}｜${m.flightNo}｜${m.flightDate}｜${m.depTime}–${m.arrTime}</div>
+        <div class="f-flight2">${buildFlightLine(m)}</div>
       </div>
     `).join("");
     return `
@@ -266,11 +266,15 @@ function openEditForm(direction) {
   const others = list.filter(r => r !== selfRow);
 
   function toMember(r, isSelf, sameAsSelf) {
-    const airport = findAirportForFlight(direction, r.airline, r.flightNo);
+    // 優先用 Sheet 裡實際存的 airport 欄位；這個欄位是後來才加的，
+    // 舊資料可能沒有值，這種情況才退回用航班反查機制去猜
+    const storedAirport = r.airport && AIRPORTS[r.airport] ? r.airport : null;
+    const airport = storedAirport || findAirportForFlight(direction, r.airline, r.flightNo) || DEFAULT_AIRPORT;
+    const matched = findFlightOption(direction, airport, r.airline, r.flightNo);
     return {
       isSelf, name: r.name, date: r.flightDate,
-      airport: airport || DEFAULT_AIRPORT,
-      manual: airport === null,
+      airport,
+      manual: !matched,
       airline: r.airline, flightNo: r.flightNo, dep: r.depTime, arr: r.arrTime,
       sameAsSelf, removed: false,
     };
@@ -437,7 +441,7 @@ async function submitForm() {
   }
   const kept = PAGE.formMembers.filter(m => !m.removed);
   const members = kept.map(m => {
-    if (m.isSelf) return { name: self.name, airline: self.airline, flightNo: self.flightNo, flightDate: self.date, depTime: self.dep, arrTime: self.arr };
+    if (m.isSelf) return { name: self.name, airline: self.airline, flightNo: self.flightNo, flightDate: self.date, depTime: self.dep, arrTime: self.arr, airport: self.airport };
     const useOwn = m.sameAsSelf === false;
     if (!m.name || !m.name.trim()) throw new Error("同行者稱呼不可空白");
     if (useOwn && (!m.airline || !m.flightNo || !m.date)) throw new Error(`「${m.name}」請選擇航班與日期`);
@@ -448,6 +452,7 @@ async function submitForm() {
       flightDate: useOwn ? m.date : self.date,
       depTime: useOwn ? m.dep : self.dep,
       arrTime: useOwn ? m.arr : self.arr,
+      airport: useOwn ? m.airport : self.airport,
     };
   });
 
@@ -482,7 +487,9 @@ async function deleteDirection(direction) {
 // 完成登記回報：分享一張自己的飛機資訊卡片到群組，附「前往登記」按鈕方便還沒填的人直接點進去。
 // 不寫分享者自己的 LINE 名稱，因為是自己分享自己的，看的人自然知道是誰傳的。
 function buildFlightLine(r) {
-  return `${AIRLINES[r.airline]?.label || r.airline}｜${r.flightNo}｜${r.flightDate}｜${r.depTime}–${r.arrTime}`;
+  const airportLabel = AIRPORTS[r.airport] ? AIRPORTS[r.airport].label : "";
+  const prefix = airportLabel ? `${airportLabel}｜` : "";
+  return `${prefix}${AIRLINES[r.airline]?.label || r.airline}｜${r.flightNo}｜${r.flightDate}｜${r.depTime}–${r.arrTime}`;
 }
 
 function completionBubble(entries, timestampText) {
@@ -628,7 +635,7 @@ function renderClaimBody() {
   const rowsHtml = info.members.map(m => `
     <div class="f-row-2 ${m.isSelf === true || String(m.isSelf).toUpperCase() === "TRUE" ? "f-self" : ""}">
       <div class="f-name">${escapeHtml(m.name || "")}</div>
-      <div class="f-flight2">${AIRLINES[m.airline]?.label || m.airline}｜${m.flightNo}｜${m.flightDate}｜${m.depTime}–${m.arrTime}</div>
+      <div class="f-flight2">${buildFlightLine(m)}</div>
     </div>
   `).join("");
 
@@ -760,11 +767,12 @@ async function shareInvite() {
 const OV_SECTIONS_PER_BUBBLE = 6;
 const OV_MAX_BUBBLES = 12;
 
-function buildOverviewSectionsForFlight(dateGroups, showCount, showNames) {
+function buildOverviewSectionsForFlight(dateGroups, showCount, showNames, showAirport) {
   const sections = [];
   dateGroups.forEach(dg => {
     dg.flights.forEach(g => {
-      let title = `${g.depTime}–${g.arrTime}　${AIRLINES[g.airline]?.label || g.airline}｜${g.flightNo}`;
+      const airportLabel = (showAirport && AIRPORTS[g.airport]) ? AIRPORTS[g.airport].label + "　" : "";
+      let title = `${g.depTime}–${g.arrTime}　${airportLabel}${AIRLINES[g.airline]?.label || g.airline}｜${g.flightNo}`;
       if (showCount) title += `　共${g.names.length}人`;
       const body = showNames ? g.names.join("、") : "";
       sections.push({ date: dg.date, title, body });
@@ -773,7 +781,7 @@ function buildOverviewSectionsForFlight(dateGroups, showCount, showNames) {
   return sections;
 }
 
-function buildOverviewSectionsForHour(dateGroups, showCount, showNames) {
+function buildOverviewSectionsForHour(dateGroups, showCount, showNames, showAirport) {
   const sections = [];
   dateGroups.forEach(dg => {
     dg.hours.forEach(h => {
@@ -786,8 +794,13 @@ function buildOverviewSectionsForHour(dateGroups, showCount, showNames) {
       const airlineLines = h.airlines.map(a => {
         let line = `${AIRLINES[a.airline]?.label || a.airline}`;
         if (showCount) line += `　${a.total}人`;
-        if (showNames) {
-          const detail = a.flights.map(f => `${f.depTime}–${f.arrTime}／${f.flightNo}：${f.names.join("、")}`).join("\n");
+        if (showNames || showAirport) {
+          const detail = a.flights.map(f => {
+            let d = `${f.depTime}–${f.arrTime}／${f.flightNo}`;
+            if (showAirport && AIRPORTS[f.airport]) d += `／${AIRPORTS[f.airport].label}`;
+            if (showNames) d += `：${f.names.join("、")}`;
+            return d;
+          }).join("\n");
           line += "\n" + detail;
         }
         return line;
@@ -814,11 +827,12 @@ function overviewSectionsToBubble(sections, headerText) {
       lastDate = s.date;
       rowIdx = 0; // 每個日期底下重新起算斑馬紋，第一格固定同一底色，比較好對照
     }
-    const zebra = rowIdx % 2 === 0 ? "#F6F1E4" : "#FFFFFF";
+    const zebra = rowIdx % 2 === 0 ? "#FFFFFF" : "#F0E9D2";
     const boxContents = [{ type: "text", text: s.title, size: "sm", weight: "bold", wrap: true }];
     if (s.body) boxContents.push({ type: "text", text: s.body, size: "xs", color: "#666666", wrap: true, margin: "xs" });
     contents.push({
       type: "box", layout: "vertical", backgroundColor: zebra, cornerRadius: "6px",
+      borderWidth: "1px", borderColor: "#D8CBA0",
       paddingAll: "8px", margin: "sm", contents: boxContents,
     });
     rowIdx++;
@@ -863,6 +877,7 @@ async function shareOverview() {
   const tab = document.querySelector('input[name="f-ov-tab"]:checked').value;
   const showCount = document.getElementById("f-ov-count").checked;
   const showNames = document.getElementById("f-ov-names").checked;
+  const showAirport = document.getElementById("f-ov-airport").checked;
 
   const ok = await ensureLiff();
   if (!ok || !liff.isApiAvailable("shareTargetPicker")) {
@@ -884,8 +899,8 @@ async function shareOverview() {
       const dirLabel = direction === "go" ? "去程" : "回程";
       const dateGroups = (tab === "flight" ? dirData.byFlight : dirData.byHour) || [];
       const sections = tab === "flight"
-        ? buildOverviewSectionsForFlight(dateGroups, showCount, showNames)
-        : buildOverviewSectionsForHour(dateGroups, showCount, showNames);
+        ? buildOverviewSectionsForFlight(dateGroups, showCount, showNames, showAirport)
+        : buildOverviewSectionsForHour(dateGroups, showCount, showNames, showAirport);
       const bubbles = buildOverviewBubbles(sections, `📋 ${dirLabel}總表・${tabLabel}`);
       allBubbles = allBubbles.concat(bubbles);
     });
@@ -1053,7 +1068,7 @@ function renderOverview() {
         <div class="f-flight-group">
           <div class="f-fg-head">
             <span class="f-fg-time">${g.depTime}–${g.arrTime}</span>
-            <span class="f-fg-meta">${AIRLINES[g.airline]?.label || g.airline}｜${g.flightNo}｜共 ${g.names.length} 人</span>
+            <span class="f-fg-meta">${AIRPORTS[g.airport] ? AIRPORTS[g.airport].label + "｜" : ""}${AIRLINES[g.airline]?.label || g.airline}｜${g.flightNo}｜共 ${g.names.length} 人</span>
           </div>
           <div class="f-fg-names">${g.names.map(escapeHtml).join("、")}</div>
         </div>
@@ -1071,7 +1086,7 @@ function renderOverview() {
         const airlineBlocks = h.airlines.map(a => `
           <div class="f-hour-airline">${AIRLINES[a.airline]?.label || a.airline} ${a.total}人</div>
           ${a.flights.map(f => `
-            <div class="f-hour-flight"><span class="f-hf-code">${f.depTime}–${f.arrTime}／${f.flightNo}</span>${f.names.map(escapeHtml).join("、")}</div>
+            <div class="f-hour-flight"><span class="f-hf-code">${f.depTime}–${f.arrTime}／${f.flightNo}${AIRPORTS[f.airport] ? "／" + AIRPORTS[f.airport].label : ""}</span>${f.names.map(escapeHtml).join("、")}</div>
           `).join("")}
         `).join("");
         return `
