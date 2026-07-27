@@ -4,8 +4,8 @@
    依賴 ./flight-data.js（FLIGHT_SCHEDULE / AIRLINES / DIRECTION_LABEL）
    ============================================================ */
 
-/* FLIGHT_JS_VERSION: 20260726-19 */
-const FLIGHT_JS_VERSION = "20260726-19";
+/* FLIGHT_JS_VERSION: 20260727-2 */
+const FLIGHT_JS_VERSION = "20260727-2";
 
 // 透過 https://liff.line.me/{liffId}?activityId=xxx 這種網址帶參數時，LINE 不會把
 // ?activityId=xxx 直接透傳給我們的頁面，而是包成一個 liff.state 參數（例如
@@ -252,7 +252,7 @@ function escapeHtml(s) {
 function openNewForm(direction) {
   PAGE.editingDirection = direction;
   PAGE.formMembers = [
-    { isSelf: true, name: PAGE.profile.displayName, date: DEFAULT_DATES[direction], airport: DEFAULT_AIRPORT, manual: false, airline: "", flightNo: "", dep: "", arr: "", removed: false },
+    { isSelf: true, name: PAGE.profile.displayName, date: DEFAULT_DATES[direction], airport: DEFAULT_AIRPORT, manual: false, airline: "", flightNo: "", dep: "", arr: "", waitlisted: false, removed: false },
   ];
   renderForm();
   showForm();
@@ -276,6 +276,7 @@ function openEditForm(direction) {
       airport,
       manual: !matched,
       airline: r.airline, flightNo: r.flightNo, dep: r.depTime, arr: r.arrTime,
+      waitlisted: r.waitlisted === true || String(r.waitlisted).toUpperCase() === "TRUE",
       sameAsSelf, removed: false,
     };
   }
@@ -329,7 +330,12 @@ function flightFieldsHtml(direction, m) {
     <div class="f-field"><label>起飛時間</label><input type="time" data-role="manualDep" value="${m.dep || ""}"></div>
     <div class="f-field"><label>抵達時間</label><input type="time" data-role="manualArr" value="${m.arr || ""}"></div>
   ` : "";
-  return select + manualFields;
+  const waitlistField = `
+    <label class="f-waitlist-check">
+      <input type="checkbox" data-role="waitlisted" ${m.waitlisted ? "checked" : ""}>
+      🎫 候補中（尚未確定拿到票）
+    </label>`;
+  return select + manualFields + waitlistField;
 }
 
 function renderMemberHtml(m, idx) {
@@ -414,6 +420,7 @@ function bindFormEvents() {
     if (role === "manualFlightNo") m.flightNo = e.target.value;
     if (role === "manualDep") m.dep = e.target.value;
     if (role === "manualArr") m.arr = e.target.value;
+    if (role === "waitlisted") m.waitlisted = e.target.checked;
     if (role === "same") {
       m.sameAsSelf = e.target.checked;
       renderForm();
@@ -423,7 +430,7 @@ function bindFormEvents() {
   document.getElementById("f-add-member").addEventListener("click", () => {
     PAGE.formMembers.push({
       isSelf: false, name: "", date: DEFAULT_DATES[PAGE.editingDirection], airport: DEFAULT_AIRPORT,
-      manual: false, airline: "", flightNo: "", dep: "", arr: "", sameAsSelf: true, removed: false,
+      manual: false, airline: "", flightNo: "", dep: "", arr: "", waitlisted: false, sameAsSelf: true, removed: false,
     });
     renderForm();
   });
@@ -441,7 +448,7 @@ async function submitForm() {
   }
   const kept = PAGE.formMembers.filter(m => !m.removed);
   const members = kept.map(m => {
-    if (m.isSelf) return { name: self.name, airline: self.airline, flightNo: self.flightNo, flightDate: self.date, depTime: self.dep, arrTime: self.arr, airport: self.airport };
+    if (m.isSelf) return { name: self.name, airline: self.airline, flightNo: self.flightNo, flightDate: self.date, depTime: self.dep, arrTime: self.arr, airport: self.airport, waitlisted: !!self.waitlisted };
     const useOwn = m.sameAsSelf === false;
     if (!m.name || !m.name.trim()) throw new Error("同行者稱呼不可空白");
     if (useOwn && (!m.airline || !m.flightNo || !m.date)) throw new Error(`「${m.name}」請選擇航班與日期`);
@@ -453,6 +460,7 @@ async function submitForm() {
       depTime: useOwn ? m.dep : self.dep,
       arrTime: useOwn ? m.arr : self.arr,
       airport: useOwn ? m.airport : self.airport,
+      waitlisted: !!(useOwn ? m.waitlisted : self.waitlisted),
     };
   });
 
@@ -489,7 +497,9 @@ async function deleteDirection(direction) {
 function buildFlightLine(r) {
   const airportLabel = AIRPORTS[r.airport] ? AIRPORTS[r.airport].label : "";
   const prefix = airportLabel ? `${airportLabel}｜` : "";
-  return `${prefix}${AIRLINES[r.airline]?.label || r.airline}｜${r.flightNo}｜${r.flightDate}｜${r.depTime}–${r.arrTime}`;
+  const isWaitlisted = r.waitlisted === true || String(r.waitlisted).toUpperCase() === "TRUE";
+  const suffix = isWaitlisted ? "（候補中）" : "";
+  return `${prefix}${AIRLINES[r.airline]?.label || r.airline}｜${r.flightNo}｜${r.flightDate}｜${r.depTime}–${r.arrTime}${suffix}`;
 }
 
 function completionBubble(entries, timestampText) {
@@ -773,7 +783,7 @@ function buildOverviewSectionsForFlight(dateGroups, showCount, showNames, showAi
     dg.flights.forEach(g => {
       const airportLabel = (showAirport && AIRPORTS[g.airport]) ? AIRPORTS[g.airport].label + "　" : "";
       let title = `${g.depTime}–${g.arrTime}　${airportLabel}${AIRLINES[g.airline]?.label || g.airline}｜${g.flightNo}`;
-      if (showCount) title += `　共${g.names.length}人`;
+      if (showCount) title += `　共${g.names.length}人${g.waitlistCount ? `（含${g.waitlistCount}候補）` : ""}`;
       const body = showNames ? g.names.join("、") : "";
       sections.push({ date: dg.date, title, body });
     });
@@ -787,13 +797,14 @@ function buildOverviewSectionsForHour(dateGroups, showCount, showNames, showAirp
     dg.hours.forEach(h => {
       const hourEnd = h.hour.split(":")[0] + ":59";
       const total = h.airlines.reduce((s, a) => s + a.total, 0);
+      const waitlistTotal = h.airlines.reduce((s, a) => s + (a.waitlistTotal || 0), 0);
       let title = `${h.hour}~${hourEnd}`;
-      if (showCount) title += `　共${total}人`;
+      if (showCount) title += `　共${total}人${waitlistTotal ? `（含${waitlistTotal}候補）` : ""}`;
       // 同一個時段裡的各家航空公司都收進同一段的 body 裡，時段標題（title）只印一次，
       // 不會像之前那樣每家航空公司各自重複印一次時段範圍
       const airlineLines = h.airlines.map(a => {
         let line = `${AIRLINES[a.airline]?.label || a.airline}`;
-        if (showCount) line += `　${a.total}人`;
+        if (showCount) line += `　${a.total}人${a.waitlistTotal ? `（含${a.waitlistTotal}候補）` : ""}`;
         if (showNames || showAirport) {
           const detail = a.flights.map(f => {
             let d = `${f.depTime}–${f.arrTime}／${f.flightNo}`;
@@ -1068,7 +1079,7 @@ function renderOverview() {
         <div class="f-flight-group">
           <div class="f-fg-head">
             <span class="f-fg-time">${g.depTime}–${g.arrTime}</span>
-            <span class="f-fg-meta">${AIRPORTS[g.airport] ? AIRPORTS[g.airport].label + "｜" : ""}${AIRLINES[g.airline]?.label || g.airline}｜${g.flightNo}｜共 ${g.names.length} 人</span>
+            <span class="f-fg-meta">${AIRPORTS[g.airport] ? AIRPORTS[g.airport].label + "｜" : ""}${AIRLINES[g.airline]?.label || g.airline}｜${g.flightNo}｜共 ${g.names.length} 人${g.waitlistCount ? `（含${g.waitlistCount}候補）` : ""}</span>
           </div>
           <div class="f-fg-names">${g.names.map(escapeHtml).join("、")}</div>
         </div>
@@ -1082,16 +1093,17 @@ function renderOverview() {
       <div class="f-date-caption">${dg.date}</div>
       ${dg.hours.map(h => {
         const total = h.airlines.reduce((s, a) => s + a.total, 0);
+        const waitlistTotal = h.airlines.reduce((s, a) => s + (a.waitlistTotal || 0), 0);
         const hourEnd = h.hour.split(":")[0] + ":59";
         const airlineBlocks = h.airlines.map(a => `
-          <div class="f-hour-airline">${AIRLINES[a.airline]?.label || a.airline} ${a.total}人</div>
+          <div class="f-hour-airline">${AIRLINES[a.airline]?.label || a.airline} ${a.total}人${a.waitlistTotal ? `（含${a.waitlistTotal}候補）` : ""}</div>
           ${a.flights.map(f => `
             <div class="f-hour-flight"><span class="f-hf-code">${f.depTime}–${f.arrTime}／${f.flightNo}${AIRPORTS[f.airport] ? "／" + AIRPORTS[f.airport].label : ""}</span>${f.names.map(escapeHtml).join("、")}</div>
           `).join("")}
         `).join("");
         return `
           <div class="f-hour-block">
-            <div class="f-hour-title">${h.hour}~${hourEnd}（${arrivalLabel}）共 ${total} 人</div>
+            <div class="f-hour-title">${h.hour}~${hourEnd}（${arrivalLabel}）共 ${total} 人${waitlistTotal ? `（含${waitlistTotal}候補）` : ""}</div>
             ${airlineBlocks}
           </div>`;
       }).join("")}
