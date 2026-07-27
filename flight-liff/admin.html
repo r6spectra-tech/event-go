@@ -3,10 +3,10 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
-<meta name="page-version" content="20260726-10">
+<meta name="page-version" content="20260726-15">
 <title>機票登記管理</title>
-<link rel="stylesheet" href="../assets/style.css?v=20260726-10">
-<link rel="stylesheet" href="flight.css?v=20260726-10">
+<link rel="stylesheet" href="../assets/style.css?v=20260726-15">
+<link rel="stylesheet" href="flight.css?v=20260726-15">
 <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
 </head>
 <body>
@@ -40,6 +40,28 @@
       </div>
 
       <div class="f-card">
+        <h3>分享總表到群組</h3>
+        <p class="f-sub" style="margin-bottom:10px;">內容會直接嵌進訊息裡（不只是連結），選人多時會自動分成多頁。</p>
+
+        <div class="f-field">
+          <label>方向</label>
+          <label style="margin-right:16px; font-size:0.85rem;"><input type="radio" name="f-ov-dir" value="go" checked> 去程</label>
+          <label style="font-size:0.85rem;"><input type="radio" name="f-ov-dir" value="return"> 回程</label>
+        </div>
+        <div class="f-field">
+          <label>檢視方式</label>
+          <label style="margin-right:16px; font-size:0.85rem;"><input type="radio" name="f-ov-tab" value="flight" checked> 依航班</label>
+          <label style="font-size:0.85rem;"><input type="radio" name="f-ov-tab" value="hour"> 依時段</label>
+        </div>
+        <div class="f-field">
+          <label style="margin-right:16px; font-size:0.85rem; font-weight:400;"><input type="checkbox" id="f-ov-count" checked> 顯示人數</label>
+          <label style="font-size:0.85rem; font-weight:400;"><input type="checkbox" id="f-ov-names"> 顯示姓名</label>
+        </div>
+
+        <button class="btn primary" id="f-ov-share-btn" style="margin-top:6px;">📊 分享總表到群組</button>
+      </div>
+
+      <div class="f-card">
         <h3>群組成員比對</h3>
         <div id="f-group-setup"></div>
         <div id="f-group-result" style="margin-top:12px;"></div>
@@ -53,11 +75,11 @@
     </div>
   </div>
 
-  <div class="f-version-tag">flight.js v20260726-10</div>
+  <div class="f-version-tag">flight.js v20260726-15</div>
 
-  <script src="../assets/main.js?v=20260726-10"></script>
-  <script src="flight-data.js?v=20260726-10"></script>
-  <script src="flight.js?v=20260726-10"></script>
+  <script src="../assets/main.js?v=20260726-15"></script>
+  <script src="flight-data.js?v=20260726-15"></script>
+  <script src="flight.js?v=20260726-15"></script>
   <script>
     document.addEventListener("DOMContentLoaded", () => {
       document.getElementById("f-back-link").href = "index.html" + location.search;

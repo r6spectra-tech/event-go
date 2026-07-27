@@ -4,8 +4,8 @@
    依賴 ./flight-data.js（FLIGHT_SCHEDULE / AIRLINES / DIRECTION_LABEL）
    ============================================================ */
 
-/* FLIGHT_JS_VERSION: 20260726-14 */
-const FLIGHT_JS_VERSION = "20260726-14";
+/* FLIGHT_JS_VERSION: 20260726-15 */
+const FLIGHT_JS_VERSION = "20260726-15";
 
 // 透過 https://liff.line.me/{liffId}?activityId=xxx 這種網址帶參數時，LINE 不會把
 // ?activityId=xxx 直接透傳給我們的頁面，而是包成一個 liff.state 參數（例如
@@ -688,6 +688,7 @@ async function initAdminPage() {
 
   document.getElementById("f-admin-login-btn").addEventListener("click", () => requireLogin());
   document.getElementById("f-invite-share-btn").addEventListener("click", shareInvite);
+  document.getElementById("f-ov-share-btn").addEventListener("click", shareOverview);
 
   try {
     const ok = await ensureLiff();
@@ -748,6 +749,123 @@ async function shareInvite() {
     ]);
     toast("已送出分享");
   } catch (e) { /* 使用者取消分享，不用特別處理 */ }
+}
+
+/* ============================================================
+   分享總表到群組
+   把 flightOverview() 的資料轉成 Flex 內容直接嵌進訊息裡（不是只有連結），
+   人數/姓名要不要顯示由管理頁的開關決定；內容太多時自動切成多頁 carousel（最多12頁），
+   避免超出 Flex 的長度負擔。
+   ============================================================ */
+const OV_SECTIONS_PER_BUBBLE = 6;
+const OV_MAX_BUBBLES = 12;
+
+function buildOverviewSectionsForFlight(dateGroups, showCount, showNames) {
+  const sections = [];
+  dateGroups.forEach(dg => {
+    dg.flights.forEach(g => {
+      let title = `${g.depTime}–${g.arrTime}　${AIRLINES[g.airline]?.label || g.airline}｜${g.flightNo}`;
+      if (showCount) title += `　共${g.names.length}人`;
+      const body = showNames ? g.names.join("、") : "";
+      sections.push({ date: dg.date, title, body });
+    });
+  });
+  return sections;
+}
+
+function buildOverviewSectionsForHour(dateGroups, showCount, showNames) {
+  const sections = [];
+  dateGroups.forEach(dg => {
+    dg.hours.forEach(h => {
+      const hourEnd = h.hour.split(":")[0] + ":59";
+      h.airlines.forEach(a => {
+        let title = `${h.hour}~${hourEnd}　${AIRLINES[a.airline]?.label || a.airline}`;
+        if (showCount) title += `　${a.total}人`;
+        const body = showNames ? a.flights.map(f => `${f.depTime}–${f.arrTime}／${f.flightNo}：${f.names.join("、")}`).join("\n") : "";
+        sections.push({ date: dg.date, title, body });
+      });
+    });
+  });
+  return sections;
+}
+
+function overviewSectionsToBubble(sections, headerText) {
+  const contents = [
+    { type: "text", text: headerText, weight: "bold", size: "lg", color: "#2F7A72", wrap: true },
+  ];
+  if (sections.length === 0) {
+    contents.push({ type: "text", text: "目前還沒有人登記", size: "sm", color: "#999999", margin: "md" });
+  }
+  let lastDate = null;
+  sections.forEach(s => {
+    if (s.date !== lastDate) {
+      contents.push({ type: "separator", margin: "lg" });
+      contents.push({ type: "text", text: s.date, weight: "bold", size: "sm", color: "#17233D", margin: "lg" });
+      lastDate = s.date;
+    }
+    contents.push({ type: "text", text: s.title, size: "sm", wrap: true, margin: "sm" });
+    if (s.body) contents.push({ type: "text", text: s.body, size: "xs", color: "#666666", wrap: true, margin: "xs" });
+  });
+  return {
+    type: "bubble",
+    body: { type: "box", layout: "vertical", spacing: "none", contents },
+    footer: {
+      type: "box", layout: "vertical",
+      contents: [
+        { type: "button", style: "primary", color: "#17233D",
+          action: { type: "uri", label: "查看完整總表", uri: `${RUNTIME.siteUrl}/flight-liff/overview.html` } },
+      ],
+    },
+  };
+}
+
+function buildOverviewFlexContents(sections, titleBase) {
+  if (sections.length === 0) {
+    return overviewSectionsToBubble([], titleBase);
+  }
+  const chunks = [];
+  for (let i = 0; i < sections.length; i += OV_SECTIONS_PER_BUBBLE) {
+    chunks.push(sections.slice(i, i + OV_SECTIONS_PER_BUBBLE));
+  }
+  if (chunks.length === 1) {
+    return overviewSectionsToBubble(chunks[0], titleBase);
+  }
+  const limitedChunks = chunks.slice(0, OV_MAX_BUBBLES);
+  const bubbles = limitedChunks.map((chunk, i) => overviewSectionsToBubble(chunk, `${titleBase}（${i + 1}/${limitedChunks.length}）`));
+  return { type: "carousel", contents: bubbles };
+}
+
+async function shareOverview() {
+  const direction = document.querySelector('input[name="f-ov-dir"]:checked').value;
+  const tab = document.querySelector('input[name="f-ov-tab"]:checked').value;
+  const showCount = document.getElementById("f-ov-count").checked;
+  const showNames = document.getElementById("f-ov-names").checked;
+
+  const ok = await ensureLiff();
+  if (!ok || !liff.isApiAvailable("shareTargetPicker")) {
+    toast("目前環境不支援 LINE 分享");
+    return;
+  }
+
+  const btn = document.getElementById("f-ov-share-btn");
+  btn.disabled = true;
+  try {
+    const data = await apiGet("flightOverview", { activityId: ADMIN.activityId });
+    const dirData = data[direction];
+    const dirLabel = direction === "go" ? "去程" : "回程";
+    const tabLabel = tab === "flight" ? "依航班" : "依時段";
+    const dateGroups = (tab === "flight" ? dirData.byFlight : dirData.byHour) || [];
+    const sections = tab === "flight"
+      ? buildOverviewSectionsForFlight(dateGroups, showCount, showNames)
+      : buildOverviewSectionsForHour(dateGroups, showCount, showNames);
+    const contents = buildOverviewFlexContents(sections, `📋 ${dirLabel}總表・${tabLabel}`);
+    await liff.shareTargetPicker([{ type: "flex", altText: `${dirLabel}總表（${tabLabel}）`, contents }]);
+    toast("已送出分享");
+  } catch (e) {
+    toast("分享失敗：" + e.message);
+  } finally {
+    btn.disabled = false;
+  }
 }
 
 // 群組成員比對：先讓主辦人挑一個「這個活動對應的群組」，再拿群組已知成員清單跟已登記名單比對
