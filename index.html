@@ -185,9 +185,15 @@ const ACTIVITIES_LIST_CACHE_KEY = "activities_list";
 
 // 整份列表的「版本」用 GitHub 版本檔裡所有活動時間戳記的最大值代表——
 // 只要有任何一支活動被更新過，這個最大值就會往前推進，代表列表也該重新讀取。
+// 只看「純活動代碼」的 key（例如 trip002），忽略帶冒號的子系統擴充 key
+// （例如 flight-liff 寫的 trip002:flight）。這兩種 key 分開存在同一個 last-updated.json
+// 裡是刻意的設計，但活動列表在意的是「有沒有新增/編輯活動」，不是「機票登記有沒有異動」，
+// 沒有這層過濾的話，只要有人動一下機票登記，這裡就會誤判活動列表變了，
+// 每次打開都強制重新呼叫 GAS，完全用不到本機快取。
 function maxTimestamp(map){
   let max = null;
-  Object.values(map || {}).forEach(ts => {
+  Object.entries(map || {}).forEach(([key, ts]) => {
+    if(key.indexOf(":") !== -1) return; // 子系統擴充 key，跳過
     if(!max || new Date(ts) > new Date(max)) max = ts;
   });
   return max;
