@@ -36,11 +36,25 @@ async function apiPost(action, data = {}) {
   return json;
 }
 
+// 設定值（liffId／siteUrl／rawBaseUrl）本質上是部署時期就固定的常數，不會因為使用者操作
+// 而改變，不需要每次開頁都重新問一次 GAS——這裡快取 24 小時，過期才重新抓一次。
+// 這個快取不受「更新」按鈕影響，也不會因為活動資料的快取被清掉而跟著清掉，是完全獨立的一塊。
+const APP_CONFIG_CACHE_KEY = "app_config";
+const APP_CONFIG_CACHE_TTL_MS = 24 * 60 * 60 * 1000; // 24 小時
+
 async function loadConfig() {
+  const cached = readCache(APP_CONFIG_CACHE_KEY);
+  if (cached && (Date.now() - cached.fetchedAt) < APP_CONFIG_CACHE_TTL_MS) {
+    RUNTIME.liffId = cached.data.liffId;
+    RUNTIME.siteUrl = cached.data.siteUrl;
+    RUNTIME.rawBaseUrl = cached.data.rawBaseUrl;
+    return cached.data;
+  }
   const cfg = await apiGet("config");
   RUNTIME.liffId = cfg.liffId;
   RUNTIME.siteUrl = cfg.siteUrl;
   RUNTIME.rawBaseUrl = cfg.rawBaseUrl;
+  writeCache(APP_CONFIG_CACHE_KEY, cfg);
   return cfg;
 }
 
