@@ -113,6 +113,8 @@ function parseItinerary(text) {
 // 判斷一整行文字是不是純 YouTube / Google Map 連結（沒有「文字|」開頭）
 const YOUTUBE_URL_RE = /^(https?:\/\/)?(www\.)?(youtube\.com|youtu\.be)\//i;
 const GMAP_URL_RE = /^(https?:\/\/)?(www\.)?(maps\.google\.|maps\.app\.goo\.gl|google\.com\/maps|goo\.gl\/maps)/i;
+const IG_URL_RE = /^(https?:\/\/)?(www\.)?(instagram\.com)\//i;
+const AMAP_URL_RE = /^(https?:\/\/)?(maps\.apple\.com|maps\.apple\.co)\//i;
 
 // 行程逐行解析：不管整行格式長怎樣，都直接找這一行裡有沒有網址，找到就抓出來當連結，
 // 其餘文字（含 | 或 ｜ 這種分隔符號）自動當標籤，比要求「整行必須剛好是網址」更不容易失敗
@@ -124,7 +126,13 @@ function parseItineraryLine(rawLine) {
   if (!m) return { type: "text", text: line };
   const url = m[1];
   const label = line.replace(url, "").replace(/[|｜]\s*$/, "").replace(/^[|｜]\s*/, "").trim();
-  return { type: "link", label, url, isYoutube: YOUTUBE_URL_RE.test(url), isMap: GMAP_URL_RE.test(url) };
+  return {
+    type: "link", label, url,
+    isYoutube: YOUTUBE_URL_RE.test(url),
+    isMap: GMAP_URL_RE.test(url),
+    isInstagram: IG_URL_RE.test(url),
+    isAppleMap: AMAP_URL_RE.test(url),
+  };
 }
 
 function parseItineraryDayText(text) {
