@@ -1,4 +1,4 @@
-/* FLIGHT_CSS_VERSION: 20260727-14 */
+/* FLIGHT_CSS_VERSION: 20260728-2 */
 /* flight-liff 專屬樣式，沿用 assets/style.css 的 --ink / --paper / --teal / --stamp / --sand 色票 */
 
 /* 全域強制規則：任何有 hidden 屬性的元素一律不顯示，優先權設到最高。
@@ -79,6 +79,7 @@
 }
 .f-cache-bar .btn{ margin-left:auto; font-size:0.75rem; padding:6px 14px; }
 .f-cache-status{ color:var(--teal); }
+.f-cache-note{ font-size:0.72rem; color:#999; margin:-8px 0 14px; line-height:1.5; }
 .btn:disabled{ opacity:0.45; cursor:not-allowed; }
 
 .f-field{ margin-bottom:14px; }

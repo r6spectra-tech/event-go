@@ -4,8 +4,8 @@
    依賴 ./flight-data.js（FLIGHT_SCHEDULE / AIRLINES / DIRECTION_LABEL）
    ============================================================ */
 
-/* FLIGHT_JS_VERSION: 20260727-14 */
-const FLIGHT_JS_VERSION = "20260727-14";
+/* FLIGHT_JS_VERSION: 20260728-2 */
+const FLIGHT_JS_VERSION = "20260728-2";
 
 // 透過 https://liff.line.me/{liffId}?activityId=xxx 這種網址帶參數時，LINE 不會把
 // ?activityId=xxx 直接透傳給我們的頁面，而是包成一個 liff.state 參數（例如
@@ -1100,22 +1100,54 @@ function overviewCacheKey(activityId) { return `flightOverview:${activityId}`; }
 // 不然編輯活動詳情跟編輯機票登記會互相誤觸發對方的快取失效。要跟 GAS 那邊的
 // flightLastUpdatedKey() 保持完全一致的組合方式。
 function flightLastUpdatedKey(activityId) { return activityId + ":flight"; }
+// 第2個時間戳（窗口內最新一次異動，GAS 端 flightBumpLastUpdated 寫入邏輯見 gas-additions.gs）
+function flightPendingKey(activityId) { return flightLastUpdatedKey(activityId) + ":pending"; }
 
-// 進頁面時走這支：本機有快取就直接用（秒開），沒有的話才第一次打 GAS，
-// 順便去讀 GitHub 上的輕量版本檔，記住這個活動目前的版本時間戳記，之後按「更新」才有東西可以比對
+// 要跟 GAS 端的 FLIGHT_UPDATE_THROTTLE_MS 保持一致（5 分鐘），前端只是拿來算「還剩多久」
+// 給更新按鈕的冷卻倒數用，不影響 GAS 那邊真正的節流判斷。
+const FLIGHT_WINDOW_MS = 5 * 60 * 1000;
+// 就算視窗已經過期（GAS 那邊隨時可能已經有新的異動了），前端還是至少要等這麼久才能再按一次，
+// 防止手滑狂點；這個數字比較短，是保底用的，實際冷卻通常會被視窗剩餘時間蓋過去（比較長）
+const FLIGHT_REFRESH_MIN_COOLDOWN_MS = 60 * 1000;
+
+// 讀 GitHub 版本檔時，永遠優先看第2個時間戳（如果存在），沒有才看第1個——
+// 不管現在是不是還在節流窗口內，這樣才不會漏掉任何一筆異動
+function flightEffectiveRemoteVersion(map, activityId) {
+  return map[flightPendingKey(activityId)] || map[flightLastUpdatedKey(activityId)] || null;
+}
+
+// 算出「這個活動的節流窗口結束時間」（絕對時間戳，ms），沒有第1個時間戳就回傳 0
+function flightWindowEndMs(map, activityId) {
+  const anchorRaw = map[flightLastUpdatedKey(activityId)];
+  if (!anchorRaw) return 0;
+  const anchorMs = new Date(anchorRaw).getTime();
+  return isNaN(anchorMs) ? 0 : anchorMs + FLIGHT_WINDOW_MS;
+}
+
+// 進頁面時走這支：本機有資料快取就直接用（秒開），沒有的話才第一次打 GAS。
+// 不管快取有沒有命中，都會順便讀一次 GitHub 版本檔（純靜態檔案，不打 GAS，很快），
+// 算出目前的節流窗口還剩多久，讓更新按鈕的冷卻狀態一開頁面就能正確反映。
 async function loadOverviewFromCacheOrFetch(activityId) {
   const cached = readCache(overviewCacheKey(activityId));
-  if (cached) {
-    return { data: cached.data, fetchedAt: cached.fetchedAt };
-  }
-  const data = await apiGet("flightOverview", { activityId });
-  let remoteVersion = null;
+  let windowEndMs = 0;
   try {
     const map = await fetchLastUpdatedMap();
-    remoteVersion = map[flightLastUpdatedKey(activityId)] || null;
-  } catch (e) { console.warn("讀取 GitHub 版本檔失敗", e); }
-  writeCache(overviewCacheKey(activityId), data, remoteVersion);
-  return { data, fetchedAt: Date.now() };
+    windowEndMs = flightWindowEndMs(map, activityId);
+    if (!cached) {
+      const data = await apiGet("flightOverview", { activityId });
+      const remoteVersion = flightEffectiveRemoteVersion(map, activityId);
+      writeCache(overviewCacheKey(activityId), data, remoteVersion);
+      return { data, fetchedAt: Date.now(), windowEndMs };
+    }
+  } catch (e) {
+    console.warn("讀取 GitHub 版本檔失敗", e);
+    if (!cached) {
+      const data = await apiGet("flightOverview", { activityId });
+      writeCache(overviewCacheKey(activityId), data, null);
+      return { data, fetchedAt: Date.now(), windowEndMs: 0 };
+    }
+  }
+  return { data: cached.data, fetchedAt: cached.fetchedAt, windowEndMs };
 }
 
 // 按「更新」：先讀 GitHub 的輕量版本檔（純靜態檔案，沒有 GAS 冷啟動），
@@ -1125,21 +1157,23 @@ async function refreshOverviewData(activityId) {
   const localVersion = cached ? cached.remoteVersion : null;
 
   let remoteVersion = null;
+  let windowEndMs = 0;
   try {
     const map = await fetchLastUpdatedMap();
-    remoteVersion = map[flightLastUpdatedKey(activityId)] || null;
+    remoteVersion = flightEffectiveRemoteVersion(map, activityId);
+    windowEndMs = flightWindowEndMs(map, activityId);
   } catch (e) {
     console.warn("讀取 GitHub 版本檔失敗，保守起見還是呼叫 GAS 重新讀取", e);
   }
 
   const hasNewVersion = !localVersion || (remoteVersion && new Date(remoteVersion) > new Date(localVersion));
   if (!hasNewVersion) {
-    return { changed: false, fetchedAt: cached ? cached.fetchedAt : Date.now() };
+    return { changed: false, fetchedAt: cached ? cached.fetchedAt : Date.now(), windowEndMs };
   }
 
   const data = await apiGet("flightOverview", { activityId });
   writeCache(overviewCacheKey(activityId), data, remoteVersion);
-  return { changed: true, data, fetchedAt: Date.now() };
+  return { changed: true, data, fetchedAt: Date.now(), windowEndMs };
 }
 
 function formatOverviewCacheTime(ts) {
@@ -1150,36 +1184,54 @@ function formatOverviewCacheTime(ts) {
   return `${y}/${m}/${day} ${hh}:${mm}`;
 }
 
-// 跟既有 main.js 的 setupRefreshButton 邏輯一樣（點擊→跑 onRefresh→按鈕變灰倒數 60 秒→恢復），
-// 但這裡文案改成「本頁最後更新時間」，跟根目錄系統的「本頁面最後編輯時間」分開講，語意比較貼切
-// （這裡是「大家的登記資料有沒有變」，不是「我編輯了什麼」）
-function setupFlightRefreshButton(btnEl, timeLabelEl, statusEl, fetchedAt, onRefresh) {
+// 冷卻時間存 localStorage（不是單純的 JS 變數），關掉頁面重開、甚至換一台裝置登入同一個
+// LINE 帳號都不會讓冷卻歸零重來——避免有人發現「重新整理就能馬上再按」而繞過節流。
+function flightCooldownStorageKey(activityId) { return `flightRefreshCooldownUntil:${activityId}`; }
+function readCooldownUntil(activityId) {
+  try {
+    const raw = localStorage.getItem(flightCooldownStorageKey(activityId));
+    return raw ? Number(raw) : 0;
+  } catch (e) { return 0; }
+}
+function writeCooldownUntil(activityId, untilMs) {
+  try { localStorage.setItem(flightCooldownStorageKey(activityId), String(untilMs)); } catch (e) {}
+}
+
+// 更新按鈕：冷卻時間不是固定寫死的秒數，而是跟著 GitHub 上這個活動的節流窗口剩餘時間走——
+// 如果窗口還剩 4 分鐘，按鈕就從 4 分鐘開始倒數，不會讓使用者在窗口內白按（反正按了也看不到
+// 更新，GAS 端一樣會因為節流而跳過寫入）。窗口已經過期的話，退回保底的最短冷卻時間。
+function setupFlightRefreshButton(activityId, btnEl, timeLabelEl, statusEl, initialWindowEndMs, onRefresh) {
   let timer = null;
-  const cooldownSec = 60;
 
   function paintTime(ts) {
     if (timeLabelEl) timeLabelEl.textContent = `本頁最後更新時間：${formatOverviewCacheTime(ts)}`;
   }
-  paintTime(fetchedAt);
 
-  function startCooldown() {
-    let remaining = cooldownSec;
-    btnEl.disabled = true;
-    btnEl.textContent = "更新中…";
-    setTimeout(() => {
+  function startCooldownUntil(untilMs) {
+    if (timer) clearInterval(timer);
+    writeCooldownUntil(activityId, untilMs);
+    function tick() {
+      const remaining = Math.ceil((untilMs - Date.now()) / 1000);
+      if (remaining <= 0) {
+        clearInterval(timer);
+        btnEl.disabled = false;
+        btnEl.textContent = "更新";
+        return;
+      }
+      btnEl.disabled = true;
       btnEl.textContent = `更新 (${remaining}s)`;
-      timer = setInterval(() => {
-        remaining -= 1;
-        if (remaining <= 0) {
-          clearInterval(timer);
-          btnEl.disabled = false;
-          btnEl.textContent = "更新";
-        } else {
-          btnEl.textContent = `更新 (${remaining}s)`;
-        }
-      }, 1000);
-    }, 300);
+    }
+    tick();
+    timer = setInterval(tick, 1000);
   }
+
+  function applyCooldownIfAny(windowEndMs) {
+    const stored = readCooldownUntil(activityId);
+    const candidate = Math.max(stored, windowEndMs || 0);
+    if (candidate > Date.now()) startCooldownUntil(candidate);
+  }
+
+  applyCooldownIfAny(initialWindowEndMs);
 
   btnEl.addEventListener("click", async () => {
     if (btnEl.disabled) return;
@@ -1192,8 +1244,14 @@ function setupFlightRefreshButton(btnEl, timeLabelEl, statusEl, fetchedAt, onRef
         setTimeout(() => { statusEl.textContent = ""; }, 4000);
       }
       if (result && result.fetchedAt) paintTime(result.fetchedAt);
-    } finally {
-      startCooldown();
+
+      const windowEnd = (result && result.windowEndMs) || 0;
+      const minEnd = Date.now() + FLIGHT_REFRESH_MIN_COOLDOWN_MS;
+      const existing = readCooldownUntil(activityId);
+      startCooldownUntil(Math.max(windowEnd, minEnd, existing));
+    } catch (e) {
+      btnEl.disabled = false;
+      btnEl.textContent = "更新";
     }
   });
 }
@@ -1225,21 +1283,26 @@ async function initOverviewPage() {
 
   bodyEl.innerHTML = SPINNER_HTML;
   try {
-    const { data, fetchedAt } = await loadOverviewFromCacheOrFetch(OV.activityId);
+    const { data, fetchedAt, windowEndMs } = await loadOverviewFromCacheOrFetch(OV.activityId);
     OV.data = data;
     renderOverview();
 
     setupFlightRefreshButton(
+      OV.activityId,
       document.getElementById("f-ov-refresh-btn"),
       document.getElementById("f-ov-cache-time"),
       document.getElementById("f-ov-cache-status"),
-      fetchedAt,
+      windowEndMs,
       async () => {
         const result = await refreshOverviewData(OV.activityId);
         if (result.changed) { OV.data = result.data; renderOverview(); }
         return result;
       }
     );
+    // paintTime 是在 setupFlightRefreshButton 內部定義的，這裡另外補畫一次初始時間，
+    // 因為 setupFlightRefreshButton 建立時還沒收到 fetchedAt 以外的東西可以畫
+    const timeLabelEl = document.getElementById("f-ov-cache-time");
+    if (timeLabelEl) timeLabelEl.textContent = `本頁最後更新時間：${formatOverviewCacheTime(fetchedAt)}`;
   } catch (e) {
     bodyEl.innerHTML = `<div class="f-empty">載入失敗，請重新整理再試一次</div>`;
   }
