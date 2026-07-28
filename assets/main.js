@@ -1,3 +1,9 @@
+/* ASSETS_VERSION: 20260728-2 — main.js/style.css 一改，記得把這個數字往上跳，
+   同時更新所有引用 assets/main.js?v=... 跟 assets/style.css?v=... 的 HTML 檔案裡的查詢參數，
+   否則瀏覽器可能還在用舊版快取，跟新版 HTML 的程式碼對不起來會直接報錯（曾經發生過）。
+   目前有引用的檔案：index.html／detail.html／confirm.html／me.html／share.html／
+   admin/edit-activity.html／admin/managers.html／admin/new-activity.html／
+   admin/visit-log.html／admin/waitlist.html（共 10 個） */
 /* ============================================================
    設定區：只留「GAS Web App 網址」需要寫死在前端，
    其餘 LIFF_ID / SHEET_ID / GH_OWNER / GH_REPO 都存在 GAS 指令碼屬性，
