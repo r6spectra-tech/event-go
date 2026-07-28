@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>旅行揪團・活動列表</title>
-<link rel="stylesheet" href="assets/style.css?v=20260728-3">
+<link rel="stylesheet" href="assets/style.css?v=20260728-4">
 </head>
 <body>
 
@@ -41,7 +41,7 @@
 </div>
 
 <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
-<script src="assets/main.js?v=20260728-3"></script>
+<script src="assets/main.js?v=20260728-4"></script>
 <script>
 const selected = new Map(); // id -> activity
 let allActivities = [];
@@ -50,6 +50,16 @@ function dateValue(a){
   if(!a.eventDate) return Infinity; // 沒填活動日期的排最後
   const d = new Date(a.eventDate);
   return isNaN(d) ? Infinity : d.getTime();
+}
+
+// 活動日期是「今天」以前（不含今天）就算過期，沒填日期的一律不算過期（避免漏填就被誤藏）
+function isExpired(a){
+  if(!a.eventDate) return false;
+  const d = new Date(a.eventDate);
+  if(isNaN(d)) return false;
+  const today = new Date();
+  today.setHours(0,0,0,0);
+  return d < today;
 }
 
 // 三種排序擇一：
@@ -107,12 +117,13 @@ function updateShareBar(){
 
 function renderGrid(){
   const grid = document.getElementById("grid");
-  if(!allActivities.length){
+  const visible = allActivities.filter(a => !isExpired(a));
+  if(!visible.length){
     grid.innerHTML = `<div class="empty">目前尚無活動</div>`;
     return;
   }
   const sortMode = document.getElementById("sortSelect").value;
-  const sorted = [...allActivities].sort(SORTERS[sortMode] || SORTERS.date);
+  const sorted = [...visible].sort(SORTERS[sortMode] || SORTERS.date);
   grid.innerHTML = sorted.map(a => cardHtml(a, selected.has(a.id))).join("");
 
   grid.querySelectorAll(".shareOneBtn").forEach(btn=>{
