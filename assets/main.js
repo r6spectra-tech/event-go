@@ -1,9 +1,14 @@
-/* ASSETS_VERSION: 20260728-2 — main.js/style.css 一改，記得把這個數字往上跳，
+/* ASSETS_VERSION 說明：main.js/style.css 一改，記得把下面這個常數的數字往上跳，
    同時更新所有引用 assets/main.js?v=... 跟 assets/style.css?v=... 的 HTML 檔案裡的查詢參數，
    否則瀏覽器可能還在用舊版快取，跟新版 HTML 的程式碼對不起來會直接報錯（曾經發生過）。
+   這個常數也同時用來讓 localStorage 裡快取住的「處理過的資料」跟著失效——
+   資料處理邏輯一改版，舊格式的快取資料會被自動當作沒有快取，逼它重新抓、重新處理
+   （trip002 曾經發生過：itinerary 解析邏輯改版，但快取住的還是舊格式資料，直接讀爆）。
    目前有引用的檔案：index.html／detail.html／confirm.html／me.html／share.html／
    admin/edit-activity.html／admin/managers.html／admin/new-activity.html／
    admin/visit-log.html／admin/waitlist.html（共 10 個） */
+const ASSETS_VERSION = "20260728-3";
+
 /* ============================================================
    設定區：只留「GAS Web App 網址」需要寫死在前端，
    其餘 LIFF_ID / SHEET_ID / GH_OWNER / GH_REPO 都存在 GAS 指令碼屬性，
@@ -502,7 +507,13 @@ function readCache(name) {
   try {
     const raw = localStorage.getItem(cacheKey(name));
     if (!raw) return null;
-    return JSON.parse(raw);
+    const parsed = JSON.parse(raw);
+    // 如果這筆快取是舊版 main.js 處理過的資料，直接當作沒有快取，強制重新抓一次、
+    // 用「目前」的程式碼重新處理。這是為了避免：程式碼改了資料的處理/解析邏輯
+    // （例如 itinerary 那次多網址解析改版），但瀏覽器裡快取住的還是舊格式資料，
+    // 新版程式碼讀舊格式資料時整個炸掉的狀況（trip002 曾經發生過）。
+    if (parsed.codeVersion !== ASSETS_VERSION) return null;
+    return parsed;
   } catch (e) {
     return null;
   }
@@ -510,7 +521,9 @@ function readCache(name) {
 
 function writeCache(name, data, remoteVersion) {
   try {
-    localStorage.setItem(cacheKey(name), JSON.stringify({ data, remoteVersion: remoteVersion || null, fetchedAt: Date.now() }));
+    localStorage.setItem(cacheKey(name), JSON.stringify({
+      data, remoteVersion: remoteVersion || null, fetchedAt: Date.now(), codeVersion: ASSETS_VERSION,
+    }));
   } catch (e) { /* storage 滿了或被禁用，忽略即可，退化成每次都重新抓 */ }
 }
 
