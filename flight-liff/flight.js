@@ -4,8 +4,8 @@
    依賴 ./flight-data.js（FLIGHT_SCHEDULE / AIRLINES / DIRECTION_LABEL）
    ============================================================ */
 
-/* FLIGHT_JS_VERSION: 20260727-11 */
-const FLIGHT_JS_VERSION = "20260727-11";
+/* FLIGHT_JS_VERSION: 20260727-13 */
+const FLIGHT_JS_VERSION = "20260727-13";
 
 // 透過 https://liff.line.me/{liffId}?activityId=xxx 這種網址帶參數時，LINE 不會把
 // ?activityId=xxx 直接透傳給我們的頁面，而是包成一個 liff.state 參數（例如
@@ -128,20 +128,43 @@ async function onLoginClick() {
   }
 }
 
+function flightMyCacheKey(activityId, userId) { return `flightMy:${activityId}:${userId}`; }
+
 async function afterLogin() {
   const profile = await liff.getProfile();
   PAGE.profile = { userId: profile.userId, displayName: profile.displayName };
   document.getElementById("f-login-gate").hidden = true;
   document.getElementById("f-my").hidden = false;
-  await refreshMyData();
+  await loadMyData();
 }
 
+// 進頁面時走這支：本機有快取就直接用（秒開，不打 GAS），沒有才第一次打 GAS 並存快取
+async function loadMyData() {
+  document.getElementById("f-my-loading").hidden = false;
+  document.getElementById("f-my-cards").hidden = true;
+  try {
+    const cached = readCache(flightMyCacheKey(PAGE.activityId, PAGE.profile.userId));
+    if (cached) {
+      PAGE.myData = cached.data;
+      renderMyCards();
+    } else {
+      await refreshMyData();
+    }
+  } finally {
+    document.getElementById("f-my-loading").hidden = true;
+    document.getElementById("f-my-cards").hidden = false;
+  }
+}
+
+// 每次編輯（送出表單／刪除／解除歸戶）完成後走這支：一定重新打 GAS，並把結果寫回本機快取，
+// 這樣下次進頁面（loadMyData）才看得到最新資料
 async function refreshMyData() {
   document.getElementById("f-my-loading").hidden = false;
   document.getElementById("f-my-cards").hidden = true;
   try {
     const data = await apiGet("flightMy", { activityId: PAGE.activityId, userId: PAGE.profile.userId });
     PAGE.myData = data;
+    writeCache(flightMyCacheKey(PAGE.activityId, PAGE.profile.userId), data);
     renderMyCards();
   } finally {
     document.getElementById("f-my-loading").hidden = true;
@@ -809,13 +832,14 @@ function buildOverviewSectionsForFlight(dateGroups, showCount, showNames, showAi
   return sections;
 }
 
-function buildOverviewSectionsForHour(dateGroups, showCount, showNames, showAirport) {
+function buildOverviewSectionsForHour(dateGroups, showCount, showNames, showAirport, direction) {
   const sections = [];
+  const timeLabel = direction === "return" ? "從澎湖出發" : "抵達澎湖";
   dateGroups.forEach(dg => {
     dg.hours.forEach(h => {
       const hourEnd = h.hour.split(":")[0] + ":59";
       const total = h.airlines.reduce((s, a) => s + a.total, 0);
-      let title = `${h.hour}~${hourEnd}`;
+      let title = `${h.hour}~${hourEnd}（${timeLabel}）`;
       if (showCount) title += `　共${total}人`;
       // 同一個時段裡的各家航空公司都收進同一段的 body 裡，時段標題（title）只印一次，
       // 不會像之前那樣每家航空公司各自重複印一次時段範圍
@@ -930,7 +954,7 @@ async function shareOverview() {
       const dateGroups = (tab === "flight" ? dirData.byFlight : dirData.byHour) || [];
       const sections = tab === "flight"
         ? buildOverviewSectionsForFlight(dateGroups, showCount, showNames, showAirport)
-        : buildOverviewSectionsForHour(dateGroups, showCount, showNames, showAirport);
+        : buildOverviewSectionsForHour(dateGroups, showCount, showNames, showAirport, direction);
       const bubbles = buildOverviewBubbles(sections, `📋 ${dirLabel}總表・${tabLabel}`);
       allBubbles = allBubbles.concat(bubbles);
     });
@@ -1070,6 +1094,105 @@ let OV = { activityId: "", data: null, tab: "flight", direction: "go" };
 
 const SPINNER_HTML = `<div class="f-spinner-wrap"><div class="f-spinner"></div></div>`;
 
+function overviewCacheKey(activityId) { return `flightOverview:${activityId}`; }
+
+// 進頁面時走這支：本機有快取就直接用（秒開），沒有的話才第一次打 GAS，
+// 順便去讀 GitHub 上的輕量版本檔，記住這個活動目前的版本時間戳記，之後按「更新」才有東西可以比對
+async function loadOverviewFromCacheOrFetch(activityId) {
+  const cached = readCache(overviewCacheKey(activityId));
+  if (cached) {
+    return { data: cached.data, fetchedAt: cached.fetchedAt };
+  }
+  const data = await apiGet("flightOverview", { activityId });
+  let remoteVersion = null;
+  try {
+    const map = await fetchLastUpdatedMap();
+    remoteVersion = map[activityId] || null;
+  } catch (e) { console.warn("讀取 GitHub 版本檔失敗", e); }
+  writeCache(overviewCacheKey(activityId), data, remoteVersion);
+  return { data, fetchedAt: Date.now() };
+}
+
+// 按「更新」：先讀 GitHub 的輕量版本檔（純靜態檔案，沒有 GAS 冷啟動），
+// 只有偵測到比本地記住的新，才呼叫 GAS 重新讀取；沒有變動就直接跳過、不驚動 GAS
+async function refreshOverviewData(activityId) {
+  const cached = readCache(overviewCacheKey(activityId));
+  const localVersion = cached ? cached.remoteVersion : null;
+
+  let remoteVersion = null;
+  try {
+    const map = await fetchLastUpdatedMap();
+    remoteVersion = map[activityId] || null;
+  } catch (e) {
+    console.warn("讀取 GitHub 版本檔失敗，保守起見還是呼叫 GAS 重新讀取", e);
+  }
+
+  const hasNewVersion = !localVersion || (remoteVersion && new Date(remoteVersion) > new Date(localVersion));
+  if (!hasNewVersion) {
+    return { changed: false, fetchedAt: cached ? cached.fetchedAt : Date.now() };
+  }
+
+  const data = await apiGet("flightOverview", { activityId });
+  writeCache(overviewCacheKey(activityId), data, remoteVersion);
+  return { changed: true, data, fetchedAt: Date.now() };
+}
+
+function formatOverviewCacheTime(ts) {
+  if (!ts) return "尚未讀取";
+  const d = new Date(ts);
+  const y = d.getFullYear(), m = d.getMonth() + 1, day = d.getDate();
+  const hh = String(d.getHours()).padStart(2, "0"), mm = String(d.getMinutes()).padStart(2, "0");
+  return `${y}/${m}/${day} ${hh}:${mm}`;
+}
+
+// 跟既有 main.js 的 setupRefreshButton 邏輯一樣（點擊→跑 onRefresh→按鈕變灰倒數 60 秒→恢復），
+// 但這裡文案改成「本頁最後更新時間」，跟根目錄系統的「本頁面最後編輯時間」分開講，語意比較貼切
+// （這裡是「大家的登記資料有沒有變」，不是「我編輯了什麼」）
+function setupFlightRefreshButton(btnEl, timeLabelEl, statusEl, fetchedAt, onRefresh) {
+  let timer = null;
+  const cooldownSec = 60;
+
+  function paintTime(ts) {
+    if (timeLabelEl) timeLabelEl.textContent = `本頁最後更新時間：${formatOverviewCacheTime(ts)}`;
+  }
+  paintTime(fetchedAt);
+
+  function startCooldown() {
+    let remaining = cooldownSec;
+    btnEl.disabled = true;
+    btnEl.textContent = "更新中…";
+    setTimeout(() => {
+      btnEl.textContent = `更新 (${remaining}s)`;
+      timer = setInterval(() => {
+        remaining -= 1;
+        if (remaining <= 0) {
+          clearInterval(timer);
+          btnEl.disabled = false;
+          btnEl.textContent = "更新";
+        } else {
+          btnEl.textContent = `更新 (${remaining}s)`;
+        }
+      }, 1000);
+    }, 300);
+  }
+
+  btnEl.addEventListener("click", async () => {
+    if (btnEl.disabled) return;
+    btnEl.disabled = true;
+    btnEl.textContent = "檢查中…";
+    try {
+      const result = await onRefresh();
+      if (statusEl) {
+        statusEl.textContent = result && result.changed ? "（已更新）" : "（已是最新，未重新讀取）";
+        setTimeout(() => { statusEl.textContent = ""; }, 4000);
+      }
+      if (result && result.fetchedAt) paintTime(result.fetchedAt);
+    } finally {
+      startCooldown();
+    }
+  });
+}
+
 async function initOverviewPage() {
   OV.activityId = getActivityId();
   const bodyEl = document.getElementById("f-overview-body");
@@ -1097,8 +1220,21 @@ async function initOverviewPage() {
 
   bodyEl.innerHTML = SPINNER_HTML;
   try {
-    OV.data = await apiGet("flightOverview", { activityId: OV.activityId });
+    const { data, fetchedAt } = await loadOverviewFromCacheOrFetch(OV.activityId);
+    OV.data = data;
     renderOverview();
+
+    setupFlightRefreshButton(
+      document.getElementById("f-ov-refresh-btn"),
+      document.getElementById("f-ov-cache-time"),
+      document.getElementById("f-ov-cache-status"),
+      fetchedAt,
+      async () => {
+        const result = await refreshOverviewData(OV.activityId);
+        if (result.changed) { OV.data = result.data; renderOverview(); }
+        return result;
+      }
+    );
   } catch (e) {
     bodyEl.innerHTML = `<div class="f-empty">載入失敗，請重新整理再試一次</div>`;
   }
@@ -1127,7 +1263,7 @@ function renderOverview() {
   } else {
     const dateGroups = dirData.byHour || [];
     if (dateGroups.length === 0) { el.innerHTML = `<div class="f-empty">目前還沒有人登記</div>`; return; }
-    const arrivalLabel = OV.direction === "go" ? "抵達澎湖" : "抵達目的地";
+    const arrivalLabel = OV.direction === "go" ? "抵達澎湖" : "從澎湖出發";
     el.innerHTML = dateGroups.map(dg => `
       <div class="f-date-caption">${dg.date}</div>
       ${dg.hours.map(h => {

@@ -1,4 +1,4 @@
-/* FLIGHT_CSS_VERSION: 20260727-10 */
+/* FLIGHT_CSS_VERSION: 20260727-13 */
 /* flight-liff 專屬樣式，沿用 assets/style.css 的 --ink / --paper / --teal / --stamp / --sand 色票 */
 
 /* 全域強制規則：任何有 hidden 屬性的元素一律不顯示，優先權設到最高。
@@ -67,6 +67,18 @@
 .btn.teal{ background:var(--teal); border-color:var(--teal); color:#fff; }
 .btn.danger{ border-color:var(--stamp); color:var(--stamp); }
 .btn.ghost{ border-color:transparent; background:transparent; padding:9px 4px; }
+.btn:disabled, .btn[disabled]{
+  background:#e5e2d8 !important; color:#9b9689 !important; border-color:#d8d4c4 !important;
+  cursor:not-allowed; opacity:1;
+}
+
+.f-cache-bar{
+  display:flex; align-items:center; gap:8px; flex-wrap:wrap;
+  font-family:'IBM Plex Mono', monospace; font-size:0.72rem; color:#888;
+  margin-bottom:14px; padding-bottom:10px; border-bottom:1px dashed var(--line);
+}
+.f-cache-bar .btn{ margin-left:auto; font-size:0.75rem; padding:6px 14px; }
+.f-cache-status{ color:var(--teal); }
 .btn:disabled{ opacity:0.45; cursor:not-allowed; }
 
 .f-field{ margin-bottom:14px; }
