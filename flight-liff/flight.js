@@ -4,8 +4,8 @@
    依賴 ./flight-data.js（FLIGHT_SCHEDULE / AIRLINES / DIRECTION_LABEL）
    ============================================================ */
 
-/* FLIGHT_JS_VERSION: 20260727-10 */
-const FLIGHT_JS_VERSION = "20260727-10";
+/* FLIGHT_JS_VERSION: 20260727-11 */
+const FLIGHT_JS_VERSION = "20260727-11";
 
 // 透過 https://liff.line.me/{liffId}?activityId=xxx 這種網址帶參數時，LINE 不會把
 // ?activityId=xxx 直接透傳給我們的頁面，而是包成一個 liff.state 參數（例如
@@ -508,8 +508,12 @@ function buildFlightLine(r) {
 
 // 活動詳情頁在 event-go 根目錄，不是 flight-liff 底下，用純網址連過去
 // （liff.line.me/{liffId} 後面不支援接路徑，只能接查詢參數，接路徑會失效）
+// 活動詳情頁連結：實測過純網址雖然能打開，但中間會多跳轉 3~4 個頁面，
+// 用 liff.line.me/{根系統的LIFF ID}/detail.html 這個格式體驗比較好，改用這個。
+// 注意這裡的 LIFF ID 是 event-go 根系統原本的那組，跟 flight-liff 自己用的 RUNTIME.liffId 是不同的兩組。
+const DETAIL_PAGE_LIFF_ID = "2008568136-hwE2jXK5";
 function detailPageUrl() {
-  return `${RUNTIME.siteUrl}/detail.html?id=${encodeURIComponent(FIXED_ACTIVITY_ID)}`;
+  return `https://liff.line.me/${DETAIL_PAGE_LIFF_ID}/detail.html?id=${encodeURIComponent(FIXED_ACTIVITY_ID)}`;
 }
 
 function completionBubble(entries, timestampText) {
@@ -865,10 +869,12 @@ function overviewSectionsToBubble(sections, headerText) {
     type: "bubble",
     body: { type: "box", layout: "vertical", spacing: "none", contents },
     footer: {
-      type: "box", layout: "vertical",
+      type: "box", layout: "horizontal", spacing: "sm",
       contents: [
-        { type: "button", style: "primary", color: "#17233D",
+        { type: "button", style: "primary", color: "#17233D", height: "sm",
           action: { type: "uri", label: "前往登記", uri: `https://liff.line.me/${RUNTIME.liffId}` } },
+        { type: "button", style: "secondary", height: "sm",
+          action: { type: "uri", label: "活動詳情", uri: detailPageUrl() } },
       ],
     },
   };
