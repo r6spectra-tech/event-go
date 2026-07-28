@@ -433,6 +433,16 @@ function pickRandom(arr, n) {
   return out;
 }
 
+// 優先用 requestIdleCallback（瀏覽器閒置時才執行），不支援的環境退回 setTimeout。
+// 用來把「非必要、可以晚點做」的檢查（例如管理員權限）排到背景，不拖慢一般使用者的主要載入體驗。
+function scheduleIdle(fn){
+  if (window.requestIdleCallback) {
+    requestIdleCallback(fn, { timeout: 2000 });
+  } else {
+    setTimeout(fn, 50);
+  }
+}
+
 /* ============================================================
    前端快取（localStorage）+ GitHub 輕量版本檔比對
    - 頁面資料存在 localStorage：{ data, remoteVersion, fetchedAt }
