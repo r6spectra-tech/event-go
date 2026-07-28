@@ -30,6 +30,12 @@
   </select>
 </div>
 
+<div class="cache-bar">
+  <span id="cacheTimeLabel">頁面更新時間：尚未讀取</span>
+  <span id="cacheStatusMsg" class="cache-status-msg"></span>
+  <button class="btn btn-ghost" id="refreshBtn">更新</button>
+</div>
+
 <div id="grid" class="grid">
   <div class="loading">載入活動中…</div>
 </div>
@@ -175,16 +181,68 @@ async function setupManagerArea(){
   }
 }
 
+const ACTIVITIES_LIST_CACHE_KEY = "activities_list";
+
+// 整份列表的「版本」用 GitHub 版本檔裡所有活動時間戳記的最大值代表——
+// 只要有任何一支活動被更新過，這個最大值就會往前推進，代表列表也該重新讀取。
+function maxTimestamp(map){
+  let max = null;
+  Object.values(map || {}).forEach(ts => {
+    if(!max || new Date(ts) > new Date(max)) max = ts;
+  });
+  return max;
+}
+
+async function loadActivitiesFromCacheOrFetch(){
+  const cached = readCache(ACTIVITIES_LIST_CACHE_KEY);
+  if(cached){
+    return { activities: cached.data, fetchedAt: cached.fetchedAt };
+  }
+  const activities = await fetchActivities();
+  let remoteVersion = null;
+  try{
+    remoteVersion = maxTimestamp(await fetchLastUpdatedMap());
+  }catch(e){ console.warn("讀取 GitHub 版本檔失敗", e); }
+  writeCache(ACTIVITIES_LIST_CACHE_KEY, activities, remoteVersion);
+  return { activities, fetchedAt: Date.now() };
+}
+
+// 按「更新」：先讀 GitHub 版本檔（沒有 GAS 冷啟動），只有真的偵測到比本地新的時間戳記、
+// 或本地根本沒有版本基準值，才呼叫 GAS 重新讀整份列表；沒有變動就直接跳過不驚動 GAS。
+async function refreshActivitiesList(){
+  const cached = readCache(ACTIVITIES_LIST_CACHE_KEY);
+  const localVersion = cached ? cached.remoteVersion : null;
+
+  let remoteVersion = null;
+  try{
+    remoteVersion = maxTimestamp(await fetchLastUpdatedMap());
+  }catch(e){
+    console.warn("讀取 GitHub 版本檔失敗，保守起見還是呼叫 GAS 重新讀取", e);
+  }
+
+  const hasNewVersion = !localVersion || (remoteVersion && new Date(remoteVersion) > new Date(localVersion));
+  if(!hasNewVersion){
+    return { changed: false, fetchedAt: cached ? cached.fetchedAt : Date.now() };
+  }
+
+  const activities = await fetchActivities();
+  writeCache(ACTIVITIES_LIST_CACHE_KEY, activities, remoteVersion);
+  return { changed: true, activities, fetchedAt: Date.now() };
+}
+
 async function main(){
-  setupManagerArea();
+  scheduleIdle(() => setupManagerArea()); // 管理員檢查排到閒置時段，不拖慢一般使用者看到列表的速度
   await ensureLiff().catch(()=>{});
 
   document.getElementById("appTitle").addEventListener("click", ()=>{
     shareApp("揪你一起去玩！", "點開看看最近有哪些揪團行程，晚了要候補囉 →");
   });
 
+  let fetchedAt;
   try{
-    allActivities = await fetchActivities();
+    const result = await loadActivitiesFromCacheOrFetch();
+    allActivities = result.activities;
+    fetchedAt = result.fetchedAt;
   }catch(e){
     document.getElementById("grid").innerHTML = `<div class="empty">活動資料讀取失敗：${e.message || e}</div>`;
     console.error(e);
@@ -193,6 +251,21 @@ async function main(){
 
   renderGrid();
   document.getElementById("sortSelect").addEventListener("change", renderGrid);
+
+  setupRefreshButton(document.getElementById("refreshBtn"), document.getElementById("cacheTimeLabel"), fetchedAt, async ()=>{
+    const statusEl = document.getElementById("cacheStatusMsg");
+    const result = await refreshActivitiesList();
+    if(!result.changed){
+      statusEl.textContent = "（已是最新，未重新讀取）";
+      setTimeout(()=>{ statusEl.textContent = ""; }, 4000);
+      return null;
+    }
+    statusEl.textContent = "（已更新）";
+    setTimeout(()=>{ statusEl.textContent = ""; }, 4000);
+    allActivities = result.activities;
+    renderGrid();
+    return result.fetchedAt;
+  });
 
   document.getElementById("shareSelectedBtn").addEventListener("click", ()=>{
     shareMany(Array.from(selected.values()));
