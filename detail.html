@@ -98,11 +98,18 @@ function joinBlock(a){
 }
 
 // 行程逐行渲染：文字行照常顯示（綠點），連結行改用豎線標記；
-// 連結有文字就顯示文字當連結，沒有文字就換成小圖示（YouTube 用▶️、Google Map 用📍）
+// 偵測到 YouTube／Instagram／Google Map／Apple Map 這幾種連結，一律顯示對應小圖示
+// （不管當初有沒有寫「文字|網址」的說明文字），點圖示開新分頁打開網址；
+// 其他沒辨識出來的網址，才照舊「有文字顯示文字，沒文字顯示 🔗」。
 function itineraryLineHtml(item){
   if(item.type === "text") return `<li>${item.text}</li>`;
-  const icon = item.isYoutube ? "▶️" : (item.isMap ? "📍" : "🔗");
-  const shown = item.label ? item.label : icon;
+  let icon = "🔗";
+  if(item.isYoutube) icon = "▶️";
+  else if(item.isMap) icon = "📍";
+  else if(item.isInstagram) icon = "📷";
+  else if(item.isAppleMap) icon = "🗺️";
+  const isRecognized = item.isYoutube || item.isMap || item.isInstagram || item.isAppleMap;
+  const shown = isRecognized ? icon : (item.label ? item.label : icon);
   return `<li class="link-line"><a class="itinerary-inline-link" href="${item.url}" target="_blank" rel="noopener">${shown}</a></li>`;
 }
 
