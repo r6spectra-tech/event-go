@@ -1,5 +1,5 @@
-/* FLIGHT_DATA_VERSION: 20260727-9 */
-const FLIGHT_DATA_VERSION = "20260727-9";
+/* FLIGHT_DATA_VERSION: 20260727-10 */
+const FLIGHT_DATA_VERSION = "20260727-10";
 
 // 目前先寫死指向這次的活動，不透過網址參數帶入，activityId 之後如果要做成通用系統
 // （支援多個不同活動各自登記機票）再改回從網址讀取。

@@ -4,8 +4,8 @@
    依賴 ./flight-data.js（FLIGHT_SCHEDULE / AIRLINES / DIRECTION_LABEL）
    ============================================================ */
 
-/* FLIGHT_JS_VERSION: 20260727-9 */
-const FLIGHT_JS_VERSION = "20260727-9";
+/* FLIGHT_JS_VERSION: 20260727-10 */
+const FLIGHT_JS_VERSION = "20260727-10";
 
 // 透過 https://liff.line.me/{liffId}?activityId=xxx 這種網址帶參數時，LINE 不會把
 // ?activityId=xxx 直接透傳給我們的頁面，而是包成一個 liff.state 參數（例如
@@ -506,6 +506,12 @@ function buildFlightLine(r) {
   return `${prefix}${AIRLINES[r.airline]?.label || r.airline}｜${r.flightNo}｜${r.flightDate}｜${r.depTime}–${r.arrTime}`;
 }
 
+// 活動詳情頁在 event-go 根目錄，不是 flight-liff 底下，用純網址連過去
+// （liff.line.me/{liffId} 後面不支援接路徑，只能接查詢參數，接路徑會失效）
+function detailPageUrl() {
+  return `${RUNTIME.siteUrl}/detail.html?id=${encodeURIComponent(FIXED_ACTIVITY_ID)}`;
+}
+
 function completionBubble(entries, timestampText) {
   // 改用 liff.line.me 入口網址（不帶路徑/參數，activityId 已寫死不需要）,而不是純網址，
   // 這樣點進去的人會有真正的 LIFF 原生環境（isInClient()=true），他們自己要用分享功能時才會正常。
@@ -523,8 +529,12 @@ function completionBubble(entries, timestampText) {
     footer: {
       type: "box", layout: "vertical", spacing: "sm",
       contents: [
-        { type: "button", style: "primary", color: "#17233D",
-          action: { type: "uri", label: "前往登記", uri: link } },
+        { type: "box", layout: "horizontal", spacing: "sm", contents: [
+          { type: "button", style: "primary", color: "#17233D", height: "sm",
+            action: { type: "uri", label: "前往登記", uri: link } },
+          { type: "button", style: "secondary", height: "sm",
+            action: { type: "uri", label: "活動詳情", uri: detailPageUrl() } },
+        ] },
         { type: "text", text: timestampText || "", size: "xs", color: "#999999", align: "start" },
       ],
     },

@@ -3,10 +3,10 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
-<meta name="page-version" content="20260727-9">
+<meta name="page-version" content="20260727-10">
 <title>機票登記管理</title>
-<link rel="stylesheet" href="../assets/style.css?v=20260727-9">
-<link rel="stylesheet" href="flight.css?v=20260727-9">
+<link rel="stylesheet" href="../assets/style.css?v=20260727-10">
+<link rel="stylesheet" href="flight.css?v=20260727-10">
 <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
 </head>
 <body>
@@ -70,6 +70,13 @@
       </div>
 
       <div class="f-card">
+        <h3>🧪 測試：活動詳情連結</h3>
+        <p class="f-sub" style="margin-bottom:10px;">兩個都點點看，確認哪個能正常導到活動詳情頁，再決定要用哪個接進 Flex 按鈕。</p>
+        <a href="https://liff.line.me/2008568136-hwE2jXK5/detail.html?id=trip002" target="_blank" class="btn" style="display:block; text-align:center; margin-bottom:8px;">連結 A（你提供的：liff.line.me 接路徑）</a>
+        <a href="https://r6spectra-tech.github.io/event-go/detail.html?id=trip002" target="_blank" class="btn" style="display:block; text-align:center;">連結 B（我建議的：純網址）</a>
+      </div>
+
+      <div class="f-card">
         <h3>名單匯出</h3>
         <p class="f-sub" style="margin-bottom:10px;">匯出這個活動目前所有登記資料成 CSV，可以用 Excel／Google 試算表開啟。</p>
         <div class="f-field">
@@ -83,11 +90,11 @@
     </div>
   </div>
 
-  <div class="f-version-tag">flight.js v20260727-9</div>
+  <div class="f-version-tag">flight.js v20260727-10</div>
 
-  <script src="../assets/main.js?v=20260727-9"></script>
-  <script src="flight-data.js?v=20260727-9"></script>
-  <script src="flight.js?v=20260727-9"></script>
+  <script src="../assets/main.js?v=20260727-10"></script>
+  <script src="flight-data.js?v=20260727-10"></script>
+  <script src="flight.js?v=20260727-10"></script>
   <script>
     document.addEventListener("DOMContentLoaded", () => {
       document.getElementById("f-back-link").href = "index.html" + location.search;
