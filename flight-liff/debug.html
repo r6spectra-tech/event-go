@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
-<meta name="page-version" content="20260728-2">
+<meta name="page-version" content="20260728-3">
 <title>flight-liff 診斷頁</title>
 <style>
   body{background:#0a0a0f;color:#e5e7eb;font-family:-apple-system,sans-serif;padding:16px;margin:0;font-size:14px;line-height:1.6}
@@ -48,7 +48,7 @@
 <div id="apiTest">尚未開始</div>
 
 <script>
-const EXPECTED = "20260728-2";
+const EXPECTED = "20260728-3";
 const EXPECTED_GAS_VERSION = "20260728-2";
 const versionsEl = document.getElementById('versions');
 const loadsEl = document.getElementById('loads');
@@ -295,6 +295,12 @@ async function checkEnvInfo() {
     return;
   }
   let html = '';
+  // debug 頁的目的就是要看「現在真正部署的是什麼」，這裡先清掉設定值快取（app_config／flight_config），
+  // 確保 loadFlightConfig() 一定重新打一次 GAS，不會被 24 小時內的舊快取蓋過去
+  try {
+    localStorage.removeItem('cache:app_config');
+    localStorage.removeItem('cache:flight_config');
+  } catch (e) {}
   try {
     await loadFlightConfig();
   } catch (e) {

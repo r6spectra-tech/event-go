@@ -4,8 +4,8 @@
    依賴 ./flight-data.js（FLIGHT_SCHEDULE / AIRLINES / DIRECTION_LABEL）
    ============================================================ */
 
-/* FLIGHT_JS_VERSION: 20260728-2 */
-const FLIGHT_JS_VERSION = "20260728-2";
+/* FLIGHT_JS_VERSION: 20260728-3 */
+const FLIGHT_JS_VERSION = "20260728-3";
 
 // 透過 https://liff.line.me/{liffId}?activityId=xxx 這種網址帶參數時，LINE 不會把
 // ?activityId=xxx 直接透傳給我們的頁面，而是包成一個 liff.state 參數（例如
@@ -35,11 +35,22 @@ function getActivityId() {
 // flight-liff 專屬的 FLIGHT_LIFF_ID，有的話覆蓋掉 RUNTIME.liffId。
 // 這一步一定要在第一次呼叫 ensureLiff() 之前完成，因為 ensureLiff() 只有在
 // RUNTIME.liffId 還沒設定時才會自己去問，之後就不會再變動了。
+// flightConfig（主要是 FLIGHT_LIFF_ID 覆蓋值）一樣是部署時期就固定的常數，
+// 用跟根系統 loadConfig() 一樣的邏輯快取 24 小時，不用每次開頁都多打一次 GAS。
+const FLIGHT_CONFIG_CACHE_KEY = "flight_config";
+const FLIGHT_CONFIG_CACHE_TTL_MS = 24 * 60 * 60 * 1000; // 24 小時
+
 async function loadFlightConfig() {
   await loadConfig();
+  const cached = readCache(FLIGHT_CONFIG_CACHE_KEY);
+  if (cached && (Date.now() - cached.fetchedAt) < FLIGHT_CONFIG_CACHE_TTL_MS) {
+    if (cached.data && cached.data.liffId) RUNTIME.liffId = cached.data.liffId;
+    return;
+  }
   try {
     const fc = await apiGet("flightConfig");
     if (fc && fc.liffId) RUNTIME.liffId = fc.liffId;
+    writeCache(FLIGHT_CONFIG_CACHE_KEY, fc);
   } catch (e) {
     // 拿不到就沿用既有的 LIFF_ID，不影響任何功能（例如舊版 Code.gs 還沒加這個 action 的過渡期）
   }
