@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>活動詳情</title>
-<link rel="stylesheet" href="assets/style.css?v=20260728-7">
+<link rel="stylesheet" href="assets/style.css?v=20260728-8">
 </head>
 <body>
 
@@ -39,7 +39,7 @@
 </div>
 
 <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
-<script src="assets/main.js?v=20260728-7"></script>
+<script src="assets/main.js?v=20260728-8"></script>
 <script>
 // YouTube / Google Map 都用同一種「文字 chip，點了才跳轉」的呈現方式，多筆就並排、超出邊界自動換行
 function chipRow(items, icon){
@@ -171,9 +171,11 @@ function render(a){
 
     <div class="actions" style="padding:20px 0 0;">
       <button class="btn btn-primary" id="shareBtn">分享這個行程</button>
+      <button class="btn btn-ghost" id="shareBtnLiffTest" style="margin-top:8px; font-size:0.8rem;">🧪 測試：LIFF連結分享</button>
     </div>
   `;
   document.getElementById("shareBtn").addEventListener("click", ()=> shareOne(a));
+  document.getElementById("shareBtnLiffTest").addEventListener("click", ()=> shareOneLiffTest(a));
   document.getElementById("openRsvpBtn").addEventListener("click", ()=> openRsvpModal(a));
 }
 
@@ -382,7 +384,7 @@ async function main(){
     console.warn("LINE 登入未完成，部分功能將無法使用", e);
   }
 
-  const id = new URLSearchParams(location.search).get("id");
+  const id = getRealQueryParams().get("id");
   if(!id){
     document.getElementById("content").innerHTML = `<div class="empty">缺少活動 id</div>`;
     return;
@@ -396,7 +398,7 @@ async function main(){
     renderActivity(a, profile);
 
     // 如果是點了別人分享的連結進來（網址帶 refId/refName），記錄下來給「閱讀記錄」頁用
-    const params = new URLSearchParams(location.search);
+    const params = getRealQueryParams();
     const refUserId = params.get("refId");
     const refDisplayName = params.get("refName");
     recordVisit(a.id, refUserId ? { refUserId, refDisplayName } : null);
