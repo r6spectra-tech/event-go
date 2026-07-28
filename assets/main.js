@@ -136,20 +136,32 @@ const AMAP_URL_RE = /^(https?:\/\/)?(maps\.apple\.com|maps\.apple\.co)\//i;
 function parseItineraryLine(rawLine) {
   const line = rawLine.trim();
   if (!line) return null;
-  const m = line.match(/(https?:\/\/\S+)/i);
-  if (!m) return { type: "text", text: line };
-  const url = m[1];
-  // 用網址在原字串裡的位置切開，網址前後的文字各自保留（只把緊貼網址的 | 符號去掉），
-  // 不是整行文字都丟掉——這樣「→到博明租車領用機車(先到先領) 網址」才能保留前面那段說明文字
-  const before = line.slice(0, m.index).replace(/[|｜]\s*$/, "").trim();
-  const after = line.slice(m.index + url.length).replace(/^[|｜]\s*/, "").trim();
-  return {
-    type: "link", url, before, after,
-    isYoutube: YOUTUBE_URL_RE.test(url),
-    isMap: GMAP_URL_RE.test(url),
-    isInstagram: IG_URL_RE.test(url),
-    isAppleMap: AMAP_URL_RE.test(url),
-  };
+  const urlRe = /(https?:\/\/\S+)/gi;
+  const matches = [...line.matchAll(urlRe)];
+  if (matches.length === 0) return { type: "text", text: line };
+
+  // 同一行可能同時有 Google Map／Apple Map／IG 好幾個網址，全部都要各自抓出來、
+  // 各自判斷平台，不能只抓第一個——用位置切開整行，文字段落跟每個網址段落依序保留下來
+  const segments = [];
+  let lastIndex = 0;
+  matches.forEach(m => {
+    const url = m[1];
+    const idx = m.index;
+    const textBefore = line.slice(lastIndex, idx).replace(/[|｜]\s*$/, "");
+    if (textBefore.trim()) segments.push({ kind: "text", text: textBefore.trim() });
+    segments.push({
+      kind: "link", url,
+      isYoutube: YOUTUBE_URL_RE.test(url),
+      isMap: GMAP_URL_RE.test(url),
+      isInstagram: IG_URL_RE.test(url),
+      isAppleMap: AMAP_URL_RE.test(url),
+    });
+    lastIndex = idx + url.length;
+  });
+  const tail = line.slice(lastIndex).replace(/^[|｜]\s*/, "").trim();
+  if (tail) segments.push({ kind: "text", text: tail });
+
+  return { type: "link", segments };
 }
 
 function parseItineraryDayText(text) {
