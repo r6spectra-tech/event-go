@@ -489,18 +489,20 @@ async function fetchLastUpdatedMap() {
 function formatCacheTime(ts) {
   if (!ts) return "尚未讀取";
   const d = new Date(ts);
-  return d.toLocaleTimeString("zh-TW", { hour12: false });
+  const y = d.getFullYear(), m = d.getMonth() + 1, day = d.getDate();
+  const hh = String(d.getHours()).padStart(2, "0"), mm = String(d.getMinutes()).padStart(2, "0");
+  return `${y}/${m}/${day} ${hh}:${mm}`;
 }
 
 const REFRESH_COOLDOWN_SEC = 60;
 
 // 幫「更新」按鈕接上：點擊→執行 onRefresh()→按鈕變灰倒數 60 秒→恢復可點
-// timeLabelEl 會被更新成「頁面更新時間：HH:MM:SS」
+// timeLabelEl 會被更新成「本頁面最後編輯時間：yyyy/M/d HH:mm」
 function setupRefreshButton(btnEl, timeLabelEl, fetchedAt, onRefresh) {
   let timer = null;
 
   function paintTime(ts) {
-    if (timeLabelEl) timeLabelEl.textContent = `頁面更新時間：${formatCacheTime(ts)}`;
+    if (timeLabelEl) timeLabelEl.textContent = `本頁面最後編輯時間：${formatCacheTime(ts)}`;
   }
   paintTime(fetchedAt);
 
