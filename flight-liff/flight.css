@@ -1,4 +1,4 @@
-/* FLIGHT_CSS_VERSION: 20260727-6 */
+/* FLIGHT_CSS_VERSION: 20260727-9 */
 /* flight-liff 專屬樣式，沿用 assets/style.css 的 --ink / --paper / --teal / --stamp / --sand 色票 */
 
 /* 全域強制規則：任何有 hidden 屬性的元素一律不顯示，優先權設到最高。
@@ -95,6 +95,12 @@
 
 .f-same-flight{ display:flex; align-items:center; gap:8px; font-size:0.85rem; margin-bottom:10px; }
 .f-waitlist-check{ display:flex; align-items:center; gap:8px; font-size:0.85rem; margin:10px 0 4px; color:#a15c1f; }
+.f-waitlist-disabled{ color:#999; }
+.f-waitlist-disabled input{ cursor:not-allowed; }
+.f-waitlist-warning{
+  color:var(--stamp); font-size:0.78rem; line-height:1.6; margin:4px 0 10px;
+  background:rgba(216,87,42,0.08); border:1px solid rgba(216,87,42,0.3); border-radius:8px; padding:8px 10px;
+}
 
 .f-add-member{
   width:100%; padding:11px; border:1.5px dashed var(--teal); border-radius:10px;

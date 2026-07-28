@@ -4,8 +4,8 @@
    依賴 ./flight-data.js（FLIGHT_SCHEDULE / AIRLINES / DIRECTION_LABEL）
    ============================================================ */
 
-/* FLIGHT_JS_VERSION: 20260727-6 */
-const FLIGHT_JS_VERSION = "20260727-6";
+/* FLIGHT_JS_VERSION: 20260727-9 */
+const FLIGHT_JS_VERSION = "20260727-9";
 
 // 透過 https://liff.line.me/{liffId}?activityId=xxx 這種網址帶參數時，LINE 不會把
 // ?activityId=xxx 直接透傳給我們的頁面，而是包成一個 liff.state 參數（例如
@@ -331,10 +331,15 @@ function flightFieldsHtml(direction, m) {
     <div class="f-field"><label>抵達時間</label><input type="time" data-role="manualArr" value="${m.arr || ""}"></div>
   ` : "";
   const waitlistField = `
-    <label class="f-waitlist-check">
-      <input type="checkbox" data-role="waitlisted" ${m.waitlisted ? "checked" : ""}>
-      🎫 候補中（尚未確定拿到票）
-    </label>`;
+    <label class="f-waitlist-check f-waitlist-disabled">
+      <input type="checkbox" data-role="waitlisted" disabled ${m.waitlisted ? "checked" : ""}>
+      🎫 候補中（此功能已停用，無法再勾選）
+    </label>
+    ${m.waitlisted ? `
+      <p class="f-waitlist-warning">
+        ⚠️ 不開放候補資訊填寫，本筆資訊不會顯示，請按刪除。<br>
+        如有訂到票，請先按刪除，再登記機票資訊。
+      </p>` : ""}`;
   return select + manualFields + waitlistField;
 }
 
@@ -497,9 +502,8 @@ async function deleteDirection(direction) {
 function buildFlightLine(r) {
   const airportLabel = AIRPORTS[r.airport] ? AIRPORTS[r.airport].label : "";
   const prefix = airportLabel ? `${airportLabel}｜` : "";
-  const isWaitlisted = r.waitlisted === true || String(r.waitlisted).toUpperCase() === "TRUE";
-  const suffix = isWaitlisted ? "（候補中）" : "";
-  return `${prefix}${AIRLINES[r.airline]?.label || r.airline}｜${r.flightNo}｜${r.flightDate}｜${r.depTime}–${r.arrTime}${suffix}`;
+  // 候補功能已停用，這裡預設不再輸出候補標註（見表單裡的紅字提示說明）
+  return `${prefix}${AIRLINES[r.airline]?.label || r.airline}｜${r.flightNo}｜${r.flightDate}｜${r.depTime}–${r.arrTime}`;
 }
 
 function completionBubble(entries, timestampText) {
@@ -783,7 +787,7 @@ function buildOverviewSectionsForFlight(dateGroups, showCount, showNames, showAi
     dg.flights.forEach(g => {
       const airportLabel = (showAirport && AIRPORTS[g.airport]) ? AIRPORTS[g.airport].label + "　" : "";
       let title = `${g.depTime}–${g.arrTime}　${airportLabel}${AIRLINES[g.airline]?.label || g.airline}｜${g.flightNo}`;
-      if (showCount) title += `　共${g.names.length}人${g.waitlistCount ? `（含${g.waitlistCount}候補）` : ""}`;
+      if (showCount) title += `　共${g.names.length}人`;
       const body = showNames ? g.names.join("、") : "";
       sections.push({ date: dg.date, title, body });
     });
@@ -797,14 +801,13 @@ function buildOverviewSectionsForHour(dateGroups, showCount, showNames, showAirp
     dg.hours.forEach(h => {
       const hourEnd = h.hour.split(":")[0] + ":59";
       const total = h.airlines.reduce((s, a) => s + a.total, 0);
-      const waitlistTotal = h.airlines.reduce((s, a) => s + (a.waitlistTotal || 0), 0);
       let title = `${h.hour}~${hourEnd}`;
-      if (showCount) title += `　共${total}人${waitlistTotal ? `（含${waitlistTotal}候補）` : ""}`;
+      if (showCount) title += `　共${total}人`;
       // 同一個時段裡的各家航空公司都收進同一段的 body 裡，時段標題（title）只印一次，
       // 不會像之前那樣每家航空公司各自重複印一次時段範圍
       const airlineLines = h.airlines.map(a => {
         let line = `${AIRLINES[a.airline]?.label || a.airline}`;
-        if (showCount) line += `　${a.total}人${a.waitlistTotal ? `（含${a.waitlistTotal}候補）` : ""}`;
+        if (showCount) line += `　${a.total}人`;
         if (showNames || showAirport) {
           const detail = a.flights.map(f => {
             let d = `${f.depTime}–${f.arrTime}／${f.flightNo}`;
@@ -890,16 +893,6 @@ async function shareOverview() {
   const showNames = document.getElementById("f-ov-names").checked;
   const showAirport = document.getElementById("f-ov-airport").checked;
 
-  const showConfirmed = document.getElementById("f-ov-confirmed").checked;
-  const showWaitlisted = document.getElementById("f-ov-waitlisted").checked;
-  if (!showConfirmed && !showWaitlisted) {
-    toast("候補篩選請至少勾一個");
-    return;
-  }
-  // 兩個都勾＝不篩選（傳 all，跟既有 overview.html 的預設行為一致）；
-  // 只勾一個才真的把另一種人從統計裡排除掉
-  const waitlistFilter = (showConfirmed && showWaitlisted) ? "all" : (showWaitlisted ? "waitlisted" : "confirmed");
-
   const ok = await ensureLiff();
   if (!ok || !liff.isApiAvailable("shareTargetPicker")) {
     toast("目前環境不支援 LINE 分享");
@@ -909,7 +902,7 @@ async function shareOverview() {
   const btn = document.getElementById("f-ov-share-btn");
   btn.disabled = true;
   try {
-    const data = await apiGet("flightOverview", { activityId: ADMIN.activityId, waitlistFilter });
+    const data = await apiGet("flightOverview", { activityId: ADMIN.activityId });
     const tabLabel = tab === "flight" ? "依航班" : "依時段";
 
     // 去程/回程各自產生自己的頁面，再依序接在一起：去程幾頁、接著回程幾頁，
@@ -922,8 +915,7 @@ async function shareOverview() {
       const sections = tab === "flight"
         ? buildOverviewSectionsForFlight(dateGroups, showCount, showNames, showAirport)
         : buildOverviewSectionsForHour(dateGroups, showCount, showNames, showAirport);
-      const filterLabel = waitlistFilter === "waitlisted" ? "・只看候補" : waitlistFilter === "confirmed" ? "・不含候補" : "";
-      const bubbles = buildOverviewBubbles(sections, `📋 ${dirLabel}總表・${tabLabel}${filterLabel}`);
+      const bubbles = buildOverviewBubbles(sections, `📋 ${dirLabel}總表・${tabLabel}`);
       allBubbles = allBubbles.concat(bubbles);
     });
 
@@ -1110,7 +1102,7 @@ function renderOverview() {
         <div class="f-flight-group">
           <div class="f-fg-head">
             <span class="f-fg-time">${g.depTime}–${g.arrTime}</span>
-            <span class="f-fg-meta">${AIRPORTS[g.airport] ? AIRPORTS[g.airport].label + "｜" : ""}${AIRLINES[g.airline]?.label || g.airline}｜${g.flightNo}｜共 ${g.names.length} 人${g.waitlistCount ? `（含${g.waitlistCount}候補）` : ""}</span>
+            <span class="f-fg-meta">${AIRPORTS[g.airport] ? AIRPORTS[g.airport].label + "｜" : ""}${AIRLINES[g.airline]?.label || g.airline}｜${g.flightNo}｜共 ${g.names.length} 人</span>
           </div>
           <div class="f-fg-names">${g.names.map(escapeHtml).join("、")}</div>
         </div>
@@ -1124,17 +1116,16 @@ function renderOverview() {
       <div class="f-date-caption">${dg.date}</div>
       ${dg.hours.map(h => {
         const total = h.airlines.reduce((s, a) => s + a.total, 0);
-        const waitlistTotal = h.airlines.reduce((s, a) => s + (a.waitlistTotal || 0), 0);
         const hourEnd = h.hour.split(":")[0] + ":59";
         const airlineBlocks = h.airlines.map(a => `
-          <div class="f-hour-airline">${AIRLINES[a.airline]?.label || a.airline} ${a.total}人${a.waitlistTotal ? `（含${a.waitlistTotal}候補）` : ""}</div>
+          <div class="f-hour-airline">${AIRLINES[a.airline]?.label || a.airline} ${a.total}人</div>
           ${a.flights.map(f => `
             <div class="f-hour-flight"><span class="f-hf-code">${f.depTime}–${f.arrTime}／${f.flightNo}${AIRPORTS[f.airport] ? "／" + AIRPORTS[f.airport].label : ""}</span>${f.names.map(escapeHtml).join("、")}</div>
           `).join("")}
         `).join("");
         return `
           <div class="f-hour-block">
-            <div class="f-hour-title">${h.hour}~${hourEnd}（${arrivalLabel}）共 ${total} 人${waitlistTotal ? `（含${waitlistTotal}候補）` : ""}</div>
+            <div class="f-hour-title">${h.hour}~${hourEnd}（${arrivalLabel}）共 ${total} 人</div>
             ${airlineBlocks}
           </div>`;
       }).join("")}

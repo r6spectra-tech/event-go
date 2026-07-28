@@ -3,10 +3,10 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
-<meta name="page-version" content="20260727-6">
+<meta name="page-version" content="20260727-9">
 <title>機票登記管理</title>
-<link rel="stylesheet" href="../assets/style.css?v=20260727-6">
-<link rel="stylesheet" href="flight.css?v=20260727-6">
+<link rel="stylesheet" href="../assets/style.css?v=20260727-9">
+<link rel="stylesheet" href="flight.css?v=20260727-9">
 <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
 </head>
 <body>
@@ -59,11 +59,6 @@
           <label style="margin-right:16px; font-size:0.85rem; font-weight:400;"><input type="checkbox" id="f-ov-names"> 顯示姓名</label>
           <label style="font-size:0.85rem; font-weight:400;"><input type="checkbox" id="f-ov-airport" checked> 顯示出發/抵達地</label>
         </div>
-        <div class="f-field">
-          <label>候補篩選（可複選，兩個都勾＝全部都要）</label>
-          <label style="margin-right:16px; font-size:0.85rem; font-weight:400;"><input type="checkbox" id="f-ov-confirmed" checked> 顯示已確定</label>
-          <label style="font-size:0.85rem; font-weight:400;"><input type="checkbox" id="f-ov-waitlisted" checked> 顯示候補中</label>
-        </div>
 
         <button class="btn primary" id="f-ov-share-btn" style="margin-top:6px;">📊 分享總表到群組</button>
       </div>
@@ -88,11 +83,11 @@
     </div>
   </div>
 
-  <div class="f-version-tag">flight.js v20260727-6</div>
+  <div class="f-version-tag">flight.js v20260727-9</div>
 
-  <script src="../assets/main.js?v=20260727-6"></script>
-  <script src="flight-data.js?v=20260727-6"></script>
-  <script src="flight.js?v=20260727-6"></script>
+  <script src="../assets/main.js?v=20260727-9"></script>
+  <script src="flight-data.js?v=20260727-9"></script>
+  <script src="flight.js?v=20260727-9"></script>
   <script>
     document.addEventListener("DOMContentLoaded", () => {
       document.getElementById("f-back-link").href = "index.html" + location.search;
