@@ -4,8 +4,8 @@
    依賴 ./flight-data.js（FLIGHT_SCHEDULE / AIRLINES / DIRECTION_LABEL）
    ============================================================ */
 
-/* FLIGHT_JS_VERSION: 20260727-13 */
-const FLIGHT_JS_VERSION = "20260727-13";
+/* FLIGHT_JS_VERSION: 20260727-14 */
+const FLIGHT_JS_VERSION = "20260727-14";
 
 // 透過 https://liff.line.me/{liffId}?activityId=xxx 這種網址帶參數時，LINE 不會把
 // ?activityId=xxx 直接透傳給我們的頁面，而是包成一個 liff.state 參數（例如
@@ -1096,6 +1096,11 @@ const SPINNER_HTML = `<div class="f-spinner-wrap"><div class="f-spinner"></div><
 
 function overviewCacheKey(activityId) { return `flightOverview:${activityId}`; }
 
+// GitHub 版本檔用的 key 故意跟根系統寫入的 activityId 分開（加 :flight 後綴），
+// 不然編輯活動詳情跟編輯機票登記會互相誤觸發對方的快取失效。要跟 GAS 那邊的
+// flightLastUpdatedKey() 保持完全一致的組合方式。
+function flightLastUpdatedKey(activityId) { return activityId + ":flight"; }
+
 // 進頁面時走這支：本機有快取就直接用（秒開），沒有的話才第一次打 GAS，
 // 順便去讀 GitHub 上的輕量版本檔，記住這個活動目前的版本時間戳記，之後按「更新」才有東西可以比對
 async function loadOverviewFromCacheOrFetch(activityId) {
@@ -1107,7 +1112,7 @@ async function loadOverviewFromCacheOrFetch(activityId) {
   let remoteVersion = null;
   try {
     const map = await fetchLastUpdatedMap();
-    remoteVersion = map[activityId] || null;
+    remoteVersion = map[flightLastUpdatedKey(activityId)] || null;
   } catch (e) { console.warn("讀取 GitHub 版本檔失敗", e); }
   writeCache(overviewCacheKey(activityId), data, remoteVersion);
   return { data, fetchedAt: Date.now() };
@@ -1122,7 +1127,7 @@ async function refreshOverviewData(activityId) {
   let remoteVersion = null;
   try {
     const map = await fetchLastUpdatedMap();
-    remoteVersion = map[activityId] || null;
+    remoteVersion = map[flightLastUpdatedKey(activityId)] || null;
   } catch (e) {
     console.warn("讀取 GitHub 版本檔失敗，保守起見還是呼叫 GAS 重新讀取", e);
   }
