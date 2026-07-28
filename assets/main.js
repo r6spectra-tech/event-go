@@ -125,9 +125,12 @@ function parseItineraryLine(rawLine) {
   const m = line.match(/(https?:\/\/\S+)/i);
   if (!m) return { type: "text", text: line };
   const url = m[1];
-  const label = line.replace(url, "").replace(/[|｜]\s*$/, "").replace(/^[|｜]\s*/, "").trim();
+  // 用網址在原字串裡的位置切開，網址前後的文字各自保留（只把緊貼網址的 | 符號去掉），
+  // 不是整行文字都丟掉——這樣「→到博明租車領用機車(先到先領) 網址」才能保留前面那段說明文字
+  const before = line.slice(0, m.index).replace(/[|｜]\s*$/, "").trim();
+  const after = line.slice(m.index + url.length).replace(/^[|｜]\s*/, "").trim();
   return {
-    type: "link", label, url,
+    type: "link", url, before, after,
     isYoutube: YOUTUBE_URL_RE.test(url),
     isMap: GMAP_URL_RE.test(url),
     isInstagram: IG_URL_RE.test(url),
