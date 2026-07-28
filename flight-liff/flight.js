@@ -4,8 +4,8 @@
    依賴 ./flight-data.js（FLIGHT_SCHEDULE / AIRLINES / DIRECTION_LABEL）
    ============================================================ */
 
-/* FLIGHT_JS_VERSION: 20260728-3 */
-const FLIGHT_JS_VERSION = "20260728-3";
+/* FLIGHT_JS_VERSION: 20260728-4 */
+const FLIGHT_JS_VERSION = "20260728-4";
 
 // 透過 https://liff.line.me/{liffId}?activityId=xxx 這種網址帶參數時，LINE 不會把
 // ?activityId=xxx 直接透傳給我們的頁面，而是包成一個 liff.state 參數（例如
@@ -99,20 +99,28 @@ async function initIndexPage() {
     document.getElementById("f-app").innerHTML = `<div class="f-empty">網址缺少 activityId 參數，請透過活動分享的連結進入。</div>`;
     return;
   }
-  await loadFlightConfig();
-  document.getElementById("f-activity-title").textContent = FIXED_ACTIVITY_TITLE;
-  document.getElementById("f-activity-sub").textContent = "";
-
-  document.getElementById("f-login-btn").addEventListener("click", onLoginClick);
-  bindFormEvents();
-
   try {
+    await loadFlightConfig();
+    document.getElementById("f-activity-title").textContent = FIXED_ACTIVITY_TITLE;
+    document.getElementById("f-activity-sub").textContent = "";
+
+    document.getElementById("f-login-btn").addEventListener("click", onLoginClick);
+    bindFormEvents();
+
     const ok = await ensureLiff();
     if (ok && liff.isLoggedIn()) {
       await afterLogin();
     } else {
       showLoginGate();
     }
+  } catch (e) {
+    // 任何一步失敗（包括拿設定值逾時/GAS 沒回應）都要讓使用者看到明確錯誤，
+    // 不能讓 spinner 卡在畫面上不動、看起來像當機
+    document.getElementById("f-app").innerHTML = `
+      <div class="f-empty">
+        載入失敗：${e.message || e}<br>
+        <button class="btn primary" style="margin-top:12px;" onclick="location.reload()">重新整理</button>
+      </div>`;
   } finally {
     document.getElementById("f-init-loading").hidden = true;
   }
@@ -658,10 +666,10 @@ async function initClaimPage() {
     return;
   }
 
-  await loadFlightConfig();
-  document.getElementById("f-claim-login-btn").addEventListener("click", () => requireLogin());
-
   try {
+    await loadFlightConfig();
+    document.getElementById("f-claim-login-btn").addEventListener("click", () => requireLogin());
+
     const ok = await ensureLiff();
     if (!ok || !liff.isLoggedIn()) {
       document.getElementById("f-claim-login-gate").hidden = false;
@@ -673,7 +681,7 @@ async function initClaimPage() {
   } catch (e) {
     const body = document.getElementById("f-claim-body");
     body.hidden = false;
-    body.innerHTML = `<div class="f-empty">載入失敗，請重新整理再試一次</div>`;
+    body.innerHTML = `<div class="f-empty">載入失敗：${e.message || e}</div>`;
   } finally {
     document.getElementById("f-claim-loading").hidden = true;
   }
@@ -752,14 +760,15 @@ let ADMIN = { activityId: "", profile: null };
 
 async function initAdminPage() {
   ADMIN.activityId = getActivityId();
-  await loadFlightConfig();
-  document.getElementById("f-activity-title").textContent = FIXED_ACTIVITY_TITLE;
-
-  document.getElementById("f-admin-login-btn").addEventListener("click", () => requireLogin());
-  document.getElementById("f-invite-share-btn").addEventListener("click", shareInvite);
-  document.getElementById("f-ov-share-btn").addEventListener("click", shareOverview);
 
   try {
+    await loadFlightConfig();
+    document.getElementById("f-activity-title").textContent = FIXED_ACTIVITY_TITLE;
+
+    document.getElementById("f-admin-login-btn").addEventListener("click", () => requireLogin());
+    document.getElementById("f-invite-share-btn").addEventListener("click", shareInvite);
+    document.getElementById("f-ov-share-btn").addEventListener("click", shareOverview);
+
     const ok = await ensureLiff();
     if (!ok || !liff.isLoggedIn()) {
       document.getElementById("f-admin-login-gate").hidden = false;
@@ -778,7 +787,7 @@ async function initAdminPage() {
     await loadGroupSection();
   } catch (e) {
     document.getElementById("f-admin-denied").hidden = false;
-    document.getElementById("f-admin-denied").textContent = "載入失敗，請重新整理再試一次";
+    document.getElementById("f-admin-denied").textContent = "載入失敗：" + (e.message || e);
   } finally {
     document.getElementById("f-admin-loading").hidden = true;
   }
@@ -1276,24 +1285,24 @@ async function initOverviewPage() {
     bodyEl.innerHTML = `<div class="f-empty">網址缺少 activityId 參數。</div>`;
     return;
   }
-  await loadFlightConfig();
-  document.getElementById("f-activity-title").textContent = FIXED_ACTIVITY_TITLE;
-
-  // 只在初始化時綁定一次事件，之後切換分頁只更新 f-overview-body 的內容，
-  // 絕不整個重寫 f-app／按鈕所在的 DOM，避免事件監聽器被換掉的問題
-  document.querySelectorAll("[data-tab]").forEach(btn => btn.addEventListener("click", () => {
-    OV.tab = btn.dataset.tab;
-    document.querySelectorAll("[data-tab]").forEach(b => b.classList.toggle("active", b === btn));
-    renderOverview();
-  }));
-  document.querySelectorAll("[data-dir]").forEach(btn => btn.addEventListener("click", () => {
-    OV.direction = btn.dataset.dir;
-    document.querySelectorAll("[data-dir]").forEach(b => b.classList.toggle("active", b === btn));
-    renderOverview();
-  }));
-
   bodyEl.innerHTML = SPINNER_HTML;
   try {
+    await loadFlightConfig();
+    document.getElementById("f-activity-title").textContent = FIXED_ACTIVITY_TITLE;
+
+    // 只在初始化時綁定一次事件，之後切換分頁只更新 f-overview-body 的內容，
+    // 絕不整個重寫 f-app／按鈕所在的 DOM，避免事件監聽器被換掉的問題
+    document.querySelectorAll("[data-tab]").forEach(btn => btn.addEventListener("click", () => {
+      OV.tab = btn.dataset.tab;
+      document.querySelectorAll("[data-tab]").forEach(b => b.classList.toggle("active", b === btn));
+      renderOverview();
+    }));
+    document.querySelectorAll("[data-dir]").forEach(btn => btn.addEventListener("click", () => {
+      OV.direction = btn.dataset.dir;
+      document.querySelectorAll("[data-dir]").forEach(b => b.classList.toggle("active", b === btn));
+      renderOverview();
+    }));
+
     const { data, fetchedAt, windowEndMs } = await loadOverviewFromCacheOrFetch(OV.activityId);
     OV.data = data;
     renderOverview();
@@ -1315,7 +1324,7 @@ async function initOverviewPage() {
     const timeLabelEl = document.getElementById("f-ov-cache-time");
     if (timeLabelEl) timeLabelEl.textContent = `本頁最後更新時間：${formatOverviewCacheTime(fetchedAt)}`;
   } catch (e) {
-    bodyEl.innerHTML = `<div class="f-empty">載入失敗，請重新整理再試一次</div>`;
+    bodyEl.innerHTML = `<div class="f-empty">載入失敗：${e.message || e}</div>`;
   }
 }
 
