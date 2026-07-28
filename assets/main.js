@@ -7,7 +7,7 @@
    目前有引用的檔案：index.html／detail.html／confirm.html／me.html／share.html／
    admin/edit-activity.html／admin/managers.html／admin/new-activity.html／
    admin/visit-log.html／admin/waitlist.html（共 10 個） */
-const ASSETS_VERSION = "20260728-3";
+const ASSETS_VERSION = "20260728-6";
 
 /* ============================================================
    設定區：只留「GAS Web App 網址」需要寫死在前端，
@@ -139,7 +139,7 @@ function parseItinerary(text) {
 const YOUTUBE_URL_RE = /^(https?:\/\/)?(www\.)?(youtube\.com|youtu\.be)\//i;
 const GMAP_URL_RE = /^(https?:\/\/)?(www\.)?(maps\.google\.|maps\.app\.goo\.gl|google\.com\/maps|goo\.gl\/maps)/i;
 const IG_URL_RE = /^(https?:\/\/)?(www\.)?(instagram\.com)\//i;
-const AMAP_URL_RE = /^(https?:\/\/)?(maps\.apple\.com|maps\.apple\.co)\//i;
+const AMAP_URL_RE = /^(https?:\/\/)?(maps\.apple\.com|maps\.apple\.co|maps\.apple)\//i;
 
 // 行程逐行解析：不管整行格式長怎樣，都直接找這一行裡有沒有網址，找到就抓出來當連結，
 // 其餘文字（含 | 或 ｜ 這種分隔符號）自動當標籤，比要求「整行必須剛好是網址」更不容易失敗
@@ -602,7 +602,31 @@ async function applyManager() {
   return apiPost("applyManager", { userId, displayName });
 }
 
+// 讀 GitHub 上的輕量管理者名單檔；讀不到（還沒設定 GH_TOKEN、檔案還不存在、或網路問題）
+// 都回傳 null，讓呼叫端知道要退回原本呼叫 GAS 的方式，不當作真正的錯誤。
+async function fetchManagersFile() {
+  if (!RUNTIME.rawBaseUrl) await loadConfig();
+  if (!RUNTIME.rawBaseUrl) return null;
+  try {
+    const res = await fetch(`${RUNTIME.rawBaseUrl}/data/managers.json?_=${Date.now()}`, { cache: "no-store" });
+    if (!res.ok) return null;
+    return await res.json();
+  } catch (e) {
+    return null;
+  }
+}
+
+// 直接讀 GitHub 上的名單檔（純靜態檔案，沒有 GAS 冷啟動，也不需要另外快取），
+// 讀不到才退回原本呼叫 GAS 的 isManager action——確保沒設定 GH_TOKEN 時系統照樣能運作。
+// 回傳格式跟原本的 apiGet("isManager", ...) 完全一樣（{status: "approved"|"pending"|null}），
+// 呼叫端（guardManagerPage／setupManagerArea）不用跟著改。
 async function checkIsManager(userId) {
+  const file = await fetchManagersFile();
+  if (file) {
+    if (Array.isArray(file.approved) && file.approved.includes(userId)) return { status: "approved" };
+    if (Array.isArray(file.pending) && file.pending.includes(userId)) return { status: "pending" };
+    return { status: null };
+  }
   return apiGet("isManager", { userId });
 }
 
