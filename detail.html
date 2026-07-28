@@ -101,25 +101,23 @@ function joinBlock(a){
 // 偵測到 YouTube／Instagram／Google Map／Apple Map 這幾種連結，只把「網址」本身換成小圖示連結，
 // 網址前後原本寫的說明文字照樣顯示，不會整行只剩圖示；點圖示開新分頁打開網址。
 // 其他沒辨識出來的網址，維持舊行為：有文字就整段文字變連結，沒文字才用 🔗 圖示。
+// 行程逐行渲染：文字行照常顯示（綠點），連結行改用豎線標記；
+// 一行裡不管有幾個網址，每一個都各自處理：認得的（YouTube／Instagram／Google Map／Apple Map）
+// 換成對應小圖示，認不出來的網址也換成 🔗 圖示（多網址情境下不再區分「有沒有寫說明文字」，
+// 一律圖示化，文字段落單純當文字顯示，不會被吃進連結裡）；點圖示開新分頁打開網址。
 function itineraryLineHtml(item){
   if(item.type === "text") return `<li>${item.text}</li>`;
 
-  const isRecognized = item.isYoutube || item.isMap || item.isInstagram || item.isAppleMap;
-  let icon = "🔗";
-  if(item.isYoutube) icon = "▶️";
-  else if(item.isMap) icon = "📍";
-  else if(item.isInstagram) icon = "📷";
-  else if(item.isAppleMap) icon = "🗺️";
-
-  if(isRecognized){
-    const iconLink = `<a class="itinerary-inline-link" href="${item.url}" target="_blank" rel="noopener">${icon}</a>`;
-    const parts = [item.before, iconLink, item.after].filter(Boolean);
-    return `<li class="link-line">${parts.join(" ")}</li>`;
-  }
-
-  const label = item.before || item.after;
-  const shown = label || icon;
-  return `<li class="link-line"><a class="itinerary-inline-link" href="${item.url}" target="_blank" rel="noopener">${shown}</a></li>`;
+  const parts = item.segments.map(seg => {
+    if (seg.kind === "text") return seg.text;
+    let icon = "🔗";
+    if(seg.isYoutube) icon = "▶️";
+    else if(seg.isMap) icon = "📍";
+    else if(seg.isInstagram) icon = "📷";
+    else if(seg.isAppleMap) icon = "🗺️";
+    return `<a class="itinerary-inline-link" href="${seg.url}" target="_blank" rel="noopener">${icon}</a>`;
+  });
+  return `<li class="link-line">${parts.join(" ")}</li>`;
 }
 
 function itineraryBlock(a){
