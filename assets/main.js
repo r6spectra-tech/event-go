@@ -7,7 +7,7 @@
    目前有引用的檔案：index.html／detail.html／confirm.html／me.html／share.html／
    admin/edit-activity.html／admin/managers.html／admin/new-activity.html／
    admin/visit-log.html／admin/waitlist.html（共 10 個） */
-const ASSETS_VERSION = "20260728-7";
+const ASSETS_VERSION = "20260728-8";
 
 /* ============================================================
    設定區：只留「GAS Web App 網址」需要寫死在前端，
@@ -360,6 +360,41 @@ async function shareOne(activity) {
   } catch (e) { console.error(e); }
 }
 
+/* ============================================================
+   🧪 測試用：liff.line.me 連結格式（跟原本的 detailUrl／buildBubble／shareOne 完全獨立，
+   不影響既有的分享功能）。等實際測試確認可以正常運作、載入正確的活動內容之後，
+   再決定要不要把這套換成正式的。用完可以整段刪掉。
+   ============================================================ */
+function detailUrlLiffTest(activity, referrer) {
+  let url = `https://liff.line.me/${RUNTIME.liffId}/detail.html?id=${encodeURIComponent(activity.id)}`;
+  if (referrer && referrer.userId) {
+    url += `&refId=${encodeURIComponent(referrer.userId)}&refName=${encodeURIComponent(referrer.displayName || "")}`;
+  }
+  return url;
+}
+
+function buildBubbleLiffTest(activity, referrer) {
+  const b = buildBubble(activity, referrer);
+  b.footer.contents[0].action.uri = detailUrlLiffTest(activity, referrer);
+  b.footer.contents[0].action.label = "🧪 活動詳情（LIFF連結測試）";
+  return b;
+}
+
+async function shareOneLiffTest(activity) {
+  const ok = await ensureLiff();
+  if (!ok || !liff.isApiAvailable("shareTargetPicker")) {
+    alert("目前環境不支援 LINE 分享，改為複製連結。");
+    copyLink(detailUrlLiffTest(activity));
+    return;
+  }
+  const referrer = await getCurrentProfileIfAvailable();
+  try {
+    await liff.shareTargetPicker([
+      { type: "flex", altText: `【測試】${activity.title}`, contents: buildBubbleLiffTest(activity, referrer) },
+    ]);
+  } catch (e) { console.error(e); }
+}
+
 // 選 2~5 個活動一起分享：包成「一則」flex 訊息、裡面是可以左右滑動的 carousel，
 // 而不是送出好幾則各自獨立的訊息。
 async function shareMany(activities) {
@@ -501,6 +536,22 @@ function scheduleIdle(fn){
    ============================================================ */
 function cacheKey(name) {
   return `cache:${name}`;
+}
+
+// 透過 https://liff.line.me/{liffId}/xxx.html?id=yyy 這種網址帶路徑+參數時，LINE 不一定會把
+// ?id=yyy 直接透傳給我們的頁面，有時候會包成一個 liff.state 參數（例如 ?liff.state=%3Fid%3Dyyy），
+// LIFF SDK 不會自動幫忙解開，要自己手動解析。這支函式優先解開 liff.state，解不到才退回直接讀
+// 網址參數，兩種進入方式都能正確運作，當作改用 liff.line.me 連結格式的安全網。
+function getRealQueryParams() {
+  const params = new URLSearchParams(location.search);
+  if (params.has("liff.state")) {
+    let state = params.get("liff.state");
+    if (state.startsWith("?")) state = state.slice(1);
+    try {
+      return new URLSearchParams(state);
+    } catch (e) { /* 解析失敗就退回原本的 params */ }
+  }
+  return params;
 }
 
 function readCache(name) {
