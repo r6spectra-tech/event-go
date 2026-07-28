@@ -1,5 +1,5 @@
-/* FLIGHT_DATA_VERSION: 20260727-6 */
-const FLIGHT_DATA_VERSION = "20260727-6";
+/* FLIGHT_DATA_VERSION: 20260727-7 */
+const FLIGHT_DATA_VERSION = "20260727-7";
 
 // 目前先寫死指向這次的活動，不透過網址參數帶入，activityId 之後如果要做成通用系統
 // （支援多個不同活動各自登記機票）再改回從網址讀取。
@@ -25,7 +25,8 @@ const AIRPORTS = {
   rmq: { key: "rmq", label: "台中 (RMQ)" },
   khh: { key: "khh", label: "高雄 (KHH)" },
   tnn: { key: "tnn", label: "台南 (TNN)" },
-  budai: { key: "budai", label: "布袋（船）" },
+  khhport: { key: "khhport", label: "高雄港（船）" },
+  budai: { key: "budai", label: "嘉義布袋港（船）" },
 };
 const DEFAULT_AIRPORT = "tsa";
 
@@ -96,6 +97,8 @@ const FLIGHT_SCHEDULE = {
         { flightNo: "AE345", dep: "17:10", arr: "17:55" },
         { flightNo: "AE357", dep: "18:50", arr: "19:35" },
       ],
+    },
+    khhport: {
       // 澎湖輪每天出發時間不固定（不是每天重複的班表），沒辦法完整放進固定選單，
       // 這裡先內建最常用的夜航班次，其他日期/時段選「其他（自行輸入）」自己填
       penghulun: [
@@ -188,6 +191,8 @@ const FLIGHT_SCHEDULE = {
         { flightNo: "AE344", dep: "17:30", arr: "18:10" },
         { flightNo: "AE346", dep: "18:50", arr: "19:30" },
       ],
+    },
+    khhport: {
       // 澎湖輪回程一樣每天出發時間不固定，先內建最常用的下午班次，其他選「其他（自行輸入）」
       penghulun: [
         { flightNo: "-", dep: "16:00", arr: "21:00" },
