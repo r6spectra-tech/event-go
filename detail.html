@@ -359,15 +359,6 @@ function renderActivity(a, profile){
   }
 }
 
-// 優先用 requestIdleCallback（瀏覽器閒置時才執行），不支援的環境退回 setTimeout
-function scheduleIdle(fn){
-  if(window.requestIdleCallback){
-    requestIdleCallback(fn, { timeout: 2000 });
-  }else{
-    setTimeout(fn, 50);
-  }
-}
-
 async function main(){
   // 開啟本頁一律先登入 LINE，取得 userId（候補/參加/進站記錄都需要識別使用者）
   let profile = null;
