@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>閱讀記錄</title>
-<link rel="stylesheet" href="../assets/style.css?v=20260728-6">
+<link rel="stylesheet" href="../assets/style.css?v=20260728-7">
 <style>
 /* ===================================================
    高級黑黃主題 (Dark Amber & Gold Theme)
@@ -283,11 +283,11 @@ select:focus {
     <a class="btn btn-ghost" href="../index.html">← 回列表頁</a>
     <a class="btn btn-ghost" id="clearFilterLink" href="visit-log.html" style="display:none;">查看全部活動記錄 →</a>
   </div>
-  <div id="app"><div class="loading">載入中…</div></div>
+  <div id="app"><div class="spinner-wrap"><div class="spinner"></div></div></div>
 </div>
 
 <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
-<script src="../assets/main.js?v=20260728-6"></script>
+<script src="../assets/main.js?v=20260728-7"></script>
 <script>
 let currentProfile = null;
 let rawLog = [];
@@ -371,7 +371,7 @@ function applyFilters(){
 
 async function loadLog(){
   const listEl = document.getElementById("logList");
-  listEl.innerHTML = `<div class="loading">載入中…</div>`;
+  listEl.innerHTML = `<div class="spinner-wrap"><div class="spinner"></div></div>`;
   try{
     rawLog = await adminGetVisitLog(currentProfile.userId, activityIdFilter);
     applyFilters();

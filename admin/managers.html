@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>管理者審核</title>
-<link rel="stylesheet" href="../assets/style.css?v=20260728-6">
+<link rel="stylesheet" href="../assets/style.css?v=20260728-7">
 </head>
 <body>
 
@@ -16,11 +16,11 @@
 </div>
 
 <div class="admin-wrap" id="app">
-  <div class="loading">載入中…</div>
+  <div class="spinner-wrap"><div class="spinner"></div></div>
 </div>
 
 <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
-<script src="../assets/main.js?v=20260728-6"></script>
+<script src="../assets/main.js?v=20260728-7"></script>
 <script>
 const statusLabel = { pending:"待審核", approved:"已核准", rejected:"已拒絕" };
 let currentProfile = null;
@@ -45,7 +45,7 @@ function rowHtml(m){
 
 async function load(){
   const listEl = document.getElementById("list");
-  listEl.innerHTML = `<div class="loading">載入中…</div>`;
+  listEl.innerHTML = `<div class="spinner-wrap"><div class="spinner"></div></div>`;
   try{
     const managers = await adminGetManagers(currentProfile.userId);
     if(!managers.length){
