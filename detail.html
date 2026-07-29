@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>活動詳情</title>
-<link rel="stylesheet" href="assets/style.css?v=20260728-8">
+<link rel="stylesheet" href="assets/style.css?v=20260728-9">
 </head>
 <body>
 
@@ -39,7 +39,7 @@
 </div>
 
 <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
-<script src="assets/main.js?v=20260728-8"></script>
+<script src="assets/main.js?v=20260728-9"></script>
 <script>
 // YouTube / Google Map 都用同一種「文字 chip，點了才跳轉」的呈現方式，多筆就並排、超出邊界自動換行
 function chipRow(items, icon){
@@ -171,11 +171,9 @@ function render(a){
 
     <div class="actions" style="padding:20px 0 0;">
       <button class="btn btn-primary" id="shareBtn">分享這個行程</button>
-      <button class="btn btn-ghost" id="shareBtnLiffTest" style="margin-top:8px; font-size:0.8rem;">🧪 測試：LIFF連結分享</button>
     </div>
   `;
   document.getElementById("shareBtn").addEventListener("click", ()=> shareOne(a));
-  document.getElementById("shareBtnLiffTest").addEventListener("click", ()=> shareOneLiffTest(a));
   document.getElementById("openRsvpBtn").addEventListener("click", ()=> openRsvpModal(a));
 }
 
