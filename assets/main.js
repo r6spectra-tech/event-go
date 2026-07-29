@@ -7,7 +7,7 @@
    目前有引用的檔案：index.html／detail.html／confirm.html／me.html／share.html／
    admin/edit-activity.html／admin/managers.html／admin/new-activity.html／
    admin/visit-log.html／admin/waitlist.html（共 10 個） */
-const ASSETS_VERSION = "20260728-10";
+const ASSETS_VERSION = "20260728-11";
 
 /* ============================================================
    設定區：只留「GAS Web App 網址」需要寫死在前端，
@@ -719,4 +719,12 @@ async function adminGetVisitLog(requestedBy, activityId) {
 
 async function adminDecideManager(userId, decision, requestedBy) {
   return apiPost("decideManager", { userId, decision, requestedBy });
+}
+
+async function adminDeleteManager(userId, requestedBy) {
+  return apiPost("deleteManager", { userId, requestedBy });
+}
+
+async function adminSyncManagersFile(requestedBy) {
+  return apiPost("syncManagersFile", { requestedBy });
 }
