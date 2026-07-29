@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>管理者審核</title>
-<link rel="stylesheet" href="../assets/style.css?v=20260728-10">
+<link rel="stylesheet" href="../assets/style.css?v=20260728-11">
 </head>
 <body>
 
@@ -20,7 +20,7 @@
 </div>
 
 <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
-<script src="../assets/main.js?v=20260728-10"></script>
+<script src="../assets/main.js?v=20260728-11"></script>
 <script>
 const statusLabel = { pending:"待審核", approved:"已核准", rejected:"已拒絕" };
 let currentProfile = null;
@@ -39,6 +39,7 @@ function rowHtml(m){
         <button class="btn btn-teal approveBtn" data-user="${m.userId}">批准</button>
         <button class="btn btn-stamp rejectBtn" data-user="${m.userId}">拒絕</button>
       ` : ""}
+      <button class="btn btn-ghost deleteBtn" data-user="${m.userId}" data-name="${m.displayName || m.userId}" title="刪除這筆紀錄" style="padding:6px 10px;color:var(--stamp);border-color:var(--stamp);">✕</button>
     </div>
   </div>`;
 }
@@ -61,6 +62,9 @@ async function load(){
     listEl.querySelectorAll(".rejectBtn").forEach(btn=>{
       btn.addEventListener("click", ()=> decide(btn.dataset.user, "rejected"));
     });
+    listEl.querySelectorAll(".deleteBtn").forEach(btn=>{
+      btn.addEventListener("click", ()=> remove(btn.dataset.user, btn.dataset.name));
+    });
   }catch(e){
     console.error(e);
     listEl.innerHTML = `<div class="empty">讀取失敗：${e.message}</div>`;
@@ -76,6 +80,31 @@ async function decide(userId, decision){
   }
 }
 
+async function remove(userId, name){
+  if(!confirm(`確定要刪除「${name}」的管理者紀錄嗎？這個動作無法復原，之後這個人要重新申請才能再拿到管理權限。`)) return;
+  try{
+    await adminDeleteManager(userId, currentProfile.userId);
+    load();
+  }catch(e){
+    alert("刪除失敗：" + e.message);
+  }
+}
+
+async function syncFile(){
+  const btn = document.getElementById("syncBtn");
+  btn.disabled = true;
+  btn.textContent = "同步中…";
+  try{
+    await adminSyncManagersFile(currentProfile.userId);
+    alert("已重新同步到 GitHub 的 data/managers.json");
+  }catch(e){
+    alert("同步失敗：" + e.message);
+  }finally{
+    btn.disabled = false;
+    btn.textContent = "🔄 手動觸發同步";
+  }
+}
+
 function renderContent(profile){
   currentProfile = profile;
   const app = document.getElementById("app");
@@ -83,10 +112,13 @@ function renderContent(profile){
     <div class="panel">
       <p class="panel-title">管理者申請名單</p>
       <button class="btn btn-primary btn-block" id="loadBtn">重新整理</button>
+      <button class="btn btn-ghost btn-block" id="syncBtn" style="margin-top:8px;">🔄 手動觸發同步</button>
+      <p style="font-size:0.72rem;color:#999;margin:6px 0 0;">把目前名單重新寫進 GitHub 的 data/managers.json（平常不用按，申請/審核時會自動觸發，這顆是救急用的）</p>
       <div id="list" style="margin-top:16px;"></div>
     </div>
   `;
   document.getElementById("loadBtn").addEventListener("click", load);
+  document.getElementById("syncBtn").addEventListener("click", syncFile);
   load();
 }
 
