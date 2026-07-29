@@ -4,14 +4,13 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>活動詳情</title>
-<link rel="stylesheet" href="assets/style.css?v=20260728-9">
+<link rel="stylesheet" href="assets/style.css?v=20260728-10">
 </head>
 <body>
 
-<div class="topbar">
+<div class="topbar topbar-compact">
   <div>
     <span class="eyebrow">Itinerary</span>
-    <h1 id="pageTitle">活動詳情</h1>
   </div>
 </div>
 
@@ -39,7 +38,7 @@
 </div>
 
 <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
-<script src="assets/main.js?v=20260728-9"></script>
+<script src="assets/main.js?v=20260728-10"></script>
 <script>
 // YouTube / Google Map 都用同一種「文字 chip，點了才跳轉」的呈現方式，多筆就並排、超出邊界自動換行
 function chipRow(items, icon){
@@ -139,7 +138,7 @@ function itineraryBlock(a){
 }
 
 function render(a){
-  document.getElementById("pageTitle").textContent = a.title;
+  // 標題只靠 LIFF 彈窗自己的原生標題列顯示，頁面裡不再重複顯示一次活動標題
   document.title = a.title;
   document.getElementById("content").innerHTML = `
     ${a.cover ? `<img class="hero-img" src="${a.cover}" alt="${a.title}">` : ""}

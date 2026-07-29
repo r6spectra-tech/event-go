@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>旅行揪團・活動列表</title>
-<link rel="stylesheet" href="assets/style.css?v=20260728-9">
+<link rel="stylesheet" href="assets/style.css?v=20260728-10">
 </head>
 <body>
 
@@ -40,8 +40,13 @@
   <div class="spinner-wrap"><div class="spinner"></div></div>
 </div>
 
+<button type="button" id="managerFab" class="manager-fab" style="display:none;">⚙️</button>
+<div id="managerPopover" class="manager-popover" style="display:none;">
+  <div id="managerPopoverContent"></div>
+</div>
+
 <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
-<script src="assets/main.js?v=20260728-9"></script>
+<script src="assets/main.js?v=20260728-10"></script>
 <script>
 const selected = new Map(); // id -> activity
 let allActivities = [];
@@ -153,6 +158,8 @@ function renderGrid(){
 
 async function setupManagerArea(){
   const area = document.getElementById("managerArea");
+  const fab = document.getElementById("managerFab");
+  const popoverContent = document.getElementById("managerPopoverContent");
   try{
     const ok = await ensureLiff();
     if(!ok || !liff.isLoggedIn()) return; // 外部瀏覽器或未登入時，不顯示管理相關按鈕
@@ -160,13 +167,19 @@ async function setupManagerArea(){
     const { status } = await checkIsManager(profile.userId);
 
     if(status === "approved"){
-      area.innerHTML = `
-        <a class="btn btn-ghost manager-link" href="admin/new-activity.html">新增活動</a>
-        <a class="btn btn-ghost manager-link" href="admin/edit-activity.html">編輯活動</a>
-        <a class="btn btn-ghost manager-link" href="admin/waitlist.html">候補管理</a>
-        <a class="btn btn-ghost manager-link" href="admin/visit-log.html">閱讀記錄</a>
-        <a class="btn btn-ghost manager-link" href="admin/managers.html">管理申請</a>
+      // 核准管理者的選單改成浮動齒輪（跟 detail.html 一致），不占用頁首空間，
+      // 頁首的 managerArea 這裡就清空、不放東西
+      area.innerHTML = "";
+      popoverContent.innerHTML = `
+        <div class="manager-toolbar">
+          <a class="btn btn-ghost" href="admin/new-activity.html">新增活動</a>
+          <a class="btn btn-ghost" href="admin/edit-activity.html">編輯活動</a>
+          <a class="btn btn-ghost" href="admin/waitlist.html">候補管理</a>
+          <a class="btn btn-ghost" href="admin/visit-log.html">閱讀記錄</a>
+          <a class="btn btn-ghost" href="admin/managers.html">管理申請</a>
+        </div>
       `;
+      fab.style.display = "flex";
     }else if(status === "pending"){
       area.innerHTML = `<span style="font-size:0.75rem;color:#E7C77A;">管理者申請審核中…</span>`;
     }else{
@@ -175,13 +188,21 @@ async function setupManagerArea(){
         if(!confirm("要申請成為活動管理者嗎？送出後要等現有管理者審核通過才能使用管理功能。")) return;
         try{
           const res = await applyManager();
-          area.innerHTML = res.status === "approved"
-            ? `<a class="btn btn-ghost manager-link" href="admin/new-activity.html">新增活動</a>
-               <a class="btn btn-ghost manager-link" href="admin/edit-activity.html">編輯活動</a>
-               <a class="btn btn-ghost manager-link" href="admin/waitlist.html">候補管理</a>
-               <a class="btn btn-ghost manager-link" href="admin/visit-log.html">閱讀記錄</a>
-               <a class="btn btn-ghost manager-link" href="admin/managers.html">管理申請</a>`
-            : `<span style="font-size:0.75rem;color:#E7C77A;">已送出申請，請等待審核</span>`;
+          if(res.status === "approved"){
+            area.innerHTML = "";
+            popoverContent.innerHTML = `
+              <div class="manager-toolbar">
+                <a class="btn btn-ghost" href="admin/new-activity.html">新增活動</a>
+                <a class="btn btn-ghost" href="admin/edit-activity.html">編輯活動</a>
+                <a class="btn btn-ghost" href="admin/waitlist.html">候補管理</a>
+                <a class="btn btn-ghost" href="admin/visit-log.html">閱讀記錄</a>
+                <a class="btn btn-ghost" href="admin/managers.html">管理申請</a>
+              </div>
+            `;
+            fab.style.display = "flex";
+          }else{
+            area.innerHTML = `<span style="font-size:0.75rem;color:#E7C77A;">已送出申請，請等待審核</span>`;
+          }
         }catch(e){
           alert("申請失敗：" + e.message);
         }
@@ -288,6 +309,13 @@ async function main(){
     shareMany(Array.from(selected.values()));
   });
 }
+
+function toggleManagerPopover(){
+  const popover = document.getElementById("managerPopover");
+  const isOpen = popover.style.display !== "none";
+  popover.style.display = isOpen ? "none" : "block";
+}
+document.getElementById("managerFab").addEventListener("click", toggleManagerPopover);
 
 main();
 </script>
