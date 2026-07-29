@@ -30,6 +30,7 @@ a{color:inherit;}
   padding: 16px 20px;
   display:flex; align-items:baseline; justify-content:space-between; gap:12px;
 }
+.topbar.topbar-compact{ padding: 12px 20px; }
 .topbar h1{
   font-family:'Fraunces', serif; font-weight:700; font-size: 1.3rem; margin:0;
   letter-spacing: 0.02em;
