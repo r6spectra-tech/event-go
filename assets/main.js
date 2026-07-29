@@ -7,7 +7,7 @@
    目前有引用的檔案：index.html／detail.html／confirm.html／me.html／share.html／
    admin/edit-activity.html／admin/managers.html／admin/new-activity.html／
    admin/visit-log.html／admin/waitlist.html（共 10 個） */
-const ASSETS_VERSION = "20260728-8";
+const ASSETS_VERSION = "20260728-9";
 
 /* ============================================================
    設定區：只留「GAS Web App 網址」需要寫死在前端，
@@ -258,7 +258,7 @@ async function requireLogin() {
    Flex Message 產生器（分享用）
    ============================================================ */
 function detailUrl(activity, referrer) {
-  let url = `${RUNTIME.siteUrl}/detail.html?id=${encodeURIComponent(activity.id)}`;
+  let url = `https://liff.line.me/${RUNTIME.liffId}/detail.html?id=${encodeURIComponent(activity.id)}`;
   if (referrer && referrer.userId) {
     url += `&refId=${encodeURIComponent(referrer.userId)}&refName=${encodeURIComponent(referrer.displayName || "")}`;
   }
@@ -357,41 +357,6 @@ async function shareOne(activity) {
       { type: "flex", altText: `【推薦行程】${activity.title}`, contents: buildBubble(activity, referrer) },
     ]);
     if (referrer) recordShare(activity.id, referrer.userId, referrer.displayName);
-  } catch (e) { console.error(e); }
-}
-
-/* ============================================================
-   🧪 測試用：liff.line.me 連結格式（跟原本的 detailUrl／buildBubble／shareOne 完全獨立，
-   不影響既有的分享功能）。等實際測試確認可以正常運作、載入正確的活動內容之後，
-   再決定要不要把這套換成正式的。用完可以整段刪掉。
-   ============================================================ */
-function detailUrlLiffTest(activity, referrer) {
-  let url = `https://liff.line.me/${RUNTIME.liffId}/detail.html?id=${encodeURIComponent(activity.id)}`;
-  if (referrer && referrer.userId) {
-    url += `&refId=${encodeURIComponent(referrer.userId)}&refName=${encodeURIComponent(referrer.displayName || "")}`;
-  }
-  return url;
-}
-
-function buildBubbleLiffTest(activity, referrer) {
-  const b = buildBubble(activity, referrer);
-  b.footer.contents[0].action.uri = detailUrlLiffTest(activity, referrer);
-  b.footer.contents[0].action.label = "🧪 活動詳情（LIFF連結測試）";
-  return b;
-}
-
-async function shareOneLiffTest(activity) {
-  const ok = await ensureLiff();
-  if (!ok || !liff.isApiAvailable("shareTargetPicker")) {
-    alert("目前環境不支援 LINE 分享，改為複製連結。");
-    copyLink(detailUrlLiffTest(activity));
-    return;
-  }
-  const referrer = await getCurrentProfileIfAvailable();
-  try {
-    await liff.shareTargetPicker([
-      { type: "flex", altText: `【測試】${activity.title}`, contents: buildBubbleLiffTest(activity, referrer) },
-    ]);
   } catch (e) { console.error(e); }
 }
 
