@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>活動詳情</title>
-<link rel="stylesheet" href="assets/style.css?v=20260728-12">
+<link rel="stylesheet" href="assets/style.css?v=20260728-15">
 </head>
 <body>
 
@@ -38,7 +38,7 @@
 </div>
 
 <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
-<script src="assets/main.js?v=20260728-12"></script>
+<script src="assets/main.js?v=20260728-15"></script>
 <script>
 // YouTube / Google Map 都用同一種「文字 chip，點了才跳轉」的呈現方式，多筆就並排、超出邊界自動換行
 function chipRow(items, icon){
@@ -251,6 +251,7 @@ async function loadManagerToolbar(a, userId){
         <a class="btn btn-ghost" href="index.html">← 回清單</a>
         <a class="btn btn-ghost" href="admin/edit-activity.html?id=${encodeURIComponent(a.id)}">✏️ 編輯此活動</a>
         <a class="btn btn-ghost" href="register.html?activityId=${encodeURIComponent(a.id)}&view=payAdmin">💰 匯款通知</a>
+        <a class="btn btn-ghost" href="register.html?activityId=${encodeURIComponent(a.id)}&view=checkinAdmin">🚌 上車報到</a>
         <a class="btn btn-ghost" id="waitlistCountLink" href="admin/waitlist.html?id=${encodeURIComponent(a.id)}">候補 … 人</a>
         <a class="btn btn-ghost" id="visitLogLink" href="admin/visit-log.html?activityId=${encodeURIComponent(a.id)}">閱讀記錄 …</a>
         <button type="button" class="btn waitlist-toggle" id="waitlistToggleBtn"></button>
