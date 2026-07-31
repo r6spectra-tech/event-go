@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>支付登記</title>
+<title>支付與報到登記</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&family=IBM+Plex+Mono:wght@400;600&display=swap" rel="stylesheet">
 <style>
     :root {
@@ -16,7 +16,7 @@
         --text-main: #333333;
         --text-secondary: #777777;
         --border: #e0e0e0;
-        --stamp: #ff5722; /* 警示色 */
+        --stamp: #ff5722; 
         --radius-md: 12px;
         --radius-sm: 8px;
         --shadow: 0 4px 12px rgba(0,0,0,0.05);
@@ -31,53 +31,8 @@
         margin: 0;
         padding: 0;
         line-height: 1.5;
-        padding-bottom: 80px; /* 防止內容被底部遮擋 */
+        padding-bottom: 80px;
     }
-  /* ---- 優化後的歡迎/載入頁面樣式 ---- */
-.welcome-loader {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    padding: 60px 20px;
-    text-align: center;
-    min-height: 50vh;
-}
-
-.welcome-logo-icon {
-    font-size: 3rem;
-    margin-bottom: 16px;
-    animation: bounce 1.5s infinite ease-in-out;
-}
-
-.welcome-title {
-    font-size: 1.1rem;
-    font-weight: 700;
-    color: var(--text-main);
-    margin-bottom: 6px;
-}
-
-.welcome-subtitle {
-    font-size: 0.85rem;
-    color: var(--text-secondary);
-    margin-bottom: 24px;
-}
-
-/* 脈衝式美化載入圈 */
-.spinner-pulse {
-    width: 40px;
-    height: 40px;
-    border: 3px solid #e0e0e0;
-    border-top: 3px solid var(--primary);
-    border-radius: 50%;
-    animation: spin 0.8s linear infinite;
-}
-
-@keyframes bounce {
-    0%, 100% { transform: translateY(0); }
-    50% { transform: translateY(-8px); }
-}
-  
 
     /* Topbar 美化 */
     .topbar {
@@ -92,9 +47,7 @@
         box-shadow: 0 2px 6px rgba(0,0,0,0.03);
     }
 
-    .topbar-compact {
-        padding: 12px 20px;
-    }
+    .topbar-compact { padding: 12px 20px; }
 
     .eyebrow {
         font-size: 0.75rem;
@@ -106,11 +59,7 @@
         margin-bottom: 2px;
     }
 
-    h1 {
-        margin: 0;
-        font-size: 1.25rem !important;
-        font-weight: 800;
-    }
+    h1 { margin: 0; font-size: 1.25rem !important; font-weight: 800; }
 
     /* 主要內容區域 */
     .admin-wrap {
@@ -138,10 +87,7 @@
         border-bottom: 1px solid var(--border);
     }
 
-    /* 文字樣式 */
     .text-small { font-size: 0.85rem; color: var(--text-secondary); }
-    .text-bold { font-weight: 700; }
-    .text-highlight { color: var(--primary); font-weight: 700; }
     
     /* 活動標頭資訊 */
     .activity-header {
@@ -168,6 +114,7 @@
 
     input[type="text"],
     input[type="number"],
+    input[type="time"],
     select {
         width: 100%;
         padding: 12px 16px;
@@ -185,7 +132,6 @@
         box-shadow: 0 0 0 3px rgba(0, 185, 0, 0.1);
     }
 
-    /* 特殊欄位：複製銀行帳號 */
     .copy-field {
         display: flex;
         align-items: center;
@@ -200,7 +146,6 @@
         font-family: 'IBM Plex Mono', monospace;
         font-size: 1rem;
         color: #333;
-        letter-spacing: 0.5px;
         flex-grow: 1;
         user-select: all;
     }
@@ -224,31 +169,16 @@
 
     .btn-block { display: flex; width: 100%; }
 
-    /* 主要按鈕 (綠色) */
-    .btn-primary {
-        background-color: var(--primary);
-        color: white;
-    }
+    .btn-primary { background-color: var(--primary); color: white; }
     .btn-primary:hover { background-color: var(--primary-dark); }
-    .btn-primary:active { transform: translateY(1px); }
     .btn-primary:disabled { background-color: #ccc; cursor: not-allowed; }
 
-    /* 幽靈按鈕 (邊框) */
-    .btn-ghost {
-        background-color: transparent;
-        border: 1px solid var(--border);
-        color: var(--text-secondary);
-    }
-    .btn-ghost:hover { background-color: #f5f5f5; border-color: #ccc; }
+    .btn-ghost { background-color: transparent; border: 1px solid var(--border); color: var(--text-secondary); }
+    .btn-ghost:hover { background-color: #f5f5f5; }
 
-    /* 青色按鈕 (LINE Pay) */
-    .btn-teal {
-        background-color: var(--teal);
-        color: white;
-    }
+    .btn-teal { background-color: var(--teal); color: white; }
     .btn-teal:hover { background-color: var(--teal-hover); }
 
-    /* 通知文字 */
     .notice-box {
         background-color: #fff3e0;
         border-left: 4px solid var(--stamp);
@@ -256,101 +186,82 @@
         border-radius: var(--radius-sm);
         color: #827717;
         font-size: 0.85rem;
-        margin-top: 16px;
+        margin-top: 12px;
     }
 
-    /* 載入中與空狀態 */
-    .spinner-wrap {
+    /* 歡迎載入動畫樣式 */
+    .welcome-loader {
         display: flex;
+        flex-direction: column;
+        align-items: center;
         justify-content: center;
-        padding: 40px 0;
+        padding: 60px 20px;
+        text-align: center;
+        min-height: 50vh;
     }
-    .spinner {
-        border: 3px solid #f3f3f3;
+    .welcome-logo-icon {
+        font-size: 3rem;
+        margin-bottom: 16px;
+        animation: bounce 1.5s infinite ease-in-out;
+    }
+    .welcome-title { font-size: 1.1rem; font-weight: 700; color: var(--text-main); margin-bottom: 6px; }
+    .welcome-subtitle { font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 24px; }
+    .spinner-pulse {
+        width: 40px; height: 40px;
+        border: 3px solid #e0e0e0;
         border-top: 3px solid var(--primary);
         border-radius: 50%;
-        width: 24px;
-        height: 24px;
-        animation: spin 1s linear infinite;
+        animation: spin 0.8s linear infinite;
     }
+    @keyframes bounce { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-8px); } }
     @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
 
-    .empty, .error-state {
-        text-align: center;
-        color: var(--text-secondary);
-        padding: 40px 20px;
-        font-size: 0.9rem;
-        background: white;
-        border-radius: var(--radius-md);
-        border: 1px solid var(--border);
+    .empty {
+        text-align: center; color: var(--text-secondary); padding: 40px 20px;
+        font-size: 0.9rem; background: white; border-radius: var(--radius-md); border: 1px solid var(--border);
     }
 
-    /* 管理員列表行 */
+    /* 管理員列表與區段 */
     .waitlist-row {
-        background: #fff;
-        border-bottom: 1px solid #eee;
-        padding: 12px 16px;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
+        background: #fff; border-bottom: 1px solid #eee; padding: 12px 16px;
+        display: flex; justify-content: space-between; align-items: center;
     }
-    .waitlist-row:first-child { border-top-left-radius: var(--radius-sm); border-top-right-radius: var(--radius-sm); }
-    .waitlist-row:last-child { border-bottom-left-radius: var(--radius-sm); border-bottom-right-radius: var(--radius-sm); border-bottom: none; }
-    .waitlist-row:hover { background-color: #fafafa; }
-    
+    .waitlist-row:last-child { border-bottom: none; }
     .waitlist-row .name { font-weight: 700; font-size: 0.95rem; }
     .waitlist-row .meta { font-size: 0.8rem; color: var(--text-secondary); margin-top: 2px; }
-    .waitlist-row .method-tag {
-        font-size: 0.75rem; padding: 2px 6px; border-radius: 4px;
-        background: #eee; color: #666; margin-left: 8px;
+
+    .waitlist-activity-section {
+        margin-top: 16px; border: 1px solid var(--border); border-radius: var(--radius-sm); overflow: hidden;
     }
-
-    /* 成功頁面圖示 */
-    .success-icon { font-size: 4rem; margin-bottom: 16px; display: block; text-align: center; }
-
-    /* 調整間距 */
-    .gap-sm { gap: 8px; }
-    .gap-md { gap: 16px; }
+    .waitlist-activity-title {
+        background: #f9f9f9; padding: 10px 16px; font-weight: 700; font-size: 0.9rem; border-bottom: 1px solid var(--border); margin: 0;
+    }
+    .success-icon { font-size: 3.5rem; margin-bottom: 12px; display: block; text-align: center; }
     .mt-2 { margin-top: 8px; }
-    .mt-3 { margin-top: 12px; }
     .mt-4 { margin-top: 16px; }
-    .mt-5 { margin-top: 24px; }
-
-    /* 管理員專區區塊 */
-    .admin-section {
-        border: 2px dashed #ffcc80;
-        background-color: #fff8e1;
-        padding: 16px;
-        border-radius: var(--radius-md);
-        margin-top: 20px;
-    }
-
 </style>
 </head>
 <body>
 
 <div class="topbar topbar-compact">
   <div>
-    <span class="eyebrow">Payment</span>
-    <h1 id="pageTitle">支付登記</h1>
+    <span class="eyebrow">Activity System</span>
+    <h1 id="pageTitle" style="font-size:1.05rem;">載入中...</h1>
   </div>
 </div>
 
 <div class="admin-wrap" id="app">
   <div class="welcome-loader">
-    <div class="welcome-logo-icon">💳</div>
+    <div class="welcome-logo-icon">🚌</div>
     <div class="welcome-title">活動管理小幫手</div>
-    <div class="welcome-subtitle">正在安全載入支付資訊，請稍候...</div>
+    <div class="welcome-subtitle">正在安全載入頁面，請稍候...</div>
     <div class="spinner-pulse"></div>
   </div>
 </div>
 
-
 <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
-<!-- 假設您的 main.js 包含 API 邏輯，這裡維持原樣引用 -->
-<script src="assets/main.js?v=20260728-12"></script>
+<script src="assets/main.js?v=20260728-15"></script>
 <script>
-// --- 原有的 JS 邏輯區域 (保持不變，僅修正 alert 樣式) ---
 const params = getRealQueryParams();
 const activityId = params.get("activityId");
 const view = params.get("view") || "payInfo";
@@ -358,38 +269,35 @@ let activity = null;
 let profile = null;
 
 function methodLabel(m){
-  return { transfer: "轉帳匯款", linepay: "LINE Pay", cash: "現金" }[m] || m;
+  return { transfer: "轉帳匯款", linepay: "LINE PAY", cash: "現金" }[m] || m;
 }
 
-// 美化複製提示
+function checkinTypeLabel(t){
+  return { departure: "出發報到", boarding: "上車報到" }[t] || t;
+}
+
 function copyText(text){
   navigator.clipboard?.writeText(text).then(
-    () => showToast("已複製：" + text),
+    () => alert("已複製：" + text),
     () => prompt("請手動複製：", text)
   );
 }
 
-// 簡易 Toast 提示 (選用，如果需要更漂亮的提示)
-function showToast(msg) {
-    // 簡單實作，或者可以使用現有的 alert
-    alert(msg);
-}
-
-/* ---- view=payInfo：支付說明 ---- */
+/* ---- view=payInfo：支付說明（已優化二選一視覺區隔） ---- */
 function renderPayInfo(){
   const app = document.getElementById("app");
   
   const bank = activity.bankInfo
-    ? `<div class="field mt-3">
+    ? `<div class="field mt-2">
          <div class="copy-field">
-           <span class="copy-text" id="bankInfoVal">${activity.bankInfo}</span>
+           <span class="copy-text">${activity.bankInfo}</span>
            <button type="button" class="btn btn-ghost" id="copyBankBtn" style="padding: 8px 12px;">📋 複製</button>
          </div>
-         <div class="notice-box mt-2">
+         <div class="notice-box">
            ⭐ 匯款後請記得點下方按鈕進行「已支付登記」並填寫帳號末四碼。
          </div>
        </div>`
-    : `<div class="text-small" style="color:#999;">主辦人尚未設定匯款帳號。</div>`;
+    : `<div class="text-small" style="color:#999;">主辦人尚未設定匯款帳號資訊。</div>`;
 
   const linepay = activity.organizerLineUrl
     ? `<div class="field">
@@ -404,48 +312,46 @@ function renderPayInfo(){
     <div class="activity-header">
         <span class="eyebrow">${activity.date}</span>
         <h2 class="panel-title" style="border:none; padding:0; margin-top:4px;">${activity.title}</h2>
-        <p style="font-size:1.25rem; font-weight:900; margin:12px 0 0 0;">應付費用：NT$ ${activity.price || "-"}</p>
+        <p style="font-size:1.2rem; font-weight:900; margin:10px 0 0 0;">應付費用：NT$ ${activity.price || "-"}</p>
     </div>
 
     <div class="panel">
       <h3 class="panel-title" style="display:flex; align-items:center; gap:6px;">
         <span>💳</span> 請選擇以下<strong>其中一種方式</strong>完成付款
       </h3>
-      <p class="text-small" style="color:var(--text-secondary); margin-bottom: 20px;">完成付款後，別忘了點擊下方按鈕回報登記。</p>
+      <p class="text-small" style="color:var(--text-secondary); margin-bottom: 16px;">完成付款後，別忘了點擊下方按鈕回報登記。</p>
 
       <!-- 方式一：轉帳匯款 -->
-      <div style="border: 2px solid var(--border); border-radius: var(--radius-md); padding: 16px; margin-bottom: 16px; background: #fafafa;">
+      <div style="border: 2px solid var(--border); border-radius: var(--radius-md); padding: 16px; margin-bottom: 14px; background: #fafafa;">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-          <span style="font-weight: 700; color: var(--text-main); font-size: 1rem;">選項 A：轉帳匯款</span>
+          <span style="font-weight: 700; font-size: 0.95rem;">選項 A：轉帳匯款</span>
           <span style="font-size: 0.75rem; background: #e0e0e0; padding: 2px 8px; border-radius: 10px;">ATM / 網銀</span>
         </div>
-        <div class="text-small" style="margin-bottom: 6px;">匯款銀行與帳號：</div>
+        <div class="text-small" style="margin-bottom: 4px;">匯款銀行與帳號：</div>
         ${bank}
       </div>
 
       <!-- 分隔提示 -->
-      <div style="text-align: center; margin: 12px 0; position: relative;">
-        <span style="background: white; padding: 0 12px; font-size: 0.85rem; color: #999; position: relative; z-index: 1;">或者</span>
+      <div style="text-align: center; margin: 10px 0; position: relative;">
+        <span style="background: white; padding: 0 12px; font-size: 0.8rem; color: #999; position: relative; z-index: 1;">或者</span>
         <div style="position: absolute; top: 50%; left: 0; right: 0; height: 1px; background: var(--border); z-index: 0;"></div>
       </div>
 
       <!-- 方式二：LINE Pay -->
-      <div style="border: 2px solid var(--border); border-radius: var(--radius-md); padding: 16px; margin-top: 16px; background: #fafafa;">
+      <div style="border: 2px solid var(--border); border-radius: var(--radius-md); padding: 16px; margin-top: 14px; background: #fafafa;">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
-          <span style="font-weight: 700; color: var(--text-main); font-size: 1rem;">選項 B：LINE Pay 轉帳</span>
+          <span style="font-weight: 700; font-size: 0.95rem;">選項 B：LINE Pay 轉帳</span>
           <span style="font-size: 0.75rem; background: #e0f2f1; color: var(--teal); padding: 2px 8px; border-radius: 10px;">線上支付</span>
         </div>
         ${linepay}
       </div>
     </div>
 
-    <!-- 底部動作按鈕 -->
-    <div class="panel" style="background: transparent; box-shadow: none; border: none; padding: 0; margin-top: 20px;">
-      <a class="btn btn-primary btn-block" id="goFormBtn" style="margin-bottom: 12px; padding: 14px; font-size: 1.1rem;">✏️ 我已完成付款，前往登記</a>
+    <div style="margin-top: 20px;">
+      <a class="btn btn-primary btn-block" id="goFormBtn" style="margin-bottom: 10px; padding: 14px;">✏️ 我已付款，前往登記帳號末四碼</a>
       <a class="btn btn-ghost btn-block" id="goDetailBtn">📄 返回活動詳情</a>
     </div>
   `;
-
   if(activity.bankInfo){
     document.getElementById("copyBankBtn").addEventListener("click", ()=> copyText(activity.bankInfo));
   }
@@ -476,7 +382,7 @@ async function renderPayForm(){
         <label class="field-label">請選擇支付方式</label>
         <select id="method">
           <option value="transfer">轉帳匯款</option>
-          <option value="linepay">LINE Pay</option>
+          <option value="linepay">LINE PAY</option>
           <option value="cash">現金</option>
         </select>
       </div>
@@ -551,15 +457,12 @@ async function renderPayAdmin(){
     <div class="panel">
       <h3 class="panel-title">🛡️ 匯款通知／支付登記管理</h3>
       <div class="text-small" style="margin-bottom: 12px;">${activity.date}｜${activity.title}｜費用 NT$ ${activity.price || "-"}</div>
-      
       ${activity.bankInfo ? "" : `<div class="notice-box">⚠️ 這個活動還沒設定匯款帳號（請至「編輯活動」補上），通知內將只會顯示 LINE Pay 選項。</div>`}
-      
       <div style="display: flex; flex-direction: column; gap: 8px; margin-top: 16px;">
         <button class="btn btn-primary btn-block" id="sendBtn">📣 發送匯款通知到群組</button>
         <button class="btn btn-ghost btn-block" id="refreshBtn">🔄 重新整理名單</button>
       </div>
-      
-      <div id="list" style="margin-top:20px; border: 1px solid var(--border); border-radius: var(--radius-sm); overflow:hidden;"></div>
+      <div id="list" style="margin-top:16px; border: 1px solid var(--border); border-radius: var(--radius-sm); overflow:hidden;"></div>
     </div>
   `;
   document.getElementById("sendBtn").addEventListener("click", ()=> sharePaymentNotice(activity));
@@ -569,7 +472,7 @@ async function renderPayAdmin(){
 
 async function loadPaymentList(){
   const listEl = document.getElementById("list");
-  listEl.innerHTML = `<div class="spinner-wrap"><div class="spinner"></div></div>`;
+  listEl.innerHTML = `<div class="welcome-loader" style="padding: 20px;"><div class="spinner-pulse"></div></div>`;
   try{
     const list = await apiGetPayments(profile.userId, activityId);
     if(!list.length){
@@ -589,6 +492,247 @@ async function loadPaymentList(){
   }
 }
 
+/* ---- 報到時間預設值 ---- */
+function defaultCheckinWindow(){
+  const now = new Date();
+  const plus1h = new Date(now.getTime() + 60*60*1000);
+  const start = new Date(plus1h);
+  start.setSeconds(0,0);
+  if(start.getMinutes() > 0){
+    start.setMinutes(0);
+    start.setHours(start.getHours() + 1);
+  }
+  const end = new Date(start.getTime() + 30*60*1000);
+  const fmt = d => `${String(d.getHours()).padStart(2,"0")}:${String(d.getMinutes()).padStart(2,"0")}`;
+  return { startStr: fmt(start), endStr: fmt(end) };
+}
+
+/* ---- view=checkinAdmin：管理端建立報到＋分享 ---- */
+async function renderCheckinAdmin(){
+  const app = document.getElementById("app");
+  const { status } = await checkIsManager(profile.userId);
+  if(status !== "approved"){
+    app.innerHTML = `<div class="empty">🔒 此頁面僅限核准管理者使用</div>`;
+    return;
+  }
+  const def = defaultCheckinWindow();
+  app.innerHTML = `
+    <div class="panel">
+      <h3 class="panel-title">🚌 建立上車（出發）報到</h3>
+      <div class="text-small" style="margin-bottom: 16px;">${activity.date}｜${activity.title}</div>
+
+      <div class="field">
+        <label class="field-label">選擇報到別</label>
+        <select id="checkinType">
+          <option value="departure">出發報到</option>
+          <option value="boarding">上車報到</option>
+        </select>
+      </div>
+      <div class="field">
+        <label class="field-label">選擇遊覽車數量</label>
+        <select id="busCount">${Array.from({length:9},(_,i)=>`<option value="${i+1}">${i+1} 台</option>`).join("")}</select>
+      </div>
+      <div class="field">
+        <label class="field-label">遊覽車編號方式</label>
+        <select id="busLabelStyle">
+          <option value="ABC">ABC</option>
+          <option value="123">123</option>
+        </select>
+      </div>
+      <div class="field">
+        <label class="field-label">報到開始時間</label>
+        <input id="startTime" type="time" value="${def.startStr}">
+      </div>
+      <div class="field">
+        <label class="field-label">報到結束時間</label>
+        <input id="endTime" type="time" value="${def.endStr}">
+      </div>
+      <div class="field">
+        <label class="field-label">每台車依序錯開幾分鐘開放報到</label>
+        <input id="staggerMinutes" type="number" min="0" max="30" value="2">
+      </div>
+
+      <button class="btn btn-primary btn-block mt-4" id="createBtn">建立並分享</button>
+      <div id="result" style="margin-top:16px;"></div>
+    </div>
+  `;
+  document.getElementById("createBtn").addEventListener("click", async ()=>{
+    const btn = document.getElementById("createBtn");
+    btn.disabled = true;
+    btn.textContent = "建立中…";
+    const checkinType = document.getElementById("checkinType").value;
+    const busCount = document.getElementById("busCount").value;
+    const busLabelStyle = document.getElementById("busLabelStyle").value;
+    const startTime = document.getElementById("startTime").value;
+    const endTime = document.getElementById("endTime").value;
+    const staggerMinutes = document.getElementById("staggerMinutes").value;
+    try{
+      const res = await apiCreateCheckinRound(activityId, checkinType, busCount, busLabelStyle, startTime, endTime, staggerMinutes, profile.userId);
+      const round = { roundNumber: res.roundNumber, busLabels: res.busLabels, checkinType, startTime, endTime, staggerMinutes: Number(staggerMinutes) || 0 };
+      document.getElementById("result").innerHTML = `
+        <div class="notice-box" style="background:#e0f2f1; color:var(--teal); border-left-color:var(--teal);">✅ 已建立第 ${res.roundNumber} 次報到（${res.busLabels.join("、")} 車）</div>
+        <button class="btn btn-teal btn-block mt-2" id="shareRoundBtn">📣 分享報到訊息到群組</button>
+        <a class="btn btn-ghost btn-block mt-2" href="register.html?activityId=${encodeURIComponent(activityId)}&view=checkinStatus&round=${res.roundNumber}">查看登記情形 →</a>
+      `;
+      document.getElementById("shareRoundBtn").addEventListener("click", ()=> shareCheckinRound(activity, round));
+    }catch(e){
+      alert("建立失敗：" + e.message);
+    }finally{
+      btn.disabled = false;
+      btn.textContent = "建立並分享";
+    }
+  });
+}
+
+/* ---- view=checkin：參加者按「上車登記」 ---- */
+function pendingCheckinKey(activityId, roundNumber, userId){
+  return `checkinPending:${activityId}:${roundNumber}:${userId}`;
+}
+
+function submitCheckinWithRetry(aid, roundNumber, busLabel, userId, displayName){
+  const key = pendingCheckinKey(aid, roundNumber, userId);
+  const payload = { activityId: aid, roundNumber, busLabel, userId, displayName };
+  try{ localStorage.setItem(key, JSON.stringify(payload)); }catch(e){}
+  attemptCheckinSend(payload, key, 0);
+}
+
+async function attemptCheckinSend(payload, key, attempt){
+  try{
+    await apiSubmitCheckin(payload);
+    try{ localStorage.removeItem(key); }catch(e){}
+  }catch(e){
+    if(attempt < 5){
+      setTimeout(()=> attemptCheckinSend(payload, key, attempt+1), 5000);
+    }
+  }
+}
+
+function flushPendingCheckins(){
+  try{
+    Object.keys(localStorage).filter(k => k.startsWith("checkinPending:")).forEach(k=>{
+      try{
+        attemptCheckinSend(JSON.parse(localStorage.getItem(k)), k, 0);
+      }catch(e){}
+    });
+  }catch(e){}
+}
+
+function timeStrToTodayDate(hhmm){
+  if(!hhmm) return null;
+  const [h,m] = hhmm.split(":").map(Number);
+  const d = new Date();
+  d.setHours(h, m, 0, 0);
+  return d;
+}
+
+async function renderCheckin(){
+  const app = document.getElementById("app");
+  const roundNumber = params.get("round");
+  const bus = params.get("bus") || "";
+  if(!roundNumber){
+    app.innerHTML = `<div class="empty">❌ 缺少報到次別參數</div>`;
+    return;
+  }
+  let round = null;
+  try{ round = await apiGetCheckinRound(activityId, roundNumber); }catch(e){}
+
+  let busStartDate = null;
+  if(round && round.startTime){
+    const busIndex = (round.busLabels || []).indexOf(bus);
+    const stagger = Number(round.staggerMinutes) || 0;
+    if(busIndex >= 0 && stagger > 0){
+      busStartDate = timeStrToTodayDate(addMinutesToTimeStr(round.startTime, busIndex * stagger));
+    }else{
+      busStartDate = timeStrToTodayDate(round.startTime);
+    }
+  }
+  const notYetOpen = busStartDate && new Date() < busStartDate;
+  const openTimeText = busStartDate
+    ? `${String(busStartDate.getHours()).padStart(2,"0")}:${String(busStartDate.getMinutes()).padStart(2,"0")}`
+    : "";
+
+  app.innerHTML = `
+    <div class="panel" style="text-align:center; padding: 32px 20px;">
+      <div class="text-small" style="margin-bottom: 6px;">${activity.date}｜${activity.title}</div>
+      <div style="font-size:0.9rem; color:var(--text-secondary); margin-bottom: 16px;">第 ${roundNumber} 次${round ? "｜" + checkinTypeLabel(round.checkinType) : ""}</div>
+      <div style="font-size: 2.5rem; font-weight: 900; color: var(--teal); margin: 16px 0; background: #e0f2f1; padding: 12px; border-radius: var(--radius-md);">${bus} 車</div>
+      
+      <button class="btn btn-primary btn-block mt-4" id="checkinBtn" style="font-size:1.1rem; padding:16px;" ${notYetOpen ? "disabled" : ""}>
+        ${notYetOpen ? `⏳ 尚未開放（${openTimeText} 開放）` : "🚀 立即上車登記"}
+      </button>
+      <p id="checkinResult" style="margin-top:16px;"></p>
+    </div>
+  `;
+
+  if(notYetOpen){
+    const waitMs = busStartDate.getTime() - Date.now();
+    setTimeout(()=>{
+      const btn = document.getElementById("checkinBtn");
+      if(btn){ btn.disabled = false; btn.textContent = "🚀 立即上車登記"; }
+    }, Math.max(0, waitMs));
+  }
+
+  document.getElementById("checkinBtn").addEventListener("click", ()=>{
+    const btn = document.getElementById("checkinBtn");
+    if(btn.disabled) return;
+    btn.disabled = true;
+    document.getElementById("checkinResult.innerHTML").innerHTML = `<span style="color:var(--teal); font-weight:700; font-size:1.1rem;">✅ 報到登記完成！一路順風</span>`;
+    submitCheckinWithRetry(activityId, roundNumber, bus, profile.userId, profile.displayName);
+  });
+}
+
+/* ---- view=checkinStatus：登記情形 ---- */
+async function renderCheckinStatus(){
+  const app = document.getElementById("app");
+  const roundNumber = params.get("round");
+  if(!roundNumber){
+    app.innerHTML = `<div class="empty">❌ 缺少報到次別參數</div>`;
+    return;
+  }
+  const { status } = await checkIsManager(profile.userId);
+  if(status !== "approved"){
+    app.innerHTML = `<div class="empty">🔒 此頁面僅限核准管理者使用</div>`;
+    return;
+  }
+  app.innerHTML = `
+    <div class="panel">
+      <h3 class="panel-title">📋 報到登記情形：第 ${roundNumber} 次</h3>
+      <div class="text-small" style="margin-bottom: 12px;">${activity.date}｜${activity.title}</div>
+      <button class="btn btn-ghost btn-block" id="refreshStatusBtn">🔄 重新整理</button>
+      <div id="statusBody" style="margin-top:14px;"></div>
+    </div>
+  `;
+  async function loadStatus(){
+    const body = document.getElementById("statusBody");
+    body.innerHTML = `<div class="welcome-loader" style="padding: 20px;"><div class="spinner-pulse"></div></div>`;
+    try{
+      const data = await apiGetCheckinStatus(profile.userId, activityId, roundNumber);
+      if(!data.total){
+        body.innerHTML = `<div class="empty" style="border:none;">目前還沒有人登記</div>`;
+        return;
+      }
+      body.innerHTML = `<div style="font-weight:700; margin-bottom:10px; font-size: 0.9rem; color: var(--text-secondary);">共 ${data.total} 人已完成報到</div>` +
+        Object.keys(data.byBus).sort().map(bus => `
+          <div class="waitlist-activity-section">
+            <p class="waitlist-activity-title">🚌 ${bus} 車（${data.byBus[bus].length} 人）</p>
+            ${data.byBus[bus].map(p => `
+              <div class="waitlist-row">
+                <div>
+                  <div class="name">${p.displayName || "(未提供名稱)"}</div>
+                  <div class="meta">報到時間：${p.createdAt}</div>
+                </div>
+              </div>
+            `).join("")}
+          </div>
+        `).join("");
+    }catch(e){
+      body.innerHTML = `<div class="empty" style="border:none; color:var(--stamp);">讀取失敗：${e.message}</div>`;
+    }
+  }
+  document.getElementById("refreshStatusBtn").addEventListener("click", loadStatus);
+  loadStatus();
+}
+
 async function main(){
   if(!activityId){
     document.getElementById("app").innerHTML = `<div class="empty">❌ 缺少活動 ID</div>`;
@@ -603,14 +747,20 @@ async function main(){
   try{
     activity = await getActivityById(activityId);
     if(!activity){
-      document.getElementById("app").innerHTML = `<div class="empty">找不到這個活動</div>`;
+      document.getElementById("app").innerHTML = `<div class="empty">❌ 找不到這個活動</div>`;
       return;
     }
-    document.getElementById("pageTitle").textContent =
-      view === "payAdmin" ? "匯款通知管理" : view === "payForm" ? "已支付登記" : "支付說明";
+    const titleMap = {
+      payAdmin: "匯款通知管理", payForm: "已支付登記", payInfo: "支付說明",
+      checkinAdmin: "建立上車報到", checkin: "上車登記", checkinStatus: "報到情形",
+    };
+    document.getElementById("pageTitle").textContent = titleMap[view] || "支付登記";
 
     if(view === "payAdmin") await renderPayAdmin();
     else if(view === "payForm") await renderPayForm();
+    else if(view === "checkinAdmin") await renderCheckinAdmin();
+    else if(view === "checkin"){ await renderCheckin(); flushPendingCheckins(); }
+    else if(view === "checkinStatus") await renderCheckinStatus();
     else renderPayInfo();
   }catch(e){
     document.getElementById("app").innerHTML = `<div class="empty">載入失敗：${e.message}</div>`;
