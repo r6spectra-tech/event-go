@@ -33,6 +33,51 @@
         line-height: 1.5;
         padding-bottom: 80px; /* 防止內容被底部遮擋 */
     }
+  /* ---- 優化後的歡迎/載入頁面樣式 ---- */
+.welcome-loader {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 60px 20px;
+    text-align: center;
+    min-height: 50vh;
+}
+
+.welcome-logo-icon {
+    font-size: 3rem;
+    margin-bottom: 16px;
+    animation: bounce 1.5s infinite ease-in-out;
+}
+
+.welcome-title {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: var(--text-main);
+    margin-bottom: 6px;
+}
+
+.welcome-subtitle {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    margin-bottom: 24px;
+}
+
+/* 脈衝式美化載入圈 */
+.spinner-pulse {
+    width: 40px;
+    height: 40px;
+    border: 3px solid #e0e0e0;
+    border-top: 3px solid var(--primary);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+}
+
+@keyframes bounce {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-8px); }
+}
+  
 
     /* Topbar 美化 */
     .topbar {
@@ -292,8 +337,14 @@
 </div>
 
 <div class="admin-wrap" id="app">
-  <div class="spinner-wrap"><div class="spinner"></div></div>
+  <div class="welcome-loader">
+    <div class="welcome-logo-icon">💳</div>
+    <div class="welcome-title">活動管理小幫手</div>
+    <div class="welcome-subtitle">正在安全載入支付資訊，請稍候...</div>
+    <div class="spinner-pulse"></div>
+  </div>
 </div>
+
 
 <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
 <!-- 假設您的 main.js 包含 API 邏輯，這裡維持原樣引用 -->
