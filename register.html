@@ -676,7 +676,7 @@ async function renderCheckin(){
     const btn = document.getElementById("checkinBtn");
     if(btn.disabled) return;
     btn.disabled = true;
-    document.getElementById("checkinResult.innerHTML").innerHTML = `<span style="color:var(--teal); font-weight:700; font-size:1.1rem;">✅ 報到登記完成！一路順風</span>`;
+    document.getElementById("checkinResult").innerHTML = `<span style="color:var(--teal); font-weight:700; font-size:1.1rem;">✅ 報到登記完成！一路順風</span>`;
     submitCheckinWithRetry(activityId, roundNumber, bus, profile.userId, profile.displayName);
   });
 }
