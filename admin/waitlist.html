@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>候補名單管理</title>
-<link rel="stylesheet" href="../assets/style.css?v=20260728-12">
+<link rel="stylesheet" href="../assets/style.css?v=20260728-15">
 </head>
 <body>
 
@@ -24,7 +24,7 @@
 </div>
 
 <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
-<script src="../assets/main.js?v=20260728-12"></script>
+<script src="../assets/main.js?v=20260728-15"></script>
 <script>
 const statusLabel = { waiting:"排隊中", notified:"已通知，等待回覆", joined:"已加入", cancelled:"已取消", expired:"已逾期（24hr 未回覆）" };
 let currentProfile = null;
@@ -52,7 +52,7 @@ function rowHtml(entry){
     </div>
     <div style="display:flex;align-items:center;gap:8px;">
       <span class="badge ${entry.status}">${statusLabel[entry.status] || entry.status}</span>
-      ${canNotify ? `<button class="btn btn-teal notifyBtn" data-user="${entry.userId}">傳 LINE 通知</button>` : ""}
+      ${canNotify ? `<button class="btn btn-teal notifyBtn" data-user="${entry.userId}" data-activity="${entry.activityId}">傳 LINE 通知</button>` : ""}
     </div>
   </div>`;
 }
@@ -123,8 +123,91 @@ async function loadWaitlist(activityId){
   }
 }
 
+// 依活動分區顯示「所有」候補名單（沒有指定 id 時用這個，例如從 index.html 的候補管理入口進來）
+async function loadAllWaitlist(){
+  const app = document.getElementById("app");
+  app.innerHTML = `
+    <div class="panel">
+      <p class="panel-title">候補名單（全部活動）</p>
+      <div id="allList"><div class="spinner-wrap"><div class="spinner"></div></div></div>
+    </div>
+  `;
+  const listEl = document.getElementById("allList");
+  try{
+    const [entries, activities] = await Promise.all([
+      adminGetAllWaitlist(currentProfile.userId),
+      fetchActivities(),
+    ]);
+    if(!entries.length){
+      listEl.innerHTML = `<div class="empty">目前所有活動都沒有候補名單</div>`;
+      return;
+    }
+    const activityMap = {};
+    activities.forEach(a => { activityMap[a.id] = a; });
+
+    const byActivity = {};
+    entries.forEach(e => {
+      byActivity[e.activityId] = byActivity[e.activityId] || [];
+      byActivity[e.activityId].push(e);
+    });
+
+    // 有候補的活動排在前面，依活動日期排序（沒抓到活動資料的排最後）
+    const activityIds = Object.keys(byActivity).sort((idA, idB) => {
+      const a = activityMap[idA], b = activityMap[idB];
+      const da = a && a.eventDate ? new Date(a.eventDate).getTime() : Infinity;
+      const db = b && b.eventDate ? new Date(b.eventDate).getTime() : Infinity;
+      return da - db;
+    });
+
+    listEl.innerHTML = activityIds.map(aid => {
+      const act = activityMap[aid];
+      const title = act ? `${act.date}｜${act.title}` : `（找不到活動資料，activityId: ${aid}）`;
+      const rows = byActivity[aid].map(rowHtml).join("");
+      return `
+        <div class="waitlist-activity-section">
+          <p class="waitlist-activity-title">
+            ${title}
+            ${act ? `<a href="../detail.html?id=${encodeURIComponent(aid)}" class="btn btn-ghost" style="font-size:0.7rem;padding:4px 8px;">查看活動 →</a>` : ""}
+          </p>
+          ${rows}
+        </div>
+      `;
+    }).join("");
+
+    wireNotifyButtons(listEl, (activityId) => byActivity[activityId] ? loadAllWaitlist() : null);
+  }catch(e){
+    listEl.innerHTML = `<div class="empty">讀取失敗：${e.message}</div>`;
+  }
+}
+
+function wireNotifyButtons(container, onDone){
+  container.querySelectorAll(".notifyBtn").forEach(btn=>{
+    btn.addEventListener("click", async ()=>{
+      const activityId = btn.dataset.activity;
+      btn.disabled = true; btn.textContent = "通知中…";
+      try{
+        await adminNotify(activityId, btn.dataset.user, currentProfile.userId);
+        btn.textContent = "已送出通知";
+        if(onDone) onDone(activityId);
+      }catch(e){
+        alert("通知失敗：" + e.message);
+        btn.disabled = false; btn.textContent = "傳 LINE 通知";
+      }
+    });
+  });
+}
+
 function renderContent(profile){
   currentProfile = profile;
+  const preselectId = new URLSearchParams(location.search).get("id");
+
+  if(!preselectId){
+    // 沒有帶 id：顯示所有活動、依活動分區的候補總覽
+    loadAllWaitlist();
+    return;
+  }
+
+  // 有帶 id（從活動詳情頁的候補連結進來）：維持原本單一活動的下拉選單模式
   const app = document.getElementById("app");
   app.innerHTML = `
     <div class="panel">
@@ -139,7 +222,6 @@ function renderContent(profile){
     </div>
   `;
   const select = document.getElementById("activitySelect");
-  const preselectId = new URLSearchParams(location.search).get("id");
   loadActivityOptions(preselectId);
   select.addEventListener("change", ()=> onActivityChange(select.value));
 }
