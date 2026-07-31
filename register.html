@@ -327,48 +327,74 @@ function showToast(msg) {
 /* ---- view=payInfo：支付說明 ---- */
 function renderPayInfo(){
   const app = document.getElementById("app");
+  
   const bank = activity.bankInfo
     ? `<div class="field mt-3">
-         <label class="field-label">匯款銀行/帳號</label>
          <div class="copy-field">
            <span class="copy-text" id="bankInfoVal">${activity.bankInfo}</span>
            <button type="button" class="btn btn-ghost" id="copyBankBtn" style="padding: 8px 12px;">📋 複製</button>
          </div>
+         <div class="notice-box mt-2">
+           ⭐ 匯款後請記得點下方按鈕進行「已支付登記」並填寫帳號末四碼。
+         </div>
        </div>`
-    : `<div class="notice-box mt-3" style="border:none; background:#f0f0f0; color:#999;">主辦人尚未設定匯款帳號資訊。</div>`;
+    : `<div class="text-small" style="color:#999;">主辦人尚未設定匯款帳號。</div>`;
+
   const linepay = activity.organizerLineUrl
-    ? `<div class="field mt-4">
-         <label class="field-label">以 LINE Pay 支付</label>
+    ? `<div class="field">
          <a class="btn btn-teal btn-block" href="${activity.organizerLineUrl}" target="_blank" rel="noopener">
            <span style="font-weight:900; margin-right:8px;">LINE Pay</span> 前往轉帳
          </a>
          <p class="text-small mt-2" style="text-align:center;">請先加主辦人 LINE 好友，再進行轉帳</p>
        </div>`
-    : "";
+    : `<p class="text-small" style="color:#999;">主辦人尚未設定 LINE Pay 連結。</p>`;
+
   app.innerHTML = `
     <div class="activity-header">
         <span class="eyebrow">${activity.date}</span>
         <h2 class="panel-title" style="border:none; padding:0; margin-top:4px;">${activity.title}</h2>
-        <p style="font-size:1.25rem; font-weight:900; margin:12px 0 0 0;">費用：NT$ ${activity.price || "-"}</p>
+        <p style="font-size:1.25rem; font-weight:900; margin:12px 0 0 0;">應付費用：NT$ ${activity.price || "-"}</p>
     </div>
 
     <div class="panel">
-      <h3 class="panel-title">💰 
-    <h3 class="panel-title">💰 支付說明</h3>
-      <div class="text-small" style="color:var(--text-secondary);">以匯款方式支付：</div>
-      ${bank}
-      <div class="notice-box">
-        ⭐ 匯款後請記得登記帳號末四碼，以便主辦人核對。
+      <h3 class="panel-title" style="display:flex; align-items:center; gap:6px;">
+        <span>💳</span> 請選擇以下<strong>其中一種方式</strong>完成付款
+      </h3>
+      <p class="text-small" style="color:var(--text-secondary); margin-bottom: 20px;">完成付款後，別忘了點擊下方按鈕回報登記。</p>
+
+      <!-- 方式一：轉帳匯款 -->
+      <div style="border: 2px solid var(--border); border-radius: var(--radius-md); padding: 16px; margin-bottom: 16px; background: #fafafa;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+          <span style="font-weight: 700; color: var(--text-main); font-size: 1rem;">選項 A：轉帳匯款</span>
+          <span style="font-size: 0.75rem; background: #e0e0e0; padding: 2px 8px; border-radius: 10px;">ATM / 網銀</span>
+        </div>
+        <div class="text-small" style="margin-bottom: 6px;">匯款銀行與帳號：</div>
+        ${bank}
+      </div>
+
+      <!-- 分隔提示 -->
+      <div style="text-align: center; margin: 12px 0; position: relative;">
+        <span style="background: white; padding: 0 12px; font-size: 0.85rem; color: #999; position: relative; z-index: 1;">或者</span>
+        <div style="position: absolute; top: 50%; left: 0; right: 0; height: 1px; background: var(--border); z-index: 0;"></div>
+      </div>
+
+      <!-- 方式二：LINE Pay -->
+      <div style="border: 2px solid var(--border); border-radius: var(--radius-md); padding: 16px; margin-top: 16px; background: #fafafa;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+          <span style="font-weight: 700; color: var(--text-main); font-size: 1rem;">選項 B：LINE Pay 轉帳</span>
+          <span style="font-size: 0.75rem; background: #e0f2f1; color: var(--teal); padding: 2px 8px; border-radius: 10px;">線上支付</span>
+        </div>
+        ${linepay}
       </div>
     </div>
 
-    ${linepay}
-
-    <div class="panel" style="background: transparent; box-shadow: none; border: none; padding: 0;">
-      <a class="btn btn-primary btn-block mb-2" id="goFormBtn" style="margin-bottom: 12px;">✏️ 已支付登記</a>
+    <!-- 底部動作按鈕 -->
+    <div class="panel" style="background: transparent; box-shadow: none; border: none; padding: 0; margin-top: 20px;">
+      <a class="btn btn-primary btn-block" id="goFormBtn" style="margin-bottom: 12px; padding: 14px; font-size: 1.1rem;">✏️ 我已完成付款，前往登記</a>
       <a class="btn btn-ghost btn-block" id="goDetailBtn">📄 返回活動詳情</a>
     </div>
   `;
+
   if(activity.bankInfo){
     document.getElementById("copyBankBtn").addEventListener("click", ()=> copyText(activity.bankInfo));
   }
