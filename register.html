@@ -2,16 +2,292 @@
 <html lang="zh-Hant">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>支付登記</title>
-<link rel="stylesheet" href="assets/style.css?v=20260728-12">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&family=IBM+Plex+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+    :root {
+        --primary: #00B900; /* LINE Green */
+        --primary-dark: #009900;
+        --teal: #14b8a6;
+        --teal-hover: #0d9488;
+        --bg: #f6f7f9;
+        --panel-bg: #ffffff;
+        --text-main: #333333;
+        --text-secondary: #777777;
+        --border: #e0e0e0;
+        --stamp: #ff5722; /* 警示色 */
+        --radius-md: 12px;
+        --radius-sm: 8px;
+        --shadow: 0 4px 12px rgba(0,0,0,0.05);
+    }
+
+    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+    body {
+        font-family: 'Noto Sans TC', sans-serif;
+        background-color: var(--bg);
+        color: var(--text-main);
+        margin: 0;
+        padding: 0;
+        line-height: 1.5;
+        padding-bottom: 80px; /* 防止內容被底部遮擋 */
+    }
+
+    /* Topbar 美化 */
+    .topbar {
+        background-color: var(--panel-bg);
+        padding: 16px 20px;
+        border-bottom: 1px solid var(--border);
+        position: sticky;
+        top: 0;
+        z-index: 100;
+        display: flex;
+        align-items: center;
+        box-shadow: 0 2px 6px rgba(0,0,0,0.03);
+    }
+
+    .topbar-compact {
+        padding: 12px 20px;
+    }
+
+    .eyebrow {
+        font-size: 0.75rem;
+        color: var(--primary);
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        display: block;
+        margin-bottom: 2px;
+    }
+
+    h1 {
+        margin: 0;
+        font-size: 1.25rem !important;
+        font-weight: 800;
+    }
+
+    /* 主要內容區域 */
+    .admin-wrap {
+        max-width: 600px;
+        margin: 20px auto;
+        padding: 0 16px;
+    }
+
+    /* 通用 Panel 卡片 */
+    .panel {
+        background-color: var(--panel-bg);
+        border-radius: var(--radius-md);
+        padding: 24px;
+        box-shadow: var(--shadow);
+        margin-bottom: 20px;
+        border: 1px solid rgba(0,0,0,0.02);
+    }
+
+    .panel-title {
+        font-size: 1.1rem;
+        font-weight: 700;
+        margin: 0 0 12px 0;
+        color: var(--text-main);
+        padding-bottom: 12px;
+        border-bottom: 1px solid var(--border);
+    }
+
+    /* 文字樣式 */
+    .text-small { font-size: 0.85rem; color: var(--text-secondary); }
+    .text-bold { font-weight: 700; }
+    .text-highlight { color: var(--primary); font-weight: 700; }
+    
+    /* 活動標頭資訊 */
+    .activity-header {
+        background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+        color: white;
+        padding: 20px;
+        border-radius: var(--radius-md);
+        margin-bottom: 20px;
+    }
+    .activity-header .eyebrow { color: rgba(255,255,255,0.8); }
+    .activity-header .panel-title { border-bottom: 1px solid rgba(255,255,255,0.3); color: white; }
+
+    /* 表單欄位 */
+    .field { margin-bottom: 16px; }
+    .field:last-child { margin-bottom: 0; }
+
+    .field-label {
+        display: block;
+        font-size: 0.9rem;
+        font-weight: 600;
+        margin-bottom: 8px;
+        color: var(--text-main);
+    }
+
+    input[type="text"],
+    input[type="number"],
+    select {
+        width: 100%;
+        padding: 12px 16px;
+        border: 1px solid var(--border);
+        border-radius: var(--radius-sm);
+        font-family: inherit;
+        font-size: 1rem;
+        background-color: #fff;
+        transition: border-color 0.2s, box-shadow 0.2s;
+    }
+
+    input:focus, select:focus {
+        outline: none;
+        border-color: var(--primary);
+        box-shadow: 0 0 0 3px rgba(0, 185, 0, 0.1);
+    }
+
+    /* 特殊欄位：複製銀行帳號 */
+    .copy-field {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        background-color: #f9f9f9;
+        border: 1px solid var(--border);
+        border-radius: var(--radius-sm);
+        padding: 4px 4px 4px 16px;
+    }
+
+    .copy-text {
+        font-family: 'IBM Plex Mono', monospace;
+        font-size: 1rem;
+        color: #333;
+        letter-spacing: 0.5px;
+        flex-grow: 1;
+        user-select: all;
+    }
+
+    /* 按鈕樣式 */
+    .btn {
+        display: inline-flex;
+        justify-content: center;
+        align-items: center;
+        padding: 12px 24px;
+        border-radius: var(--radius-sm);
+        font-size: 1rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s;
+        border: none;
+        text-decoration: none;
+        font-family: inherit;
+        line-height: 1.4;
+    }
+
+    .btn-block { display: flex; width: 100%; }
+
+    /* 主要按鈕 (綠色) */
+    .btn-primary {
+        background-color: var(--primary);
+        color: white;
+    }
+    .btn-primary:hover { background-color: var(--primary-dark); }
+    .btn-primary:active { transform: translateY(1px); }
+    .btn-primary:disabled { background-color: #ccc; cursor: not-allowed; }
+
+    /* 幽靈按鈕 (邊框) */
+    .btn-ghost {
+        background-color: transparent;
+        border: 1px solid var(--border);
+        color: var(--text-secondary);
+    }
+    .btn-ghost:hover { background-color: #f5f5f5; border-color: #ccc; }
+
+    /* 青色按鈕 (LINE Pay) */
+    .btn-teal {
+        background-color: var(--teal);
+        color: white;
+    }
+    .btn-teal:hover { background-color: var(--teal-hover); }
+
+    /* 通知文字 */
+    .notice-box {
+        background-color: #fff3e0;
+        border-left: 4px solid var(--stamp);
+        padding: 12px 16px;
+        border-radius: var(--radius-sm);
+        color: #827717;
+        font-size: 0.85rem;
+        margin-top: 16px;
+    }
+
+    /* 載入中與空狀態 */
+    .spinner-wrap {
+        display: flex;
+        justify-content: center;
+        padding: 40px 0;
+    }
+    .spinner {
+        border: 3px solid #f3f3f3;
+        border-top: 3px solid var(--primary);
+        border-radius: 50%;
+        width: 24px;
+        height: 24px;
+        animation: spin 1s linear infinite;
+    }
+    @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+    .empty, .error-state {
+        text-align: center;
+        color: var(--text-secondary);
+        padding: 40px 20px;
+        font-size: 0.9rem;
+        background: white;
+        border-radius: var(--radius-md);
+        border: 1px solid var(--border);
+    }
+
+    /* 管理員列表行 */
+    .waitlist-row {
+        background: #fff;
+        border-bottom: 1px solid #eee;
+        padding: 12px 16px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+    .waitlist-row:first-child { border-top-left-radius: var(--radius-sm); border-top-right-radius: var(--radius-sm); }
+    .waitlist-row:last-child { border-bottom-left-radius: var(--radius-sm); border-bottom-right-radius: var(--radius-sm); border-bottom: none; }
+    .waitlist-row:hover { background-color: #fafafa; }
+    
+    .waitlist-row .name { font-weight: 700; font-size: 0.95rem; }
+    .waitlist-row .meta { font-size: 0.8rem; color: var(--text-secondary); margin-top: 2px; }
+    .waitlist-row .method-tag {
+        font-size: 0.75rem; padding: 2px 6px; border-radius: 4px;
+        background: #eee; color: #666; margin-left: 8px;
+    }
+
+    /* 成功頁面圖示 */
+    .success-icon { font-size: 4rem; margin-bottom: 16px; display: block; text-align: center; }
+
+    /* 調整間距 */
+    .gap-sm { gap: 8px; }
+    .gap-md { gap: 16px; }
+    .mt-2 { margin-top: 8px; }
+    .mt-3 { margin-top: 12px; }
+    .mt-4 { margin-top: 16px; }
+    .mt-5 { margin-top: 24px; }
+
+    /* 管理員專區區塊 */
+    .admin-section {
+        border: 2px dashed #ffcc80;
+        background-color: #fff8e1;
+        padding: 16px;
+        border-radius: var(--radius-md);
+        margin-top: 20px;
+    }
+
+</style>
 </head>
 <body>
 
 <div class="topbar topbar-compact">
   <div>
     <span class="eyebrow">Payment</span>
-    <h1 id="pageTitle" style="font-size:1.05rem;">支付登記</h1>
+    <h1 id="pageTitle">支付登記</h1>
   </div>
 </div>
 
@@ -20,12 +296,10 @@
 </div>
 
 <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+<!-- 假設您的 main.js 包含 API 邏輯，這裡維持原樣引用 -->
 <script src="assets/main.js?v=20260728-12"></script>
 <script>
-// register.html 是單一頁面、用網址參數 view 切換畫面，不是三個獨立檔案：
-//   ?activityId=xxx&view=payInfo   支付說明（任何人都看得到，通常從匯款通知 flex 點進來）
-//   ?activityId=xxx&view=payForm   已支付登記表單
-//   ?activityId=xxx&view=payAdmin  管理端：發送匯款通知、查看已登記名單（只有核准管理者看得到）
+// --- 原有的 JS 邏輯區域 (保持不變，僅修正 alert 樣式) ---
 const params = getRealQueryParams();
 const activityId = params.get("activityId");
 const view = params.get("view") || "payInfo";
@@ -33,213 +307,50 @@ let activity = null;
 let profile = null;
 
 function methodLabel(m){
-  return { transfer: "轉帳匯款", linepay: "LINE PAY", cash: "現金" }[m] || m;
+  return { transfer: "轉帳匯款", linepay: "LINE Pay", cash: "現金" }[m] || m;
 }
 
+// 美化複製提示
 function copyText(text){
   navigator.clipboard?.writeText(text).then(
-    () => alert("已複製：" + text),
+    () => showToast("已複製：" + text),
     () => prompt("請手動複製：", text)
   );
+}
+
+// 簡易 Toast 提示 (選用，如果需要更漂亮的提示)
+function showToast(msg) {
+    // 簡單實作，或者可以使用現有的 alert
+    alert(msg);
 }
 
 /* ---- view=payInfo：支付說明 ---- */
 function renderPayInfo(){
   const app = document.getElementById("app");
   const bank = activity.bankInfo
-    ? `<div class="field" style="margin-top:12px;">
-         <label>匯款銀行/帳號</label>
-         <div style="display:flex; align-items:center; gap:8px;">
-           <span style="font-family:'IBM Plex Mono',monospace; font-size:1rem;">${activity.bankInfo}</span>
-           <button type="button" class="btn btn-ghost" id="copyBankBtn" style="padding:6px 10px;">📋</button>
+    ? `<div class="field mt-3">
+         <label class="field-label">匯款銀行/帳號</label>
+         <div class="copy-field">
+           <span class="copy-text" id="bankInfoVal">${activity.bankInfo}</span>
+           <button type="button" class="btn btn-ghost" id="copyBankBtn" style="padding: 8px 12px;">📋 複製</button>
          </div>
        </div>`
-    : `<p style="color:#999;font-size:0.85rem;">主辦人尚未設定匯款帳號資訊。</p>`;
+    : `<div class="notice-box mt-3" style="border:none; background:#f0f0f0; color:#999;">主辦人尚未設定匯款帳號資訊。</div>`;
   const linepay = activity.organizerLineUrl
-    ? `<div class="field" style="margin-top:20px;">
-         <label>以 LINE Pay 支付</label>
-         <a class="btn btn-teal btn-block" href="${activity.organizerLineUrl}" target="_blank" rel="noopener">請先加主辦人 LINE 好友，再用 LINE Pay 轉帳</a>
+    ? `<div class="field mt-4">
+         <label class="field-label">以 LINE Pay 支付</label>
+         <a class="btn btn-teal btn-block" href="${activity.organizerLineUrl}" target="_blank" rel="noopener">
+           <span style="font-weight:900; margin-right:8px;">LINE Pay</span> 前往轉帳
+         </a>
+         <p class="text-small mt-2" style="text-align:center;">請先加主辦人 LINE 好友，再進行轉帳</p>
        </div>`
     : "";
   app.innerHTML = `
-    <div class="panel">
-      <p class="panel-title">${activity.date}｜${activity.title}</p>
-      <p style="font-size:1.1rem;font-weight:700;margin:4px 0 0;">費用：NT$ ${activity.price || "-"}</p>
-      <div style="margin-top:20px;">
-        <p class="field-label" style="font-weight:700;">支付說明</p>
-        <p style="font-size:0.85rem;color:#666;">以匯款方式支付：</p>
-        ${bank}
-        <p style="font-size:0.8rem;color:var(--stamp);margin-top:10px;">☆匯款後請登記帳號末四碼</p>
-      </div>
-      ${linepay}
-      <div style="margin-top:24px; display:flex; gap:10px; flex-wrap:wrap;">
-        <a class="btn btn-primary btn-block" id="goFormBtn">已支付登記</a>
-        <a class="btn btn-ghost btn-block" id="goDetailBtn">活動詳情</a>
-      </div>
+    <div class="activity-header">
+        <span class="eyebrow">${activity.date}</span>
+        <h2 class="panel-title" style="border:none; padding:0; margin-top:4px;">${activity.title}</h2>
+        <p style="font-size:1.25rem; font-weight:900; margin:12px 0 0 0;">費用：NT$ ${activity.price || "-"}</p>
     </div>
-  `;
-  if(activity.bankInfo){
-    document.getElementById("copyBankBtn").addEventListener("click", ()=> copyText(activity.bankInfo));
-  }
-  document.getElementById("goFormBtn").addEventListener("click", ()=>{
-    location.href = `register.html?activityId=${encodeURIComponent(activityId)}&view=payForm`;
-  });
-  document.getElementById("goDetailBtn").addEventListener("click", ()=>{
-    location.href = `detail.html?id=${encodeURIComponent(activityId)}`;
-  });
-}
 
-/* ---- view=payForm：已支付登記表單 ---- */
-async function renderPayForm(){
-  const app = document.getElementById("app");
-  let existing = null;
-  try{ existing = await apiGetMyPayment(activityId, profile.userId); }catch(e){ console.warn(e); }
-
-  app.innerHTML = `
     <div class="panel">
-      <p class="panel-title">已支付登記</p>
-      <p style="font-size:0.9rem;color:#666;">活動：${activity.date}｜${activity.title}</p>
-
-      <div class="field" style="margin-top:16px;">
-        <label>請選擇支付方式</label>
-        <select id="method">
-          <option value="transfer">轉帳匯款</option>
-          <option value="linepay">LINE PAY</option>
-          <option value="cash">現金</option>
-        </select>
-      </div>
-      <div class="field" id="last4Field">
-        <label>轉帳（匯款）銀行帳號末4碼</label>
-        <input id="last4" maxlength="4" inputmode="numeric" placeholder="例如 1234">
-      </div>
-      <div class="field">
-        <label>匯款人</label>
-        <input id="payerName" value="${profile.displayName || ""}">
-      </div>
-
-      <button class="btn btn-primary btn-block" id="submitBtn" style="margin-top:12px;">送出登記</button>
-      <p id="msg" style="font-size:0.85rem;margin-top:10px;"></p>
-    </div>
-  `;
-
-  const methodSel = document.getElementById("method");
-  const last4Field = document.getElementById("last4Field");
-  function syncLast4Visibility(){
-    last4Field.style.display = methodSel.value === "transfer" ? "block" : "none";
-  }
-  methodSel.addEventListener("change", syncLast4Visibility);
-  syncLast4Visibility();
-
-  if(existing){
-    methodSel.value = existing.method || "transfer";
-    document.getElementById("last4").value = existing.last4 || "";
-    document.getElementById("payerName").value = existing.displayName || profile.displayName || "";
-    syncLast4Visibility();
-    document.getElementById("msg").textContent = `之前已登記過（${existing.updatedAt}），重新送出會覆蓋更新。`;
-  }
-
-  document.getElementById("submitBtn").addEventListener("click", async ()=>{
-    const method = methodSel.value;
-    const last4 = document.getElementById("last4").value.trim();
-    const payerName = document.getElementById("payerName").value.trim();
-    if(method === "transfer" && !/^\d{4}$/.test(last4)){
-      alert("請輸入正確的銀行帳號末4碼（4位數字）");
-      return;
-    }
-    const btn = document.getElementById("submitBtn");
-    btn.disabled = true;
-    btn.textContent = "送出中…";
-    try{
-      await apiSubmitPayment(activityId, profile.userId, payerName, method, method === "transfer" ? last4 : "");
-      app.innerHTML = `
-        <div class="panel" style="text-align:center;">
-          <p style="font-size:1.3rem;">✅ 登記完成</p>
-          <p style="color:#666;margin-top:8px;">${activity.title}｜${methodLabel(method)}</p>
-          <a class="btn btn-ghost btn-block" style="margin-top:20px;" href="detail.html?id=${encodeURIComponent(activityId)}">回活動詳情</a>
-        </div>
-      `;
-    }catch(e){
-      alert("送出失敗：" + e.message);
-      btn.disabled = false;
-      btn.textContent = "送出登記";
-    }
-  });
-}
-
-/* ---- view=payAdmin：管理端，發通知＋看名單 ---- */
-async function renderPayAdmin(){
-  const app = document.getElementById("app");
-  const { status } = await checkIsManager(profile.userId);
-  if(status !== "approved"){
-    app.innerHTML = `<div class="empty">此頁面僅限核准管理者使用</div>`;
-    return;
-  }
-  app.innerHTML = `
-    <div class="panel">
-      <p class="panel-title">匯款通知／支付登記狀況</p>
-      <p style="font-size:0.9rem;color:#666;">${activity.date}｜${activity.title}｜費用 NT$ ${activity.price || "-"}</p>
-      ${activity.bankInfo ? "" : `<p style="color:var(--stamp);font-size:0.82rem;margin-top:6px;">⚠️ 這個活動還沒設定匯款帳號（去「編輯活動」補上），通知裡就只會顯示 LINE Pay 選項。</p>`}
-      <button class="btn btn-primary btn-block" id="sendBtn" style="margin-top:14px;">📣 發送匯款通知到群組</button>
-      <button class="btn btn-ghost btn-block" id="refreshBtn" style="margin-top:8px;">重新整理名單</button>
-      <div id="list" style="margin-top:16px;"></div>
-    </div>
-  `;
-  document.getElementById("sendBtn").addEventListener("click", ()=> sharePaymentNotice(activity));
-  document.getElementById("refreshBtn").addEventListener("click", loadPaymentList);
-  loadPaymentList();
-}
-
-async function loadPaymentList(){
-  const listEl = document.getElementById("list");
-  listEl.innerHTML = `<div class="spinner-wrap"><div class="spinner"></div></div>`;
-  try{
-    const list = await apiGetPayments(profile.userId, activityId);
-    if(!list.length){
-      listEl.innerHTML = `<div class="empty">目前還沒有人登記支付</div>`;
-      return;
-    }
-    listEl.innerHTML = `<p style="font-size:0.8rem;color:#999;margin-bottom:8px;">共 ${list.length} 人登記</p>` + list.map(p => `
-      <div class="waitlist-row">
-        <div>
-          <div class="name">${p.displayName || "(未提供名稱)"}</div>
-          <div class="meta">${methodLabel(p.method)}${p.last4 ? "／末4碼 " + p.last4 : ""}｜${p.updatedAt}</div>
-        </div>
-      </div>
-    `).join("");
-  }catch(e){
-    listEl.innerHTML = `<div class="empty">讀取失敗：${e.message}</div>`;
-  }
-}
-
-async function main(){
-  if(!activityId){
-    document.getElementById("app").innerHTML = `<div class="empty">缺少活動 id</div>`;
-    return;
-  }
-  try{
-    profile = await requireLogin();
-  }catch(e){
-    document.getElementById("app").innerHTML = `<div class="empty">請先登入 LINE 才能使用這個功能</div>`;
-    return;
-  }
-  try{
-    activity = await getActivityById(activityId);
-    if(!activity){
-      document.getElementById("app").innerHTML = `<div class="empty">找不到這個活動</div>`;
-      return;
-    }
-    document.getElementById("pageTitle").textContent =
-      view === "payAdmin" ? "匯款通知管理" : view === "payForm" ? "已支付登記" : "支付說明";
-
-    if(view === "payAdmin") await renderPayAdmin();
-    else if(view === "payForm") await renderPayForm();
-    else renderPayInfo();
-  }catch(e){
-    document.getElementById("app").innerHTML = `<div class="empty">載入失敗：${e.message}</div>`;
-  }
-}
-
-main();
-</script>
-</body>
-</html>
+      <h3 class="panel-title">💰 
