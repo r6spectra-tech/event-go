@@ -7,7 +7,7 @@
    目前有引用的檔案：index.html／detail.html／confirm.html／me.html／share.html／
    admin/edit-activity.html／admin/managers.html／admin/new-activity.html／
    admin/visit-log.html／admin/waitlist.html（共 10 個） */
-const ASSETS_VERSION = "20260728-12";
+const ASSETS_VERSION = "20260728-15";
 
 /* ============================================================
    設定區：只留「GAS Web App 網址」需要寫死在前端，
@@ -684,6 +684,10 @@ async function adminGetWaitlist(activityId, requestedBy) {
   return apiGet("waitlist", { activityId, requestedBy });
 }
 
+async function adminGetAllWaitlist(requestedBy) {
+  return apiGet("allWaitlist", { requestedBy });
+}
+
 async function adminNotify(activityId, targetUserId, requestedBy, requestedByName) {
   return apiPost("notify", { activityId, targetUserId, requestedBy, requestedByName });
 }
@@ -757,12 +761,9 @@ function registerUrl(activityId, view, extra) {
 function buildPaymentNoticeBubble(activity) {
   const bodyContents = [
     { type: "text", text: `${activity.date}${activity.title}`, weight: "bold", size: "lg", wrap: true },
-    { type: "text", text: `費用：${activity.price || "-"}`, size: "md", margin: "md" },
-    { type: "text", text: "☆匯款後請登記帳號末四碼", size: "sm", color: "#666666", wrap: true, margin: "sm" },
+    { type: "text", text: `活動費用：${activity.price || "-"} NTD`, size: "md", margin: "md" },
+    { type: "text", text: "活動將近，請於三天內支付活動費用，謝謝", size: "sm", color: "#666666", wrap: true, margin: "sm" },
   ];
-  if (activity.organizerLineUrl) {
-    bodyContents.push({ type: "text", text: "☆也可以Line Pay 支付", size: "sm", color: "#666666", wrap: true });
-  }
   return {
     type: "bubble",
     body: { type: "box", layout: "vertical", spacing: "sm", contents: bodyContents },
@@ -770,7 +771,7 @@ function buildPaymentNoticeBubble(activity) {
       type: "box", layout: "horizontal", spacing: "sm",
       contents: [
         { type: "button", style: "primary", color: "#17233D", height: "sm",
-          action: { type: "uri", label: "支付登記及說明", uri: registerUrl(activity.id, "payInfo") } },
+          action: { type: "uri", label: "支付說明", uri: registerUrl(activity.id, "payInfo") } },
         { type: "button", style: "secondary", height: "sm",
           action: { type: "uri", label: "活動詳情", uri: detailUrl(activity) } },
       ],
@@ -787,6 +788,85 @@ async function sharePaymentNotice(activity) {
   try {
     await liff.shareTargetPicker([
       { type: "flex", altText: `【匯款通知】${activity.title}`, contents: buildPaymentNoticeBubble(activity) },
+    ]);
+  } catch (e) { console.error(e); }
+}
+
+/* ============================================================
+   上車（出發）報到
+   ============================================================ */
+async function apiCreateCheckinRound(activityId, checkinType, busCount, busLabelStyle, startTime, endTime, staggerMinutes, requestedBy) {
+  return apiPost("createCheckinRound", { activityId, checkinType, busCount, busLabelStyle, startTime, endTime, staggerMinutes, requestedBy });
+}
+
+async function apiGetCheckinRound(activityId, roundNumber) {
+  return apiGet("checkinRound", { activityId, roundNumber });
+}
+
+async function apiGetCheckinStatus(requestedBy, activityId, roundNumber) {
+  return apiGet("checkinStatus", { requestedBy, activityId, roundNumber });
+}
+
+async function apiSubmitCheckin(payload) {
+  return apiPost("submitCheckin", payload);
+}
+
+function checkinTypeLabel(t) { return t === "departure" ? "出發報到" : "上車報到"; }
+
+// "HH:MM" 字串加上幾分鐘，回傳新的 "HH:MM" 字串（單純字串運算，不用建立完整 Date 物件）
+function addMinutesToTimeStr(hhmm, minutes) {
+  if (!hhmm) return "";
+  const [h, m] = hhmm.split(":").map(Number);
+  const total = h * 60 + m + minutes;
+  const nh = Math.floor(((total % 1440) + 1440) % 1440 / 60);
+  const nm = ((total % 60) + 60) % 60;
+  return `${String(nh).padStart(2, "0")}:${String(nm).padStart(2, "0")}`;
+}
+
+function buildCheckinBubble(activity, round, busLabel, busIndex) {
+  const stagger = Number(round.staggerMinutes) || 0;
+  const busStart = stagger > 0 ? addMinutesToTimeStr(round.startTime, busIndex * stagger) : round.startTime;
+  const timeText = busStart && round.endTime ? `${busStart} ~ ${round.endTime}` : "";
+  const bodyContents = [
+    { type: "text", text: `${activity.date}${activity.title}`, weight: "bold", size: "md", wrap: true },
+    { type: "text", text: `第 ${round.roundNumber} 次｜${checkinTypeLabel(round.checkinType)}`, size: "sm", color: "#666666", margin: "sm" },
+    { type: "text", text: `${busLabel} 車`, weight: "bold", size: "xxl", color: "#2F7A72", margin: "md" },
+  ];
+  if (timeText) bodyContents.push({ type: "text", text: `報到時間：${timeText}`, size: "sm", color: "#666666", margin: "md" });
+  return {
+    type: "bubble",
+    body: { type: "box", layout: "vertical", spacing: "sm", contents: bodyContents },
+    footer: {
+      type: "box", layout: "vertical", spacing: "sm",
+      contents: [
+        { type: "button", style: "primary", color: "#17233D",
+          action: { type: "uri", label: "上車報到", uri: registerUrl(activity.id, "checkin", { round: round.roundNumber, bus: busLabel }) } },
+        { type: "box", layout: "horizontal", spacing: "sm", contents: [
+          { type: "button", style: "secondary", height: "sm",
+            action: { type: "uri", label: "登記情形", uri: registerUrl(activity.id, "checkinStatus", { round: round.roundNumber }) } },
+          { type: "button", style: "secondary", height: "sm",
+            action: { type: "uri", label: "活動詳情", uri: detailUrl(activity) } },
+        ] },
+      ],
+    },
+  };
+}
+
+// 多台車一次發「一則」flex，裡面是可以左右滑動的 carousel，每台車各自一頁，不是分成好幾則訊息
+function buildCheckinCarousel(activity, round) {
+  const bubbles = round.busLabels.map((bus, i) => buildCheckinBubble(activity, round, bus, i));
+  return bubbles.length === 1 ? bubbles[0] : { type: "carousel", contents: bubbles };
+}
+
+async function shareCheckinRound(activity, round) {
+  const ok = await ensureLiff();
+  if (!ok || !liff.isApiAvailable("shareTargetPicker")) {
+    alert("目前環境不支援 LINE 分享");
+    return;
+  }
+  try {
+    await liff.shareTargetPicker([
+      { type: "flex", altText: `【${checkinTypeLabel(round.checkinType)}】${activity.title} 第${round.roundNumber}次`, contents: buildCheckinCarousel(activity, round) },
     ]);
   } catch (e) { console.error(e); }
 }

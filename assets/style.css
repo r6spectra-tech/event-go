@@ -277,6 +277,12 @@ button:disabled, .btn:disabled, button[disabled], .btn[disabled]{
 .waitlist-row .name{ font-weight:600; }
 .waitlist-row .meta{ font-size:0.75rem; color:#888; font-family:'IBM Plex Mono', monospace; }
 .waitlist-row .meta div{ margin-top:2px; }
+.waitlist-activity-section{ margin-bottom:24px; }
+.waitlist-activity-section:last-child{ margin-bottom:0; }
+.waitlist-activity-title{
+  font-weight:700; font-size:0.95rem; padding-bottom:8px; margin-bottom:8px;
+  border-bottom:1.5px solid var(--line); display:flex; align-items:center; justify-content:space-between; gap:8px;
+}
 .badge{ padding:2px 8px; border-radius:20px; font-size:0.7rem; font-weight:600; }
 .badge.waiting{ background:rgba(231,199,122,0.3); color:#8a6d1d; }
 .badge.notified{ background:rgba(47,122,114,0.15); color:var(--teal); }
