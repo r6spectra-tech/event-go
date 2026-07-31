@@ -7,7 +7,7 @@
    目前有引用的檔案：index.html／detail.html／confirm.html／me.html／share.html／
    admin/edit-activity.html／admin/managers.html／admin/new-activity.html／
    admin/visit-log.html／admin/waitlist.html（共 10 個） */
-const ASSETS_VERSION = "20260728-11";
+const ASSETS_VERSION = "20260728-12";
 
 /* ============================================================
    設定區：只留「GAS Web App 網址」需要寫死在前端，
@@ -122,6 +122,7 @@ function normalizeActivity(raw) {
     organizerName: raw.organizerName || raw.organizer_name || "主辦人",
     organizerLineUrl: raw.organizerLineUrl || raw.organizer_line_url || "",
     groupUrl: raw.groupUrl || raw.group_url || "",
+    bankInfo: raw.bankInfo || raw.bank_info || "",
   };
 }
 
@@ -727,4 +728,65 @@ async function adminDeleteManager(userId, requestedBy) {
 
 async function adminSyncManagersFile(requestedBy) {
   return apiPost("syncManagersFile", { requestedBy });
+}
+
+/* ============================================================
+   支付登記（匯款/LINE Pay/現金）
+   ============================================================ */
+async function apiGetMyPayment(activityId, userId) {
+  return apiGet("myPayment", { activityId, userId });
+}
+
+async function apiGetPayments(requestedBy, activityId) {
+  return apiGet("payments", { requestedBy, activityId });
+}
+
+async function apiSubmitPayment(activityId, userId, displayName, method, last4) {
+  return apiPost("submitPayment", { activityId, userId, displayName, method, last4 });
+}
+
+// register.html 用，跟 detailUrl() 同樣邏輯（liff.line.me 帶路徑格式，已經實測過可以正常運作）
+function registerUrl(activityId, view, extra) {
+  let url = `https://liff.line.me/${RUNTIME.liffId}/register.html?activityId=${encodeURIComponent(activityId)}&view=${encodeURIComponent(view)}`;
+  if (extra) {
+    Object.keys(extra).forEach(k => { url += `&${k}=${encodeURIComponent(extra[k])}`; });
+  }
+  return url;
+}
+
+function buildPaymentNoticeBubble(activity) {
+  const bodyContents = [
+    { type: "text", text: `${activity.date}${activity.title}`, weight: "bold", size: "lg", wrap: true },
+    { type: "text", text: `費用：${activity.price || "-"}`, size: "md", margin: "md" },
+    { type: "text", text: "☆匯款後請登記帳號末四碼", size: "sm", color: "#666666", wrap: true, margin: "sm" },
+  ];
+  if (activity.organizerLineUrl) {
+    bodyContents.push({ type: "text", text: "☆也可以Line Pay 支付", size: "sm", color: "#666666", wrap: true });
+  }
+  return {
+    type: "bubble",
+    body: { type: "box", layout: "vertical", spacing: "sm", contents: bodyContents },
+    footer: {
+      type: "box", layout: "horizontal", spacing: "sm",
+      contents: [
+        { type: "button", style: "primary", color: "#17233D", height: "sm",
+          action: { type: "uri", label: "支付登記及說明", uri: registerUrl(activity.id, "payInfo") } },
+        { type: "button", style: "secondary", height: "sm",
+          action: { type: "uri", label: "活動詳情", uri: detailUrl(activity) } },
+      ],
+    },
+  };
+}
+
+async function sharePaymentNotice(activity) {
+  const ok = await ensureLiff();
+  if (!ok || !liff.isApiAvailable("shareTargetPicker")) {
+    alert("目前環境不支援 LINE 分享");
+    return;
+  }
+  try {
+    await liff.shareTargetPicker([
+      { type: "flex", altText: `【匯款通知】${activity.title}`, contents: buildPaymentNoticeBubble(activity) },
+    ]);
+  } catch (e) { console.error(e); }
 }
