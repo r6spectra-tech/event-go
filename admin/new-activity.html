@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>新增活動</title>
-<link rel="stylesheet" href="../assets/style.css?v=20260728-11">
+<link rel="stylesheet" href="../assets/style.css?v=20260728-12">
 </head>
 <body>
 
@@ -20,7 +20,7 @@
 </div>
 
 <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
-<script src="../assets/main.js?v=20260728-11"></script>
+<script src="../assets/main.js?v=20260728-12"></script>
 <script>
 let currentProfile = null;
 
@@ -108,6 +108,10 @@ const formHtml = `
       <input id="organizer_line_url" placeholder="https://line.me/ti/p/xxxxxxx">
     </div>
     <div class="field">
+      <label>匯款銀行/帳號（支付登記功能用，例如「812(台新) / 20161000215239」）</label>
+      <input id="bank_info">
+    </div>
+    <div class="field">
       <label>常用主辦人</label>
       <div class="chip-row" id="organizerPresetList"></div>
       <button class="btn btn-ghost btn-block" id="savePresetBtn" style="margin-top:10px;">把上面填的名稱＋連結存成常用</button>
@@ -123,7 +127,7 @@ const formHtml = `
 `;
 
 const fieldIds = ["id","title","cover_image","area","date_text","event_date","price","capacity",
-  "waitlist_status","notes","youtube_links","map_links","organizer_name","organizer_line_url","group_url"];
+  "waitlist_status","notes","youtube_links","map_links","organizer_name","organizer_line_url","group_url","bank_info"];
 
 const MAX_DAYS = 10;
 const CN_NUM = ["一","二","三","四","五","六","七","八","九","十"];
