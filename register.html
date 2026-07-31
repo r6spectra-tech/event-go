@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>支付登記</title>
+<link rel="stylesheet" href="assets/style.css?v=20260728-12">
+</head>
+<body>
+
+<div class="topbar topbar-compact">
+  <div>
+    <span class="eyebrow">Payment</span>
+    <h1 id="pageTitle" style="font-size:1.05rem;">支付登記</h1>
+  </div>
+</div>
+
+<div class="admin-wrap" id="app">
+  <div class="spinner-wrap"><div class="spinner"></div></div>
+</div>
+
+<script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+<script src="assets/main.js?v=20260728-12"></script>
+<script>
+// register.html 是單一頁面、用網址參數 view 切換畫面，不是三個獨立檔案：
+//   ?activityId=xxx&view=payInfo   支付說明（任何人都看得到，通常從匯款通知 flex 點進來）
+//   ?activityId=xxx&view=payForm   已支付登記表單
+//   ?activityId=xxx&view=payAdmin  管理端：發送匯款通知、查看已登記名單（只有核准管理者看得到）
+const params = getRealQueryParams();
+const activityId = params.get("activityId");
+const view = params.get("view") || "payInfo";
+let activity = null;
+let profile = null;
+
+function methodLabel(m){
+  return { transfer: "轉帳匯款", linepay: "LINE PAY", cash: "現金" }[m] || m;
+}
+
+function copyText(text){
+  navigator.clipboard?.writeText(text).then(
+    () => alert("已複製：" + text),
+    () => prompt("請手動複製：", text)
+  );
+}
+
+/* ---- view=payInfo：支付說明 ---- */
+function renderPayInfo(){
+  const app = document.getElementById("app");
+  const bank = activity.bankInfo
+    ? `<div class="field" style="margin-top:12px;">
+         <label>匯款銀行/帳號</label>
+         <div style="display:flex; align-items:center; gap:8px;">
+           <span style="font-family:'IBM Plex Mono',monospace; font-size:1rem;">${activity.bankInfo}</span>
+           <button type="button" class="btn btn-ghost" id="copyBankBtn" style="padding:6px 10px;">📋</button>
+         </div>
+       </div>`
+    : `<p style="color:#999;font-size:0.85rem;">主辦人尚未設定匯款帳號資訊。</p>`;
+  const linepay = activity.organizerLineUrl
+    ? `<div class="field" style="margin-top:20px;">
+         <label>以 LINE Pay 支付</label>
+         <a class="btn btn-teal btn-block" href="${activity.organizerLineUrl}" target="_blank" rel="noopener">請先加主辦人 LINE 好友，再用 LINE Pay 轉帳</a>
+       </div>`
+    : "";
+  app.innerHTML = `
+    <div class="panel">
+      <p class="panel-title">${activity.date}｜${activity.title}</p>
+      <p style="font-size:1.1rem;font-weight:700;margin:4px 0 0;">費用：NT$ ${activity.price || "-"}</p>
+      <div style="margin-top:20px;">
+        <p class="field-label" style="font-weight:700;">支付說明</p>
+        <p style="font-size:0.85rem;color:#666;">以匯款方式支付：</p>
+        ${bank}
+        <p style="font-size:0.8rem;color:var(--stamp);margin-top:10px;">☆匯款後請登記帳號末四碼</p>
+      </div>
+      ${linepay}
+      <div style="margin-top:24px; display:flex; gap:10px; flex-wrap:wrap;">
+        <a class="btn btn-primary btn-block" id="goFormBtn">已支付登記</a>
+        <a class="btn btn-ghost btn-block" id="goDetailBtn">活動詳情</a>
+      </div>
+    </div>
+  `;
+  if(activity.bankInfo){
+    document.getElementById("copyBankBtn").addEventListener("click", ()=> copyText(activity.bankInfo));
+  }
+  document.getElementById("goFormBtn").addEventListener("click", ()=>{
+    location.href = `register.html?activityId=${encodeURIComponent(activityId)}&view=payForm`;
+  });
+  document.getElementById("goDetailBtn").addEventListener("click", ()=>{
+    location.href = `detail.html?id=${encodeURIComponent(activityId)}`;
+  });
+}
+
+/* ---- view=payForm：已支付登記表單 ---- */
+async function renderPayForm(){
+  const app = document.getElementById("app");
+  let existing = null;
+  try{ existing = await apiGetMyPayment(activityId, profile.userId); }catch(e){ console.warn(e); }
+
+  app.innerHTML = `
+    <div class="panel">
+      <p class="panel-title">已支付登記</p>
+      <p style="font-size:0.9rem;color:#666;">活動：${activity.date}｜${activity.title}</p>
+
+      <div class="field" style="margin-top:16px;">
+        <label>請選擇支付方式</label>
+        <select id="method">
+          <option value="transfer">轉帳匯款</option>
+          <option value="linepay">LINE PAY</option>
+          <option value="cash">現金</option>
+        </select>
+      </div>
+      <div class="field" id="last4Field">
+        <label>轉帳（匯款）銀行帳號末4碼</label>
+        <input id="last4" maxlength="4" inputmode="numeric" placeholder="例如 1234">
+      </div>
+      <div class="field">
+        <label>匯款人</label>
+        <input id="payerName" value="${profile.displayName || ""}">
+      </div>
+
+      <button class="btn btn-primary btn-block" id="submitBtn" style="margin-top:12px;">送出登記</button>
+      <p id="msg" style="font-size:0.85rem;margin-top:10px;"></p>
+    </div>
+  `;
+
+  const methodSel = document.getElementById("method");
+  const last4Field = document.getElementById("last4Field");
+  function syncLast4Visibility(){
+    last4Field.style.display = methodSel.value === "transfer" ? "block" : "none";
+  }
+  methodSel.addEventListener("change", syncLast4Visibility);
+  syncLast4Visibility();
+
+  if(existing){
+    methodSel.value = existing.method || "transfer";
+    document.getElementById("last4").value = existing.last4 || "";
+    document.getElementById("payerName").value = existing.displayName || profile.displayName || "";
+    syncLast4Visibility();
+    document.getElementById("msg").textContent = `之前已登記過（${existing.updatedAt}），重新送出會覆蓋更新。`;
+  }
+
+  document.getElementById("submitBtn").addEventListener("click", async ()=>{
+    const method = methodSel.value;
+    const last4 = document.getElementById("last4").value.trim();
+    const payerName = document.getElementById("payerName").value.trim();
+    if(method === "transfer" && !/^\d{4}$/.test(last4)){
+      alert("請輸入正確的銀行帳號末4碼（4位數字）");
+      return;
+    }
+    const btn = document.getElementById("submitBtn");
+    btn.disabled = true;
+    btn.textContent = "送出中…";
+    try{
+      await apiSubmitPayment(activityId, profile.userId, payerName, method, method === "transfer" ? last4 : "");
+      app.innerHTML = `
+        <div class="panel" style="text-align:center;">
+          <p style="font-size:1.3rem;">✅ 登記完成</p>
+          <p style="color:#666;margin-top:8px;">${activity.title}｜${methodLabel(method)}</p>
+          <a class="btn btn-ghost btn-block" style="margin-top:20px;" href="detail.html?id=${encodeURIComponent(activityId)}">回活動詳情</a>
+        </div>
+      `;
+    }catch(e){
+      alert("送出失敗：" + e.message);
+      btn.disabled = false;
+      btn.textContent = "送出登記";
+    }
+  });
+}
+
+/* ---- view=payAdmin：管理端，發通知＋看名單 ---- */
+async function renderPayAdmin(){
+  const app = document.getElementById("app");
+  const { status } = await checkIsManager(profile.userId);
+  if(status !== "approved"){
+    app.innerHTML = `<div class="empty">此頁面僅限核准管理者使用</div>`;
+    return;
+  }
+  app.innerHTML = `
+    <div class="panel">
+      <p class="panel-title">匯款通知／支付登記狀況</p>
+      <p style="font-size:0.9rem;color:#666;">${activity.date}｜${activity.title}｜費用 NT$ ${activity.price || "-"}</p>
+      ${activity.bankInfo ? "" : `<p style="color:var(--stamp);font-size:0.82rem;margin-top:6px;">⚠️ 這個活動還沒設定匯款帳號（去「編輯活動」補上），通知裡就只會顯示 LINE Pay 選項。</p>`}
+      <button class="btn btn-primary btn-block" id="sendBtn" style="margin-top:14px;">📣 發送匯款通知到群組</button>
+      <button class="btn btn-ghost btn-block" id="refreshBtn" style="margin-top:8px;">重新整理名單</button>
+      <div id="list" style="margin-top:16px;"></div>
+    </div>
+  `;
+  document.getElementById("sendBtn").addEventListener("click", ()=> sharePaymentNotice(activity));
+  document.getElementById("refreshBtn").addEventListener("click", loadPaymentList);
+  loadPaymentList();
+}
+
+async function loadPaymentList(){
+  const listEl = document.getElementById("list");
+  listEl.innerHTML = `<div class="spinner-wrap"><div class="spinner"></div></div>`;
+  try{
+    const list = await apiGetPayments(profile.userId, activityId);
+    if(!list.length){
+      listEl.innerHTML = `<div class="empty">目前還沒有人登記支付</div>`;
+      return;
+    }
+    listEl.innerHTML = `<p style="font-size:0.8rem;color:#999;margin-bottom:8px;">共 ${list.length} 人登記</p>` + list.map(p => `
+      <div class="waitlist-row">
+        <div>
+          <div class="name">${p.displayName || "(未提供名稱)"}</div>
+          <div class="meta">${methodLabel(p.method)}${p.last4 ? "／末4碼 " + p.last4 : ""}｜${p.updatedAt}</div>
+        </div>
+      </div>
+    `).join("");
+  }catch(e){
+    listEl.innerHTML = `<div class="empty">讀取失敗：${e.message}</div>`;
+  }
+}
+
+async function main(){
+  if(!activityId){
+    document.getElementById("app").innerHTML = `<div class="empty">缺少活動 id</div>`;
+    return;
+  }
+  try{
+    profile = await requireLogin();
+  }catch(e){
+    document.getElementById("app").innerHTML = `<div class="empty">請先登入 LINE 才能使用這個功能</div>`;
+    return;
+  }
+  try{
+    activity = await getActivityById(activityId);
+    if(!activity){
+      document.getElementById("app").innerHTML = `<div class="empty">找不到這個活動</div>`;
+      return;
+    }
+    document.getElementById("pageTitle").textContent =
+      view === "payAdmin" ? "匯款通知管理" : view === "payForm" ? "已支付登記" : "支付說明";
+
+    if(view === "payAdmin") await renderPayAdmin();
+    else if(view === "payForm") await renderPayForm();
+    else renderPayInfo();
+  }catch(e){
+    document.getElementById("app").innerHTML = `<div class="empty">載入失敗：${e.message}</div>`;
+  }
+}
+
+main();
+</script>
+</body>
+</html>
