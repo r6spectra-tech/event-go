@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>支付與報到登記</title>
+<title>支付與報到調查登記</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&family=IBM+Plex+Mono:wght@400;600&display=swap" rel="stylesheet">
 <style>
     :root {
@@ -260,7 +260,7 @@
 </div>
 
 <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
-<script src="assets/main.js?v=20260728-16"></script>
+<script src="assets/main.js?v=20260728-17"></script>
 <script>
 const params = getRealQueryParams();
 const activityId = params.get("activityId");
@@ -272,9 +272,10 @@ function methodLabel(m){
   return { transfer: "轉帳匯款", linepay: "LINE PAY", cash: "現金" }[m] || m;
 }
 
-function checkinTypeLabel(t){
-  return { departure: "出發報到", boarding: "上車報到" }[t] || t;
-}
+// checkinTypeLabel() 用 assets/main.js 裡定義的那份，這裡不再重複宣告——
+// 之前這裡跟 main.js 各自定義了一份同名函式，因為 main.js 先載入、register.html
+// 的行內 script 後載入，全域作用域下後宣告的會蓋掉前面的，導致 main.js 裡建立 Flex
+// 訊息用的 checkinTypeLabel() 也被這裡的舊版文字覆蓋、改了主檔案文字卻沒生效。
 
 function copyText(text){
   navigator.clipboard?.writeText(text).then(
@@ -495,33 +496,40 @@ async function loadPaymentList(){
 /* ---- 報到時間預設值 ---- */
 function fmtHM(d){ return `${String(d.getHours()).padStart(2,"0")}:${String(d.getMinutes()).padStart(2,"0")}`; }
 
-// 下一個半點或整點（例如現在 17:42，下一個是 18:00；現在 17:12，下一個是 17:30）
-function nextHalfOrHourDate(){
+// 把 "HH:MM" 字串轉成「今天」的 Date 物件，純粹拿來做時間運算用（實際送出時後端會自己
+// 判斷要不要換算成明天，這裡只是給快速按鈕計算用的暫時物件）
+function hmToDate(hhmm){
+  const [h,m] = hhmm.split(":").map(Number);
   const d = new Date();
-  d.setSeconds(0,0);
-  if(d.getMinutes() < 30){
-    d.setMinutes(30);
-  }else{
-    d.setMinutes(0);
-    d.setHours(d.getHours()+1);
-  }
+  d.setHours(h, m, 0, 0);
   return d;
 }
-function nextHourDate(){
-  const d = new Date();
-  d.setSeconds(0,0);
-  d.setMinutes(0);
-  d.setHours(d.getHours()+1);
-  return d;
+
+// 下一個半點或整點，「一定」往後推進（就算剛好卡在整點/半點上，也會跳到下一個，
+// 不會原地不動——這樣同一顆按鈕才能連續按、每次都有效果）
+function roundUpToNextHalfHour(d){
+  const r = new Date(d);
+  r.setSeconds(0,0);
+  if(r.getMinutes() < 30) r.setMinutes(30);
+  else { r.setMinutes(0); r.setHours(r.getHours()+1); }
+  return r;
 }
+function roundUpToNextHour(d){
+  const r = new Date(d);
+  r.setSeconds(0,0);
+  r.setMinutes(0);
+  r.setHours(r.getHours()+1);
+  return r;
+}
+// 留給 nextHalfOrHourDate 開頁面時算「預設值」用，這個是相對「現在」算，跟上面兩個
+// 「作用在目前欄位值」的版本不同用途
+function nextHalfOrHourDate(){ return roundUpToNextHalfHour(new Date()); }
 
 function defaultCheckinWindow(){
-  const start = nextHalfOrHourDate();
-  const end = new Date(start.getTime() + 30*60*1000);
-  return { startStr: fmtHM(start), endStr: fmtHM(end) };
+  return { startStr: fmtHM(nextHalfOrHourDate()) };
 }
 
-/* ---- view=checkinAdmin：管理端建立報到＋分享 ---- */
+/* ---- view=checkinAdmin：管理端建立報到調查＋分享 ---- */
 async function renderCheckinAdmin(){
   const app = document.getElementById("app");
   const { status } = await checkIsManager(profile.userId);
@@ -532,14 +540,14 @@ async function renderCheckinAdmin(){
   const def = defaultCheckinWindow();
   app.innerHTML = `
     <div class="panel">
-      <h3 class="panel-title">🚌 建立上車（出發）報到</h3>
+      <h3 class="panel-title">🚌 建立上車（出發）報到調查</h3>
       <div class="text-small" style="margin-bottom: 16px;">${activity.date}｜${activity.title}</div>
 
       <div class="field">
-        <label class="field-label">選擇報到別</label>
+        <label class="field-label">選擇報到調查別</label>
         <select id="checkinType">
-          <option value="departure">出發報到</option>
-          <option value="boarding">上車報到</option>
+          <option value="departure">出發報到調查</option>
+          <option value="boarding">上車報到調查</option>
         </select>
       </div>
       <div class="field">
@@ -554,7 +562,7 @@ async function renderCheckinAdmin(){
         </select>
       </div>
       <div class="field">
-        <label class="field-label">報到開始時間</label>
+        <label class="field-label">報到調查開始時間</label>
         <input id="startTime" type="time" value="${def.startStr}">
         <div style="display:flex; gap:6px; margin-top:8px;">
           <button type="button" class="btn btn-ghost quickTimeBtn" data-mode="plus" data-val="30" style="flex:1; padding:8px 4px; font-size:0.82rem;">+30分</button>
@@ -566,13 +574,19 @@ async function renderCheckinAdmin(){
           <button type="button" class="btn btn-ghost quickTimeBtn" data-mode="hour" style="flex:1; padding:8px 4px; font-size:0.82rem;">下個整點</button>
           <button type="button" class="btn btn-ghost quickTimeBtn" data-mode="now" style="flex:1; padding:8px 4px; font-size:0.82rem;">目前時間</button>
         </div>
+        <p class="text-small" style="margin-top:6px;">💡 上排 3 個是累加的（可以連按疊加）；下排「下個半點／下個整點」是把目前欄位裡的時間無條件進位，「目前時間」會直接重置成現在，清掉之前疊加的結果。</p>
       </div>
       <div class="field">
-        <label class="field-label">報到結束時間</label>
-        <input id="endTime" type="time" value="${def.endStr}">
+        <label class="field-label">報到調查開始前 N 分鐘可以報名</label>
+        <input id="earlyMinutes" type="number" min="0" max="60" value="5">
       </div>
       <div class="field">
-        <label class="field-label">每台車依序錯開幾分鐘開放報到</label>
+        <label class="field-label">報到調查開始後 N 分鐘結束報名</label>
+        <input id="afterMinutes" type="number" min="1" max="180" value="10">
+      </div>
+      <p class="text-small" id="windowPreview" style="margin-top:-8px;"></p>
+      <div class="field">
+        <label class="field-label">每台車依序錯開幾分鐘開放報名</label>
         <input id="staggerMinutes" type="number" min="0" max="30" value="2">
       </div>
 
@@ -580,16 +594,46 @@ async function renderCheckinAdmin(){
       <div id="result" style="margin-top:16px;"></div>
     </div>
   `;
+
+  function updatePreview(){
+    const t = document.getElementById("startTime").value;
+    const early = Number(document.getElementById("earlyMinutes").value) || 0;
+    const after = Number(document.getElementById("afterMinutes").value) || 0;
+    if(!t){ document.getElementById("windowPreview").textContent = ""; return; }
+    const start = hmToDate(t);
+    const openFrom = new Date(start.getTime() - early*60000);
+    const closeAt = new Date(start.getTime() + after*60000);
+    document.getElementById("windowPreview").textContent =
+      `📋 實際可報名區間：${fmtHM(openFrom)} ~ ${fmtHM(closeAt)}（每台車依序錯開的話，各車開放時間還會再往後推）`;
+  }
+  ["startTime","earlyMinutes","afterMinutes"].forEach(id=>{
+    document.getElementById(id).addEventListener("input", updatePreview);
+  });
+  updatePreview();
+
   document.querySelectorAll(".quickTimeBtn").forEach(btn=>{
     btn.addEventListener("click", ()=>{
       const mode = btn.dataset.mode;
+      const field = document.getElementById("startTime");
       let d;
-      if(mode === "plus") d = new Date(Date.now() + Number(btn.dataset.val)*60000);
-      else if(mode === "halfhour") d = nextHalfOrHourDate();
-      else if(mode === "hour") d = nextHourDate();
-      else d = new Date();
+      if(mode === "plus"){
+        // 累加：作用在「目前欄位裡的值」，不是作用在「現在」，可以連續按疊加
+        const current = field.value ? hmToDate(field.value) : new Date();
+        d = new Date(current.getTime() + Number(btn.dataset.val)*60000);
+      }else if(mode === "halfhour"){
+        // 不累加：對「目前欄位裡的值」無條件進位到下個半點
+        const current = field.value ? hmToDate(field.value) : new Date();
+        d = roundUpToNextHalfHour(current);
+      }else if(mode === "hour"){
+        const current = field.value ? hmToDate(field.value) : new Date();
+        d = roundUpToNextHour(current);
+      }else{
+        // 目前時間：直接重置成現在，清掉之前疊加的結果
+        d = new Date();
+      }
       d.setSeconds(0,0);
-      document.getElementById("startTime").value = fmtHM(d);
+      field.value = fmtHM(d);
+      updatePreview();
     });
   });
 
@@ -601,15 +645,16 @@ async function renderCheckinAdmin(){
     const busCount = document.getElementById("busCount").value;
     const busLabelStyle = document.getElementById("busLabelStyle").value;
     const startTime = document.getElementById("startTime").value;
-    const endTime = document.getElementById("endTime").value;
+    const earlyMinutes = document.getElementById("earlyMinutes").value;
+    const afterMinutes = document.getElementById("afterMinutes").value;
     const staggerMinutes = document.getElementById("staggerMinutes").value;
     try{
-      const res = await apiCreateCheckinRound(activityId, checkinType, busCount, busLabelStyle, startTime, endTime, staggerMinutes, profile.userId);
-      const round = { roundNumber: res.roundNumber, busLabels: res.busLabels, checkinType, startTime: res.startTime, endTime: res.endTime, staggerMinutes: Number(staggerMinutes) || 0 };
+      const res = await apiCreateCheckinRound(activityId, checkinType, busCount, busLabelStyle, startTime, staggerMinutes, earlyMinutes, afterMinutes, profile.userId);
+      const round = { roundNumber: res.roundNumber, busLabels: res.busLabels, checkinType, startTime: res.startTime, endTime: res.endTime, staggerMinutes: Number(staggerMinutes) || 0, earlyMinutes: Number(earlyMinutes) || 0 };
       const timeConfirm = res.startTime ? `（實際時間：${fmtCheckinDateTime(res.startTime)} ~ ${fmtCheckinDateTime(res.endTime)}）` : "";
       document.getElementById("result").innerHTML = `
-        <div class="notice-box" style="background:#e0f2f1; color:var(--teal); border-left-color:var(--teal);">✅ 已建立第 ${res.roundNumber} 次報到（${res.busLabels.join("、")} 車）${timeConfirm}</div>
-        <button class="btn btn-teal btn-block mt-2" id="shareRoundBtn">📣 分享報到訊息到群組</button>
+        <div class="notice-box" style="background:#e0f2f1; color:var(--teal); border-left-color:var(--teal);">✅ 已建立第 ${res.roundNumber} 次報到調查（${res.busLabels.join("、")} 車）${timeConfirm}</div>
+        <button class="btn btn-teal btn-block mt-2" id="shareRoundBtn">📣 分享報到調查訊息到群組</button>
         <a class="btn btn-ghost btn-block mt-2" href="register.html?activityId=${encodeURIComponent(activityId)}&view=checkinStatus&round=${res.roundNumber}">查看登記情形 →</a>
       `;
       document.getElementById("shareRoundBtn").addEventListener("click", ()=> shareCheckinRound(activity, round));
@@ -660,7 +705,7 @@ async function renderCheckin(){
   const roundNumber = params.get("round");
   const bus = params.get("bus") || "";
   if(!roundNumber){
-    app.innerHTML = `<div class="empty">❌ 缺少報到次別參數</div>`;
+    app.innerHTML = `<div class="empty">❌ 缺少報到調查次別參數</div>`;
     return;
   }
   let round = null;
@@ -677,7 +722,7 @@ async function renderCheckin(){
         <div class="text-small" style="margin-bottom: 6px;">${activity.date}｜${activity.title}</div>
         <div style="font-size:0.9rem; color:var(--text-secondary); margin-bottom: 16px;">第 ${roundNumber} 次${round ? "｜" + checkinTypeLabel(round.checkinType) : ""}</div>
         <span class="success-icon">✅</span>
-        <p style="font-weight:700; font-size:1.1rem;">已完成報到登記（${existing.busLabel || bus} 車）</p>
+        <p style="font-weight:700; font-size:1.1rem;">已完成報到調查登記（${existing.busLabel || bus} 車）</p>
         <p class="text-small" style="margin-top:6px;">登記時間：${existing.createdAt}</p>
       </div>
     `;
@@ -695,8 +740,11 @@ async function renderCheckin(){
       busStartDate = new Date(busStartDate.getTime() + busIndex * stagger * 60000);
     }
   }
-  const notYetOpen = busStartDate && new Date() < busStartDate;
-  const openTimeText = busStartDate ? fmtCheckinDateTime(busStartDate.toISOString()) : "";
+  // 實際可以按的時間點是「這台車的開放時間」再往前推 earlyMinutes 分鐘（早鳥寬限期）
+  const early = round ? (Number(round.earlyMinutes) || 0) : 0;
+  const actualOpenDate = busStartDate ? new Date(busStartDate.getTime() - early*60000) : null;
+  const notYetOpen = actualOpenDate && new Date() < actualOpenDate;
+  const openTimeText = actualOpenDate ? fmtCheckinDateTime(actualOpenDate.toISOString()) : "";
 
   app.innerHTML = `
     <div class="panel" style="text-align:center; padding: 32px 20px;">
@@ -718,7 +766,7 @@ async function renderCheckin(){
   `;
 
   if(notYetOpen){
-    const waitMs = busStartDate.getTime() - Date.now();
+    const waitMs = actualOpenDate.getTime() - Date.now();
     setTimeout(()=>{
       const btn = document.getElementById("checkinBtn");
       if(btn){ btn.disabled = false; btn.textContent = "🚀 立即上車登記"; }
@@ -730,7 +778,7 @@ async function renderCheckin(){
     if(btn.disabled) return;
     btn.disabled = true;
     document.getElementById("onWayBtn").disabled = true;
-    document.getElementById("checkinResult").innerHTML = `<span style="color:var(--teal); font-weight:700; font-size:1.1rem;">✅ 報到登記完成！一路順風</span>`;
+    document.getElementById("checkinResult").innerHTML = `<span style="color:var(--teal); font-weight:700; font-size:1.1rem;">✅ 報到調查登記完成！一路順風</span>`;
     submitCheckinWithRetry(activityId, roundNumber, bus, profile.userId, profile.displayName);
   });
 
@@ -758,7 +806,7 @@ async function renderCheckinStatus(){
   const app = document.getElementById("app");
   const roundNumber = params.get("round");
   if(!roundNumber){
-    app.innerHTML = `<div class="empty">❌ 缺少報到次別參數</div>`;
+    app.innerHTML = `<div class="empty">❌ 缺少報到調查次別參數</div>`;
     return;
   }
   const { status } = await checkIsManager(profile.userId);
@@ -768,7 +816,7 @@ async function renderCheckinStatus(){
   }
   app.innerHTML = `
     <div class="panel">
-      <h3 class="panel-title">📋 報到登記情形：第 ${roundNumber} 次</h3>
+      <h3 class="panel-title">📋 報到調查登記情形：第 ${roundNumber} 次</h3>
       <div class="text-small" style="margin-bottom: 12px;">${activity.date}｜${activity.title}</div>
       <button class="btn btn-ghost btn-block" id="refreshStatusBtn">🔄 重新整理（強制向伺服器查詢最新）</button>
       <div id="statusBody" style="margin-top:14px;"></div>
@@ -793,7 +841,7 @@ async function renderCheckinStatus(){
              `).join("")}
            </div>`
         : "";
-      body.innerHTML = `<div style="font-weight:700; margin-bottom:10px; font-size: 0.9rem; color: var(--text-secondary);">共 ${data.total} 人已完成報到</div>` +
+      body.innerHTML = `<div style="font-weight:700; margin-bottom:10px; font-size: 0.9rem; color: var(--text-secondary);">共 ${data.total} 人已完成報到調查</div>` +
         Object.keys(data.byBus).sort().map(bus => `
           <div class="waitlist-activity-section">
             <p class="waitlist-activity-title">🚌 ${bus} 車（${data.byBus[bus].length} 人）</p>
@@ -801,7 +849,7 @@ async function renderCheckinStatus(){
               <div class="waitlist-row">
                 <div>
                   <div class="name">${p.displayName || "(未提供名稱)"}</div>
-                  <div class="meta">報到時間：${p.createdAt}</div>
+                  <div class="meta">報到調查時間：${p.createdAt}</div>
                 </div>
               </div>
             `).join("")}
@@ -859,7 +907,7 @@ async function main(){
     }
     const titleMap = {
       payAdmin: "匯款通知管理", payForm: "已支付登記", payInfo: "支付說明",
-      checkinAdmin: "建立上車報到", checkin: "上車登記", checkinStatus: "報到情形",
+      checkinAdmin: "建立上車報到調查", checkin: "上車登記", checkinStatus: "報到調查情形",
     };
     document.getElementById("pageTitle").textContent = titleMap[view] || "支付登記";
 
