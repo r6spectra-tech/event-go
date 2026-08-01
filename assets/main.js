@@ -7,7 +7,7 @@
    目前有引用的檔案：index.html／detail.html／confirm.html／me.html／share.html／
    admin/edit-activity.html／admin/managers.html／admin/new-activity.html／
    admin/visit-log.html／admin/waitlist.html（共 10 個） */
-const ASSETS_VERSION = "20260728-16";
+const ASSETS_VERSION = "20260728-17";
 
 /* ============================================================
    設定區：只留「GAS Web App 網址」需要寫死在前端，
@@ -795,8 +795,8 @@ async function sharePaymentNotice(activity) {
 /* ============================================================
    上車（出發）報到
    ============================================================ */
-async function apiCreateCheckinRound(activityId, checkinType, busCount, busLabelStyle, startTime, endTime, staggerMinutes, requestedBy) {
-  return apiPost("createCheckinRound", { activityId, checkinType, busCount, busLabelStyle, startTime, endTime, staggerMinutes, requestedBy });
+async function apiCreateCheckinRound(activityId, checkinType, busCount, busLabelStyle, startTime, staggerMinutes, earlyMinutes, afterMinutes, requestedBy) {
+  return apiPost("createCheckinRound", { activityId, checkinType, busCount, busLabelStyle, startTime, staggerMinutes, earlyMinutes, afterMinutes, requestedBy });
 }
 
 async function apiGetCheckinRound(activityId, roundNumber) {
@@ -834,7 +834,7 @@ async function fetchCheckinStatusFile(activityId, roundNumber) {
   }
 }
 
-function checkinTypeLabel(t) { return t === "departure" ? "出發報到" : "上車報到"; }
+function checkinTypeLabel(t) { return t === "departure" ? "出發報到調查" : "上車報到調查"; }
 
 // "HH:MM" 字串加上幾分鐘，回傳新的 "HH:MM" 字串（單純字串運算，不用建立完整 Date 物件）
 function addMinutesToTimeStr(hhmm, minutes) {
@@ -867,7 +867,7 @@ function buildCheckinBubble(activity, round, busLabel, busIndex) {
     { type: "text", text: `第 ${round.roundNumber} 次｜${checkinTypeLabel(round.checkinType)}`, size: "sm", color: "#666666", margin: "sm" },
     { type: "text", text: `${busLabel} 車`, weight: "bold", size: "xxl", color: "#2F7A72", margin: "md" },
   ];
-  if (timeText) bodyContents.push({ type: "text", text: `報到時間：${timeText}`, size: "sm", color: "#666666", margin: "md" });
+  if (timeText) bodyContents.push({ type: "text", text: `報到調查時間：${timeText}`, size: "sm", color: "#666666", margin: "md" });
   return {
     type: "bubble",
     body: { type: "box", layout: "vertical", spacing: "sm", contents: bodyContents },
@@ -875,7 +875,7 @@ function buildCheckinBubble(activity, round, busLabel, busIndex) {
       type: "box", layout: "vertical", spacing: "sm",
       contents: [
         { type: "button", style: "primary", color: "#17233D",
-          action: { type: "uri", label: "上車報到", uri: registerUrl(activity.id, "checkin", { round: round.roundNumber, bus: busLabel }) } },
+          action: { type: "uri", label: "上車報到調查", uri: registerUrl(activity.id, "checkin", { round: round.roundNumber, bus: busLabel }) } },
         { type: "box", layout: "horizontal", spacing: "sm", contents: [
           { type: "button", style: "secondary", height: "sm",
             action: { type: "uri", label: "登記情形", uri: registerUrl(activity.id, "checkinStatus", { round: round.roundNumber }) } },
