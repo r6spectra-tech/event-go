@@ -260,7 +260,7 @@
 </div>
 
 <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
-<script src="assets/main.js?v=20260728-15"></script>
+<script src="assets/main.js?v=20260728-16"></script>
 <script>
 const params = getRealQueryParams();
 const activityId = params.get("activityId");
@@ -493,18 +493,32 @@ async function loadPaymentList(){
 }
 
 /* ---- 報到時間預設值 ---- */
-function defaultCheckinWindow(){
-  const now = new Date();
-  const plus1h = new Date(now.getTime() + 60*60*1000);
-  const start = new Date(plus1h);
-  start.setSeconds(0,0);
-  if(start.getMinutes() > 0){
-    start.setMinutes(0);
-    start.setHours(start.getHours() + 1);
+function fmtHM(d){ return `${String(d.getHours()).padStart(2,"0")}:${String(d.getMinutes()).padStart(2,"0")}`; }
+
+// 下一個半點或整點（例如現在 17:42，下一個是 18:00；現在 17:12，下一個是 17:30）
+function nextHalfOrHourDate(){
+  const d = new Date();
+  d.setSeconds(0,0);
+  if(d.getMinutes() < 30){
+    d.setMinutes(30);
+  }else{
+    d.setMinutes(0);
+    d.setHours(d.getHours()+1);
   }
+  return d;
+}
+function nextHourDate(){
+  const d = new Date();
+  d.setSeconds(0,0);
+  d.setMinutes(0);
+  d.setHours(d.getHours()+1);
+  return d;
+}
+
+function defaultCheckinWindow(){
+  const start = nextHalfOrHourDate();
   const end = new Date(start.getTime() + 30*60*1000);
-  const fmt = d => `${String(d.getHours()).padStart(2,"0")}:${String(d.getMinutes()).padStart(2,"0")}`;
-  return { startStr: fmt(start), endStr: fmt(end) };
+  return { startStr: fmtHM(start), endStr: fmtHM(end) };
 }
 
 /* ---- view=checkinAdmin：管理端建立報到＋分享 ---- */
@@ -542,6 +556,16 @@ async function renderCheckinAdmin(){
       <div class="field">
         <label class="field-label">報到開始時間</label>
         <input id="startTime" type="time" value="${def.startStr}">
+        <div style="display:flex; gap:6px; margin-top:8px;">
+          <button type="button" class="btn btn-ghost quickTimeBtn" data-mode="plus" data-val="30" style="flex:1; padding:8px 4px; font-size:0.82rem;">+30分</button>
+          <button type="button" class="btn btn-ghost quickTimeBtn" data-mode="plus" data-val="60" style="flex:1; padding:8px 4px; font-size:0.82rem;">+60分</button>
+          <button type="button" class="btn btn-ghost quickTimeBtn" data-mode="plus" data-val="120" style="flex:1; padding:8px 4px; font-size:0.82rem;">+120分</button>
+        </div>
+        <div style="display:flex; gap:6px; margin-top:6px;">
+          <button type="button" class="btn btn-ghost quickTimeBtn" data-mode="halfhour" style="flex:1; padding:8px 4px; font-size:0.82rem;">下個半點</button>
+          <button type="button" class="btn btn-ghost quickTimeBtn" data-mode="hour" style="flex:1; padding:8px 4px; font-size:0.82rem;">下個整點</button>
+          <button type="button" class="btn btn-ghost quickTimeBtn" data-mode="now" style="flex:1; padding:8px 4px; font-size:0.82rem;">目前時間</button>
+        </div>
       </div>
       <div class="field">
         <label class="field-label">報到結束時間</label>
@@ -556,6 +580,19 @@ async function renderCheckinAdmin(){
       <div id="result" style="margin-top:16px;"></div>
     </div>
   `;
+  document.querySelectorAll(".quickTimeBtn").forEach(btn=>{
+    btn.addEventListener("click", ()=>{
+      const mode = btn.dataset.mode;
+      let d;
+      if(mode === "plus") d = new Date(Date.now() + Number(btn.dataset.val)*60000);
+      else if(mode === "halfhour") d = nextHalfOrHourDate();
+      else if(mode === "hour") d = nextHourDate();
+      else d = new Date();
+      d.setSeconds(0,0);
+      document.getElementById("startTime").value = fmtHM(d);
+    });
+  });
+
   document.getElementById("createBtn").addEventListener("click", async ()=>{
     const btn = document.getElementById("createBtn");
     btn.disabled = true;
@@ -568,9 +605,10 @@ async function renderCheckinAdmin(){
     const staggerMinutes = document.getElementById("staggerMinutes").value;
     try{
       const res = await apiCreateCheckinRound(activityId, checkinType, busCount, busLabelStyle, startTime, endTime, staggerMinutes, profile.userId);
-      const round = { roundNumber: res.roundNumber, busLabels: res.busLabels, checkinType, startTime, endTime, staggerMinutes: Number(staggerMinutes) || 0 };
+      const round = { roundNumber: res.roundNumber, busLabels: res.busLabels, checkinType, startTime: res.startTime, endTime: res.endTime, staggerMinutes: Number(staggerMinutes) || 0 };
+      const timeConfirm = res.startTime ? `（實際時間：${fmtCheckinDateTime(res.startTime)} ~ ${fmtCheckinDateTime(res.endTime)}）` : "";
       document.getElementById("result").innerHTML = `
-        <div class="notice-box" style="background:#e0f2f1; color:var(--teal); border-left-color:var(--teal);">✅ 已建立第 ${res.roundNumber} 次報到（${res.busLabels.join("、")} 車）</div>
+        <div class="notice-box" style="background:#e0f2f1; color:var(--teal); border-left-color:var(--teal);">✅ 已建立第 ${res.roundNumber} 次報到（${res.busLabels.join("、")} 車）${timeConfirm}</div>
         <button class="btn btn-teal btn-block mt-2" id="shareRoundBtn">📣 分享報到訊息到群組</button>
         <a class="btn btn-ghost btn-block mt-2" href="register.html?activityId=${encodeURIComponent(activityId)}&view=checkinStatus&round=${res.roundNumber}">查看登記情形 →</a>
       `;
@@ -617,14 +655,6 @@ function flushPendingCheckins(){
   }catch(e){}
 }
 
-function timeStrToTodayDate(hhmm){
-  if(!hhmm) return null;
-  const [h,m] = hhmm.split(":").map(Number);
-  const d = new Date();
-  d.setHours(h, m, 0, 0);
-  return d;
-}
-
 async function renderCheckin(){
   const app = document.getElementById("app");
   const roundNumber = params.get("round");
@@ -636,20 +666,37 @@ async function renderCheckin(){
   let round = null;
   try{ round = await apiGetCheckinRound(activityId, roundNumber); }catch(e){}
 
+  // 先查這個人「不分車次」在這次報到裡是不是已經登記過了，登記過的話不管打開哪台車的
+  // 連結，都直接顯示已完成狀態，不會再讓他重複按（也不會被時間鎖住而看起來卡住）
+  let existing = null;
+  try{ existing = await apiGetMyCheckin(activityId, roundNumber, profile.userId); }catch(e){}
+
+  if(existing){
+    app.innerHTML = `
+      <div class="panel" style="text-align:center; padding: 32px 20px;">
+        <div class="text-small" style="margin-bottom: 6px;">${activity.date}｜${activity.title}</div>
+        <div style="font-size:0.9rem; color:var(--text-secondary); margin-bottom: 16px;">第 ${roundNumber} 次${round ? "｜" + checkinTypeLabel(round.checkinType) : ""}</div>
+        <span class="success-icon">✅</span>
+        <p style="font-weight:700; font-size:1.1rem;">已完成報到登記（${existing.busLabel || bus} 車）</p>
+        <p class="text-small" style="margin-top:6px;">登記時間：${existing.createdAt}</p>
+      </div>
+    `;
+    return;
+  }
+
+  // 用 ISO 日期時間直接比較（round.startTime 已經是建立當下換算好的完整日期時間，
+  // 不再用「今天」去猜，修正之前「設定明天早上的時間，但今天比對就顯示已開放」的 bug）
   let busStartDate = null;
   if(round && round.startTime){
     const busIndex = (round.busLabels || []).indexOf(bus);
     const stagger = Number(round.staggerMinutes) || 0;
-    if(busIndex >= 0 && stagger > 0){
-      busStartDate = timeStrToTodayDate(addMinutesToTimeStr(round.startTime, busIndex * stagger));
-    }else{
-      busStartDate = timeStrToTodayDate(round.startTime);
+    busStartDate = new Date(round.startTime);
+    if(busIndex > 0 && stagger > 0){
+      busStartDate = new Date(busStartDate.getTime() + busIndex * stagger * 60000);
     }
   }
   const notYetOpen = busStartDate && new Date() < busStartDate;
-  const openTimeText = busStartDate
-    ? `${String(busStartDate.getHours()).padStart(2,"0")}:${String(busStartDate.getMinutes()).padStart(2,"0")}`
-    : "";
+  const openTimeText = busStartDate ? fmtCheckinDateTime(busStartDate.toISOString()) : "";
 
   app.innerHTML = `
     <div class="panel" style="text-align:center; padding: 32px 20px;">
@@ -660,6 +707,12 @@ async function renderCheckin(){
       <button class="btn btn-primary btn-block mt-4" id="checkinBtn" style="font-size:1.1rem; padding:16px;" ${notYetOpen ? "disabled" : ""}>
         ${notYetOpen ? `⏳ 尚未開放（${openTimeText} 開放）` : "🚀 立即上車登記"}
       </button>
+      <button class="btn btn-ghost btn-block mt-2" id="onWayBtn">🚶 我在路上</button>
+      <div id="onWayOptions" style="display:none; gap:8px; margin-top:8px;">
+        <button class="btn btn-ghost delayBtn" data-min="3" style="flex:1;">晚到 3 分</button>
+        <button class="btn btn-ghost delayBtn" data-min="5" style="flex:1;">晚到 5 分</button>
+        <button class="btn btn-ghost delayBtn" data-min="10" style="flex:1;">晚到 10 分</button>
+      </div>
       <p id="checkinResult" style="margin-top:16px;"></p>
     </div>
   `;
@@ -676,8 +729,27 @@ async function renderCheckin(){
     const btn = document.getElementById("checkinBtn");
     if(btn.disabled) return;
     btn.disabled = true;
+    document.getElementById("onWayBtn").disabled = true;
     document.getElementById("checkinResult").innerHTML = `<span style="color:var(--teal); font-weight:700; font-size:1.1rem;">✅ 報到登記完成！一路順風</span>`;
     submitCheckinWithRetry(activityId, roundNumber, bus, profile.userId, profile.displayName);
+  });
+
+  const onWayBtn = document.getElementById("onWayBtn");
+  const onWayOptions = document.getElementById("onWayOptions");
+  onWayBtn.addEventListener("click", ()=>{
+    onWayOptions.style.display = onWayOptions.style.display === "none" ? "flex" : "none";
+  });
+  document.querySelectorAll(".delayBtn").forEach(btn=>{
+    btn.addEventListener("click", async ()=>{
+      const mins = btn.dataset.min;
+      onWayOptions.style.display = "none";
+      document.getElementById("checkinResult").innerHTML = `<span style="color:#e08a00; font-weight:700;">🚶 已回報晚到約 ${mins} 分鐘</span>`;
+      try{
+        await apiSubmitDelay({ activityId, roundNumber, busLabel: bus, userId: profile.userId, displayName: profile.displayName, delayMinutes: mins });
+      }catch(e){
+        console.warn("回報晚到失敗", e);
+      }
+    });
   });
 }
 
@@ -698,19 +770,29 @@ async function renderCheckinStatus(){
     <div class="panel">
       <h3 class="panel-title">📋 報到登記情形：第 ${roundNumber} 次</h3>
       <div class="text-small" style="margin-bottom: 12px;">${activity.date}｜${activity.title}</div>
-      <button class="btn btn-ghost btn-block" id="refreshStatusBtn">🔄 重新整理</button>
+      <button class="btn btn-ghost btn-block" id="refreshStatusBtn">🔄 重新整理（強制向伺服器查詢最新）</button>
       <div id="statusBody" style="margin-top:14px;"></div>
     </div>
   `;
-  async function loadStatus(){
+
+  function paintStatus(data, opts){
     const body = document.getElementById("statusBody");
-    body.innerHTML = `<div class="welcome-loader" style="padding: 20px;"><div class="spinner-pulse"></div></div>`;
-    try{
-      const data = await apiGetCheckinStatus(profile.userId, activityId, roundNumber);
-      if(!data.total){
-        body.innerHTML = `<div class="empty" style="border:none;">目前還沒有人登記</div>`;
-        return;
-      }
+    if(!data || !data.total){
+      body.innerHTML = `<div class="empty" style="border:none;">目前還沒有人登記</div>`;
+    }else{
+      const delaysHtml = (data.delays && data.delays.length)
+        ? `<div class="waitlist-activity-section" style="border-color:#e08a00;">
+             <p class="waitlist-activity-title" style="background:#fff3e0;">🚶 我在路上（${data.delays.length} 人）</p>
+             ${data.delays.map(p => `
+               <div class="waitlist-row">
+                 <div>
+                   <div class="name">${p.displayName || "(未提供名稱)"}</div>
+                   <div class="meta">晚到約 ${p.delayMinutes} 分鐘｜回報時間：${p.createdAt}</div>
+                 </div>
+               </div>
+             `).join("")}
+           </div>`
+        : "";
       body.innerHTML = `<div style="font-weight:700; margin-bottom:10px; font-size: 0.9rem; color: var(--text-secondary);">共 ${data.total} 人已完成報到</div>` +
         Object.keys(data.byBus).sort().map(bus => `
           <div class="waitlist-activity-section">
@@ -724,13 +806,38 @@ async function renderCheckinStatus(){
               </div>
             `).join("")}
           </div>
-        `).join("");
-    }catch(e){
-      body.innerHTML = `<div class="empty" style="border:none; color:var(--stamp);">讀取失敗：${e.message}</div>`;
+        `).join("") + delaysHtml;
+    }
+    if(opts && opts.fromCache){
+      body.insertAdjacentHTML("afterbegin", `<p style="font-size:0.75rem;color:#999;margin-bottom:8px;">⚡ 這是 GitHub 上的快取資料，背景正在向伺服器確認最新狀態…</p>`);
     }
   }
-  document.getElementById("refreshStatusBtn").addEventListener("click", loadStatus);
-  loadStatus();
+
+  // 先讀 GitHub 的快照（純靜態檔案，沒有 GAS 冷啟動），能秒開先讓管理者看到大致狀況；
+  // 不管有沒有讀到快照，都會接著打 GAS 拿真正最新的資料再覆蓋畫面一次
+  async function loadStatus(forceOnly){
+    const body = document.getElementById("statusBody");
+    if(!forceOnly){
+      const cached = await fetchCheckinStatusFile(activityId, roundNumber);
+      if(cached){
+        paintStatus(cached, { fromCache: true });
+      }else{
+        body.innerHTML = `<div class="welcome-loader" style="padding: 20px;"><div class="spinner-pulse"></div></div>`;
+      }
+    }else{
+      body.innerHTML = `<div class="welcome-loader" style="padding: 20px;"><div class="spinner-pulse"></div></div>`;
+    }
+    try{
+      const data = await apiGetCheckinStatus(profile.userId, activityId, roundNumber);
+      paintStatus(data);
+    }catch(e){
+      if(forceOnly || !document.querySelector(".waitlist-activity-section")){
+        body.innerHTML = `<div class="empty" style="border:none; color:var(--stamp);">讀取失敗：${e.message}</div>`;
+      }
+    }
+  }
+  document.getElementById("refreshStatusBtn").addEventListener("click", ()=> loadStatus(true));
+  loadStatus(false);
 }
 
 async function main(){
