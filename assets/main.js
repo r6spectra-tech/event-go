@@ -7,7 +7,7 @@
    目前有引用的檔案：index.html／detail.html／confirm.html／me.html／share.html／
    admin/edit-activity.html／admin/managers.html／admin/new-activity.html／
    admin/visit-log.html／admin/waitlist.html（共 10 個） */
-const ASSETS_VERSION = "20260728-15";
+const ASSETS_VERSION = "20260728-16";
 
 /* ============================================================
    設定區：只留「GAS Web App 網址」需要寫死在前端，
@@ -811,6 +811,29 @@ async function apiSubmitCheckin(payload) {
   return apiPost("submitCheckin", payload);
 }
 
+async function apiGetMyCheckin(activityId, roundNumber, userId) {
+  return apiGet("myCheckin", { activityId, roundNumber, userId });
+}
+
+async function apiSubmitDelay(payload) {
+  return apiPost("submitDelay", payload);
+}
+
+// 讀 GitHub 上的登記情形快照（data/checkin-status.json），純靜態檔案、沒有 GAS 冷啟動，
+// 給「登記情形」頁面第一次載入時秒開用；讀不到就回傳 null，呼叫端會退回打 GAS。
+async function fetchCheckinStatusFile(activityId, roundNumber) {
+  if (!RUNTIME.rawBaseUrl) await loadConfig();
+  if (!RUNTIME.rawBaseUrl) return null;
+  try {
+    const res = await fetch(`${RUNTIME.rawBaseUrl}/data/checkin-status.json?_=${Date.now()}`, { cache: "no-store" });
+    if (!res.ok) return null;
+    const all = await res.json();
+    return all[`${activityId}:${roundNumber}`] || null;
+  } catch (e) {
+    return null;
+  }
+}
+
 function checkinTypeLabel(t) { return t === "departure" ? "出發報到" : "上車報到"; }
 
 // "HH:MM" 字串加上幾分鐘，回傳新的 "HH:MM" 字串（單純字串運算，不用建立完整 Date 物件）
@@ -823,10 +846,22 @@ function addMinutesToTimeStr(hhmm, minutes) {
   return `${String(nh).padStart(2, "0")}:${String(nm).padStart(2, "0")}`;
 }
 
+// 把 ISO 日期時間字串格式化成適合顯示的 "M/D HH:MM"（帶日期，避免「只顯示時間」在跨日
+// 報到時看起來語意不清楚——這也是這次修正日期歧義 bug 之後，順便讓顯示更明確的地方）
+function fmtCheckinDateTime(iso) {
+  if (!iso) return "";
+  const d = new Date(iso);
+  if (isNaN(d)) return "";
+  return `${d.getMonth() + 1}/${d.getDate()} ${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+}
+
 function buildCheckinBubble(activity, round, busLabel, busIndex) {
   const stagger = Number(round.staggerMinutes) || 0;
-  const busStart = stagger > 0 ? addMinutesToTimeStr(round.startTime, busIndex * stagger) : round.startTime;
-  const timeText = busStart && round.endTime ? `${busStart} ~ ${round.endTime}` : "";
+  let busStartIso = round.startTime;
+  if (stagger > 0 && round.startTime) {
+    busStartIso = new Date(new Date(round.startTime).getTime() + busIndex * stagger * 60000).toISOString();
+  }
+  const timeText = busStartIso && round.endTime ? `${fmtCheckinDateTime(busStartIso)} ~ ${fmtCheckinDateTime(round.endTime)}` : "";
   const bodyContents = [
     { type: "text", text: `${activity.date}${activity.title}`, weight: "bold", size: "md", wrap: true },
     { type: "text", text: `第 ${round.roundNumber} 次｜${checkinTypeLabel(round.checkinType)}`, size: "sm", color: "#666666", margin: "sm" },
