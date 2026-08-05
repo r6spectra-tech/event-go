@@ -260,7 +260,7 @@
 </div>
 
 <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
-<script src="assets/main.js?v=20260728-23"></script>
+<script src="assets/main.js?v=20260728-27"></script>
 <script>
 const params = getRealQueryParams();
 const activityId = params.get("activityId");
@@ -630,15 +630,19 @@ async function renderCheckinAdmin(){
     return;
   }
   const def = defaultCheckinWindow();
-  let firstBusConfig = null;
-  try{ firstBusConfig = await apiGetFirstCheckinBusConfig(activityId); }catch(e){}
+
+  // 「第一次建立時的車輛設定」本機快取沒有時效限制（配置不會變）；有快取就直接用，
+  // 完全不等 GAS。沒有快取的話，先用預設值把表單畫出來，不要卡住整個頁面，
+  // 背景才去問 GAS，問到了才悄悄把欄位補上（如果使用者已經自己手動改過欄位，就不覆蓋）。
+  const busConfigCacheKey = `firstBusConfigCache:${activityId}`;
+  let firstBusConfig = readLocalJson(busConfigCacheKey);
   const defaultBusCount = firstBusConfig ? firstBusConfig.busCount : 1;
   const defaultBusLabelStyle = firstBusConfig ? firstBusConfig.busLabelStyle : "ABC";
   app.innerHTML = `
     <div class="panel">
       <h3 class="panel-title">🚌 建立上車（出發）報到調查</h3>
       <div class="text-small" style="margin-bottom: 16px;">${activity.date}｜${activity.title}</div>
-      ${firstBusConfig ? `<p class="text-small" style="margin-bottom:12px;">💡 已沿用這個活動第一次建立報到調查時的車輛設定，如需調整可直接修改下方選項。</p>` : ""}
+      <p class="text-small" id="busConfigHint" style="margin-bottom:12px;">${firstBusConfig ? "💡 已沿用這個活動第一次建立報到調查時的車輛設定，如需調整可直接修改下方選項。" : ""}</p>
 
       <div class="field">
         <label class="field-label">選擇報到調查別</label>
@@ -730,6 +734,30 @@ async function renderCheckinAdmin(){
     document.getElementById(id).addEventListener("change", updateBusOrderHint);
   });
   updateBusOrderHint();
+
+  // 本機沒有「第一次車輛設定」快取時，背景先試 GitHub 靜態檔案（更快、沒有 GAS 冷啟動，
+  // 也不含個資），讀不到才退回打 GAS；不管哪個管道查到，都不阻擋表單顯示，
+  // 使用者如果動作快、已經自己手動選過欄位，就不要覆蓋他選的
+  if(!firstBusConfig){
+    let userTouchedBusFields = false;
+    ["busCount","busLabelStyle"].forEach(id=>{
+      document.getElementById(id).addEventListener("change", ()=>{ userTouchedBusFields = true; }, { once: true });
+    });
+    (async ()=>{
+      let cfg = null;
+      try{ cfg = await fetchFirstBusConfigFile(activityId); }catch(e){}
+      if(!cfg){
+        try{ cfg = await apiGetFirstCheckinBusConfig(activityId); }catch(e){}
+      }
+      if(!cfg) return;
+      writeLocalJson(busConfigCacheKey, cfg);
+      if(userTouchedBusFields) return; // 使用者已經自己選過了，不要覆蓋
+      document.getElementById("busCount").value = cfg.busCount;
+      document.getElementById("busLabelStyle").value = cfg.busLabelStyle;
+      document.getElementById("busConfigHint").textContent = "💡 已沿用這個活動第一次建立報到調查時的車輛設定，如需調整可直接修改下方選項。";
+      updateBusOrderHint();
+    })();
+  }
 
   document.querySelectorAll(".quickTimeBtn").forEach(btn=>{
     btn.addEventListener("click", ()=>{
@@ -828,6 +856,19 @@ function flushPendingCheckins(){
   }catch(e){}
 }
 
+/* ---- 本機快取小工具：round 資料/項次永久保留（配置不會變），已登記狀態 12 小時後失效 ---- */
+function checkinRoundCacheKey(aid, rn){ return `checkinRoundCache:${aid}:${rn}`; }
+function checkinDoneCacheKey(aid, rn){ return `checkinDoneCache:${aid}:${rn}`; }
+function rosterNumberCacheKey(aid, bus){ return `rosterNumberCache:${aid}:${bus}`; }
+const CHECKIN_DONE_TTL_MS = 12 * 60 * 60 * 1000; // 12 小時，遠比實際報到調查的時窗（通常幾分鐘~幾十分鐘）長，當保險用
+
+function readLocalJson(key){
+  try{ const raw = localStorage.getItem(key); return raw ? JSON.parse(raw) : null; }catch(e){ return null; }
+}
+function writeLocalJson(key, val){
+  try{ localStorage.setItem(key, JSON.stringify(val)); }catch(e){}
+}
+
 async function renderCheckin(){
   const app = document.getElementById("app");
   const roundNumber = params.get("round");
@@ -836,31 +877,48 @@ async function renderCheckin(){
     app.innerHTML = `<div class="empty">❌ 缺少報到調查次別參數</div>`;
     return;
   }
-  let round = null;
-  try{ round = await apiGetCheckinRound(activityId, roundNumber); }catch(e){}
 
-  // 先查這個人「不分車次」在這次報到裡是不是已經登記過了，登記過的話不管打開哪台車的
-  // 連結，都直接顯示已完成狀態，不會再讓他重複按（也不會被時間鎖住而看起來卡住）
-  let existing = null;
-  try{ existing = await apiGetMyCheckin(activityId, roundNumber, profile.userId); }catch(e){}
-
-  if(existing){
+  // 已登記過的狀態（12 小時內）完全不用打 GAS，本機直接秀出結果——這是造成之前
+  // 開啟很慢的主因：以前每次打開都會呼叫 getMyCheckin／getMyRosterNumber 這兩支
+  // 即時查詢 GAS，現在只有「本機真的沒有紀錄」時才會需要打
+  const doneCached = readLocalJson(checkinDoneCacheKey(activityId, roundNumber));
+  if(doneCached && (Date.now() - doneCached.doneAt) < CHECKIN_DONE_TTL_MS){
     app.innerHTML = `
       <div class="panel" style="text-align:center; padding: 32px 20px;">
         <div class="text-small" style="margin-bottom: 6px;">${activity.date}｜${activity.title}</div>
-        <div style="font-size:0.9rem; color:var(--text-secondary); margin-bottom: 16px;">第 ${roundNumber} 次${round ? "｜" + checkinTypeLabel(round.checkinType) : ""}</div>
+        <div style="font-size:0.9rem; color:var(--text-secondary); margin-bottom: 16px;">第 ${roundNumber} 次${doneCached.checkinTypeLabel ? "｜" + doneCached.checkinTypeLabel : ""}</div>
         <span class="success-icon">✅</span>
-        <p style="font-weight:700; font-size:1.1rem;">已完成報到調查登記（${existing.busLabel || bus} 車${existing.rosterNumber ? "｜項次 " + existing.rosterNumber : ""}）</p>
-        <p class="text-small" style="margin-top:6px;">登記時間：${existing.createdAt}</p>
+        <p style="font-weight:700; font-size:1.1rem;">已完成報到調查登記（${doneCached.busLabel || bus} 車${doneCached.rosterNumber ? "｜項次 " + doneCached.rosterNumber : ""}）</p>
       </div>
     `;
     return;
   }
 
-  // 用 ISO 日期時間直接比較（round.startTime 已經是建立當下換算好的完整日期時間，
+  // round 設定資料建立之後不會再變：本機快取（同一台裝置）→ GitHub 靜態檔案（不同裝置、
+  // 同一輪但不同車第一次打開也秒開，不含個資）→ 都沒有才打 GAS
+  let round = readLocalJson(checkinRoundCacheKey(activityId, roundNumber));
+  if(!round){
+    try{ round = await fetchCheckinRoundFile(activityId, roundNumber); }catch(e){}
+    if(!round){
+      try{ round = await apiGetCheckinRound(activityId, roundNumber); }catch(e){}
+    }
+    if(round) writeLocalJson(checkinRoundCacheKey(activityId, roundNumber), round);
+  }
+
+  if(!round){
+    app.innerHTML = `
+      <div class="panel" style="text-align:center; padding: 32px 20px;">
+        <div class="text-small" style="margin-bottom: 6px;">${activity.date}｜${activity.title}</div>
+        <p style="font-weight:700; font-size:1.1rem; color:var(--text-secondary);">🚫 目前未發起上車報到調查</p>
+      </div>
+    `;
+    return;
+  }
+
+  // 用 ISO 日期時間直接比較（round.startTime/endTime 已經是建立當下換算好的完整日期時間，
   // 不再用「今天」去猜，修正之前「設定明天早上的時間，但今天比對就顯示已開放」的 bug）
   let busStartDate = null;
-  if(round && round.startTime){
+  if(round.startTime){
     const busIndex = (round.busLabels || []).indexOf(bus);
     const stagger = Number(round.staggerMinutes) || 0;
     busStartDate = new Date(round.startTime);
@@ -868,15 +926,35 @@ async function renderCheckin(){
       busStartDate = new Date(busStartDate.getTime() + busIndex * stagger * 60000);
     }
   }
-  // 實際可以按的時間點是「這台車的開放時間」再往前推 earlyMinutes 分鐘（早鳥寬限期）
-  const early = round ? (Number(round.earlyMinutes) || 0) : 0;
+  const early = Number(round.earlyMinutes) || 0;
   const actualOpenDate = busStartDate ? new Date(busStartDate.getTime() - early*60000) : null;
-  const notYetOpen = actualOpenDate && new Date() < actualOpenDate;
+  const endDate = round.endTime ? new Date(round.endTime) : null;
+  const now = new Date();
+  const notYetOpen = actualOpenDate && now < actualOpenDate;
+  const isExpired = endDate && now > endDate;
   const openTimeText = actualOpenDate ? fmtCheckinDateTime(actualOpenDate.toISOString()) : "";
 
-  // 查這個人「這個活動、這台車」過去有沒有回報過項次，有的話自動帶出、不用再輸入一次
-  let knownRosterNumber = null;
-  try{ knownRosterNumber = await apiGetMyRosterNumber(activityId, bus, profile.userId); }catch(e){}
+  if(isExpired){
+    app.innerHTML = `
+      <div class="panel" style="text-align:center; padding: 32px 20px;">
+        <div class="text-small" style="margin-bottom: 6px;">${activity.date}｜${activity.title}</div>
+        <div style="font-size:0.9rem; color:var(--text-secondary); margin-bottom: 16px;">第 ${roundNumber} 次｜${checkinTypeLabel(round.checkinType)}</div>
+        <p style="font-weight:700; font-size:1.1rem; color:var(--stamp);">⏰ 已超過調查時間</p>
+        <p class="text-small" style="margin-top:6px;">報到調查時間：${fmtCheckinDateTime(round.startTime)} ~ ${fmtCheckinDateTime(round.endTime)}</p>
+      </div>
+    `;
+    return;
+  }
+
+  // 項次一旦知道就永久沿用同一台裝置，沒有的話才打 GAS 查歷史紀錄；查到了也順便存本機，
+  // 下次同一台裝置、同一台車就不用再查一次
+  let knownRosterNumber = readLocalJson(rosterNumberCacheKey(activityId, bus));
+  if(!knownRosterNumber){
+    try{
+      knownRosterNumber = await apiGetMyRosterNumber(activityId, bus, profile.userId);
+      if(knownRosterNumber) writeLocalJson(rosterNumberCacheKey(activityId, bus), knownRosterNumber);
+    }catch(e){}
+  }
 
   const rosterField = knownRosterNumber
     ? `<p class="text-small" style="margin-top:10px;">項次：<strong>${knownRosterNumber}</strong>（沿用你上次填的號碼）</p>`
@@ -888,7 +966,7 @@ async function renderCheckin(){
   app.innerHTML = `
     <div class="panel" style="text-align:center; padding: 32px 20px;">
       <div class="text-small" style="margin-bottom: 6px;">${activity.date}｜${activity.title}</div>
-      <div style="font-size:0.9rem; color:var(--text-secondary); margin-bottom: 16px;">第 ${roundNumber} 次${round ? "｜" + checkinTypeLabel(round.checkinType) : ""}</div>
+      <div style="font-size:0.9rem; color:var(--text-secondary); margin-bottom: 16px;">第 ${roundNumber} 次｜${checkinTypeLabel(round.checkinType)}</div>
       <div style="font-size: 2.5rem; font-weight: 900; color: var(--teal); margin: 16px 0; background: #e0f2f1; padding: 12px; border-radius: var(--radius-md);">${bus} 車</div>
       ${rosterField}
       <button class="btn btn-primary btn-block mt-4" id="checkinBtn" style="font-size:1.1rem; padding:16px;" ${notYetOpen ? "disabled" : ""}>
@@ -923,10 +1001,14 @@ async function renderCheckin(){
         alert("請先輸入你的項次（名單編號）再登記");
         return;
       }
+      writeLocalJson(rosterNumberCacheKey(activityId, bus), rosterNumber);
     }
     btn.disabled = true;
     document.getElementById("onWayBtn").disabled = true;
     document.getElementById("checkinResult").innerHTML = `<span style="color:var(--teal); font-weight:700; font-size:1.1rem;">✅ 報到調查登記完成！一路順風</span>`;
+    writeLocalJson(checkinDoneCacheKey(activityId, roundNumber), {
+      doneAt: Date.now(), busLabel: bus, rosterNumber, checkinTypeLabel: checkinTypeLabel(round.checkinType),
+    });
     submitCheckinWithRetry(activityId, roundNumber, bus, profile.userId, profile.displayName, rosterNumber);
   });
 
