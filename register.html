@@ -260,7 +260,7 @@
 </div>
 
 <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
-<script src="assets/main.js?v=20260728-17"></script>
+<script src="assets/main.js?v=20260728-20"></script>
 <script>
 const params = getRealQueryParams();
 const activityId = params.get("activityId");
@@ -538,10 +538,15 @@ async function renderCheckinAdmin(){
     return;
   }
   const def = defaultCheckinWindow();
+  let firstBusConfig = null;
+  try{ firstBusConfig = await apiGetFirstCheckinBusConfig(activityId); }catch(e){}
+  const defaultBusCount = firstBusConfig ? firstBusConfig.busCount : 1;
+  const defaultBusLabelStyle = firstBusConfig ? firstBusConfig.busLabelStyle : "ABC";
   app.innerHTML = `
     <div class="panel">
       <h3 class="panel-title">🚌 建立上車（出發）報到調查</h3>
       <div class="text-small" style="margin-bottom: 16px;">${activity.date}｜${activity.title}</div>
+      ${firstBusConfig ? `<p class="text-small" style="margin-bottom:12px;">💡 已沿用這個活動第一次建立報到調查時的車輛設定，如需調整可直接修改下方選項。</p>` : ""}
 
       <div class="field">
         <label class="field-label">選擇報到調查別</label>
@@ -552,13 +557,13 @@ async function renderCheckinAdmin(){
       </div>
       <div class="field">
         <label class="field-label">選擇遊覽車數量</label>
-        <select id="busCount">${Array.from({length:9},(_,i)=>`<option value="${i+1}">${i+1} 台</option>`).join("")}</select>
+        <select id="busCount">${Array.from({length:9},(_,i)=>`<option value="${i+1}" ${i+1===defaultBusCount ? "selected" : ""}>${i+1} 台</option>`).join("")}</select>
       </div>
       <div class="field">
         <label class="field-label">遊覽車編號方式</label>
         <select id="busLabelStyle">
-          <option value="ABC">ABC</option>
-          <option value="123">123</option>
+          <option value="ABC" ${defaultBusLabelStyle==="ABC" ? "selected" : ""}>ABC</option>
+          <option value="123" ${defaultBusLabelStyle==="123" ? "selected" : ""}>123</option>
         </select>
       </div>
       <div class="field">
@@ -589,6 +594,11 @@ async function renderCheckinAdmin(){
         <label class="field-label">每台車依序錯開幾分鐘開放報名</label>
         <input id="staggerMinutes" type="number" min="0" max="30" value="2">
       </div>
+      <div class="field">
+        <label class="field-label">各車預期人數（用逗號分隔，順序對應車次；填了才會產生「未報到名單」，不填就跳過這個功能）</label>
+        <input id="expectedCounts" placeholder="例如 42,43">
+        <p class="text-small" id="busOrderHint" style="margin-top:4px;"></p>
+      </div>
 
       <button class="btn btn-primary btn-block mt-4" id="createBtn">建立並分享</button>
       <div id="result" style="margin-top:16px;"></div>
@@ -610,6 +620,24 @@ async function renderCheckinAdmin(){
     document.getElementById(id).addEventListener("input", updatePreview);
   });
   updatePreview();
+
+  // 車次字母/數字產生規則跟 GAS 端 busLabelsFor() 一致：ABC 或 123，依選擇的數量取前 N 個
+  function currentBusLabels(){
+    const n = Math.max(1, Math.min(9, Number(document.getElementById("busCount").value) || 1));
+    const style = document.getElementById("busLabelStyle").value;
+    const letters = ["A","B","C","D","E","F","G","H","I"];
+    const labels = [];
+    for(let i=0;i<n;i++) labels.push(style === "123" ? String(i+1) : letters[i]);
+    return labels;
+  }
+  function updateBusOrderHint(){
+    const labels = currentBusLabels();
+    document.getElementById("busOrderHint").textContent = `目前車次順序：${labels.join("、")}（上面請依這個順序輸入 ${labels.length} 個數字）`;
+  }
+  ["busCount","busLabelStyle"].forEach(id=>{
+    document.getElementById(id).addEventListener("change", updateBusOrderHint);
+  });
+  updateBusOrderHint();
 
   document.querySelectorAll(".quickTimeBtn").forEach(btn=>{
     btn.addEventListener("click", ()=>{
@@ -648,8 +676,16 @@ async function renderCheckinAdmin(){
     const earlyMinutes = document.getElementById("earlyMinutes").value;
     const afterMinutes = document.getElementById("afterMinutes").value;
     const staggerMinutes = document.getElementById("staggerMinutes").value;
+    const expectedCountsInput = document.getElementById("expectedCounts").value.trim();
+    const busLabelsNow = currentBusLabels();
+    const expectedCounts = {};
+    if(expectedCountsInput){
+      expectedCountsInput.split(",").map(s=>s.trim()).forEach((v,i)=>{
+        if(busLabelsNow[i] && v) expectedCounts[busLabelsNow[i]] = Number(v) || 0;
+      });
+    }
     try{
-      const res = await apiCreateCheckinRound(activityId, checkinType, busCount, busLabelStyle, startTime, staggerMinutes, earlyMinutes, afterMinutes, profile.userId);
+      const res = await apiCreateCheckinRound(activityId, checkinType, busCount, busLabelStyle, startTime, staggerMinutes, earlyMinutes, afterMinutes, expectedCounts, profile.userId);
       const round = { roundNumber: res.roundNumber, busLabels: res.busLabels, checkinType, startTime: res.startTime, endTime: res.endTime, staggerMinutes: Number(staggerMinutes) || 0, earlyMinutes: Number(earlyMinutes) || 0 };
       const timeConfirm = res.startTime ? `（實際時間：${fmtCheckinDateTime(res.startTime)} ~ ${fmtCheckinDateTime(res.endTime)}）` : "";
       document.getElementById("result").innerHTML = `
@@ -672,9 +708,9 @@ function pendingCheckinKey(activityId, roundNumber, userId){
   return `checkinPending:${activityId}:${roundNumber}:${userId}`;
 }
 
-function submitCheckinWithRetry(aid, roundNumber, busLabel, userId, displayName){
+function submitCheckinWithRetry(aid, roundNumber, busLabel, userId, displayName, rosterNumber){
   const key = pendingCheckinKey(aid, roundNumber, userId);
-  const payload = { activityId: aid, roundNumber, busLabel, userId, displayName };
+  const payload = { activityId: aid, roundNumber, busLabel, userId, displayName, rosterNumber: rosterNumber || "" };
   try{ localStorage.setItem(key, JSON.stringify(payload)); }catch(e){}
   attemptCheckinSend(payload, key, 0);
 }
@@ -722,7 +758,7 @@ async function renderCheckin(){
         <div class="text-small" style="margin-bottom: 6px;">${activity.date}｜${activity.title}</div>
         <div style="font-size:0.9rem; color:var(--text-secondary); margin-bottom: 16px;">第 ${roundNumber} 次${round ? "｜" + checkinTypeLabel(round.checkinType) : ""}</div>
         <span class="success-icon">✅</span>
-        <p style="font-weight:700; font-size:1.1rem;">已完成報到調查登記（${existing.busLabel || bus} 車）</p>
+        <p style="font-weight:700; font-size:1.1rem;">已完成報到調查登記（${existing.busLabel || bus} 車${existing.rosterNumber ? "｜項次 " + existing.rosterNumber : ""}）</p>
         <p class="text-small" style="margin-top:6px;">登記時間：${existing.createdAt}</p>
       </div>
     `;
@@ -746,12 +782,23 @@ async function renderCheckin(){
   const notYetOpen = actualOpenDate && new Date() < actualOpenDate;
   const openTimeText = actualOpenDate ? fmtCheckinDateTime(actualOpenDate.toISOString()) : "";
 
+  // 查這個人「這個活動、這台車」過去有沒有回報過項次，有的話自動帶出、不用再輸入一次
+  let knownRosterNumber = null;
+  try{ knownRosterNumber = await apiGetMyRosterNumber(activityId, bus, profile.userId); }catch(e){}
+
+  const rosterField = knownRosterNumber
+    ? `<p class="text-small" style="margin-top:10px;">項次：<strong>${knownRosterNumber}</strong>（沿用你上次填的號碼）</p>`
+    : `<div class="field" style="margin-top:16px; text-align:left;">
+         <label class="field-label">請輸入你的項次（名單編號，第一次填之後每次會自動帶出）</label>
+         <input id="rosterNumberInput" type="number" min="1" placeholder="例如 5">
+       </div>`;
+
   app.innerHTML = `
     <div class="panel" style="text-align:center; padding: 32px 20px;">
       <div class="text-small" style="margin-bottom: 6px;">${activity.date}｜${activity.title}</div>
       <div style="font-size:0.9rem; color:var(--text-secondary); margin-bottom: 16px;">第 ${roundNumber} 次${round ? "｜" + checkinTypeLabel(round.checkinType) : ""}</div>
       <div style="font-size: 2.5rem; font-weight: 900; color: var(--teal); margin: 16px 0; background: #e0f2f1; padding: 12px; border-radius: var(--radius-md);">${bus} 車</div>
-      
+      ${rosterField}
       <button class="btn btn-primary btn-block mt-4" id="checkinBtn" style="font-size:1.1rem; padding:16px;" ${notYetOpen ? "disabled" : ""}>
         ${notYetOpen ? `⏳ 尚未開放（${openTimeText} 開放）` : "🚀 立即上車登記"}
       </button>
@@ -776,10 +823,19 @@ async function renderCheckin(){
   document.getElementById("checkinBtn").addEventListener("click", ()=>{
     const btn = document.getElementById("checkinBtn");
     if(btn.disabled) return;
+    let rosterNumber = knownRosterNumber;
+    if(!rosterNumber){
+      const input = document.getElementById("rosterNumberInput");
+      rosterNumber = input.value.trim();
+      if(!rosterNumber){
+        alert("請先輸入你的項次（名單編號）再登記");
+        return;
+      }
+    }
     btn.disabled = true;
     document.getElementById("onWayBtn").disabled = true;
     document.getElementById("checkinResult").innerHTML = `<span style="color:var(--teal); font-weight:700; font-size:1.1rem;">✅ 報到調查登記完成！一路順風</span>`;
-    submitCheckinWithRetry(activityId, roundNumber, bus, profile.userId, profile.displayName);
+    submitCheckinWithRetry(activityId, roundNumber, bus, profile.userId, profile.displayName, rosterNumber);
   });
 
   const onWayBtn = document.getElementById("onWayBtn");
@@ -821,7 +877,20 @@ async function renderCheckinStatus(){
       <button class="btn btn-ghost btn-block" id="refreshStatusBtn">🔄 重新整理（強制向伺服器查詢最新）</button>
       <div id="statusBody" style="margin-top:14px;"></div>
     </div>
+    <div class="panel">
+      <h3 class="panel-title">🧭 未報到名單</h3>
+      <div id="missingBody"><div class="text-small">載入中…</div></div>
+    </div>
   `;
+
+  // 依項次由小到大排序；沒填項次的人排在最後面（用一個很大的數字墊底，不影響其他人排序）
+  function sortByRoster(list){
+    return [...list].sort((a,b) => {
+      const na = Number(a.rosterNumber) || 999999;
+      const nb = Number(b.rosterNumber) || 999999;
+      return na - nb;
+    });
+  }
 
   function paintStatus(data, opts){
     const body = document.getElementById("statusBody");
@@ -845,10 +914,10 @@ async function renderCheckinStatus(){
         Object.keys(data.byBus).sort().map(bus => `
           <div class="waitlist-activity-section">
             <p class="waitlist-activity-title">🚌 ${bus} 車（${data.byBus[bus].length} 人）</p>
-            ${data.byBus[bus].map(p => `
+            ${sortByRoster(data.byBus[bus]).map(p => `
               <div class="waitlist-row">
                 <div>
-                  <div class="name">${p.displayName || "(未提供名稱)"}</div>
+                  <div class="name">${p.rosterNumber ? `項次${p.rosterNumber}｜` : ""}${p.displayName || "(未提供名稱)"}</div>
                   <div class="meta">報到調查時間：${p.createdAt}</div>
                 </div>
               </div>
@@ -858,6 +927,42 @@ async function renderCheckinStatus(){
     }
     if(opts && opts.fromCache){
       body.insertAdjacentHTML("afterbegin", `<p style="font-size:0.75rem;color:#999;margin-bottom:8px;">⚡ 這是 GitHub 上的快取資料，背景正在向伺服器確認最新狀態…</p>`);
+    }
+  }
+
+  async function loadMissing(){
+    const body = document.getElementById("missingBody");
+    body.innerHTML = `<div class="spinner-wrap" style="padding:10px 0;"><div class="spinner"></div></div>`;
+    try{
+      const data = await apiGetMissingRoster(profile.userId, activityId, roundNumber);
+      const buses = Object.keys(data.byBus || {});
+      if(!buses.length){
+        body.innerHTML = `<div class="text-small">目前沒有未報到名單（可能是全員已到齊，或建立這次報到調查時沒有填「各車預期人數」）</div>`;
+        return;
+      }
+      body.innerHTML = buses.map(bus => {
+        const list = data.byBus[bus];
+        const lines = list.map(m => m.displayName ? `項次${m.rosterNumber} ${m.displayName} 未報到` : `項次${m.rosterNumber} 未報到`);
+        const text = `【${activity.title}】第${roundNumber}次報到調查｜${bus}車未報到名單\n` + lines.join("\n");
+        return `
+          <div class="waitlist-activity-section" style="border-color:var(--stamp);">
+            <p class="waitlist-activity-title" style="background:#ffece5;">🚌 ${bus} 車（${list.length} 人未報到）</p>
+            ${list.map(m => `
+              <div class="waitlist-row">
+                <div class="name">${m.displayName ? `項次${m.rosterNumber} ${m.displayName} 未報到` : `項次${m.rosterNumber} 未報到`}</div>
+              </div>
+            `).join("")}
+            <div style="padding:10px 16px;">
+              <button class="btn btn-teal btn-block sendMissingBtn" data-text="${encodeURIComponent(text)}">📤 透過 LINE 傳送這台車的未報到名單</button>
+            </div>
+          </div>
+        `;
+      }).join("");
+      document.querySelectorAll(".sendMissingBtn").forEach(btn=>{
+        btn.addEventListener("click", ()=> shareTextToTarget(decodeURIComponent(btn.dataset.text)));
+      });
+    }catch(e){
+      body.innerHTML = `<div class="text-small" style="color:var(--stamp);">讀取未報到名單失敗：${e.message}</div>`;
     }
   }
 
@@ -883,6 +988,7 @@ async function renderCheckinStatus(){
         body.innerHTML = `<div class="empty" style="border:none; color:var(--stamp);">讀取失敗：${e.message}</div>`;
       }
     }
+    loadMissing();
   }
   document.getElementById("refreshStatusBtn").addEventListener("click", ()=> loadStatus(true));
   loadStatus(false);
