@@ -7,7 +7,7 @@
    目前有引用的檔案：index.html／detail.html／confirm.html／me.html／share.html／
    admin/edit-activity.html／admin/managers.html／admin/new-activity.html／
    admin/visit-log.html／admin/waitlist.html（共 10 個） */
-const ASSETS_VERSION = "20260728-27";
+const ASSETS_VERSION = "20260728-28";
 
 /* ============================================================
    設定區：只留「GAS Web App 網址」需要寫死在前端，
@@ -1030,7 +1030,11 @@ function buildCheckinBubble(activity, round, busLabel, busIndex) {
   const stagger = Number(round.staggerMinutes) || 0;
   let busStartIso = round.startTime;
   if (stagger > 0 && round.startTime) {
-    busStartIso = new Date(new Date(round.startTime).getTime() + busIndex * stagger * 60000).toISOString();
+    const shifted = new Date(new Date(round.startTime).getTime() + busIndex * stagger * 60000);
+    // new Date(壞掉的字串) 回傳的是「內部無效但依然是物件」的 Invalid Date，不是 null，
+    // 呼叫 .toISOString() 在 Safari 上會直接丟例外——先檢查有效性，無效就沿用原始值，
+    // 讓 fmtCheckinDateTime() 自己處理（它內部已經有 isNaN 防呆，會回傳空字串）。
+    busStartIso = isNaN(shifted.getTime()) ? round.startTime : shifted.toISOString();
   }
   const timeText = busStartIso && round.endTime ? `${fmtCheckinDateTime(busStartIso)} ~ ${fmtCheckinDateTime(round.endTime)}` : "";
   const bodyContents = [
