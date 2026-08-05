@@ -7,7 +7,7 @@
    目前有引用的檔案：index.html／detail.html／confirm.html／me.html／share.html／
    admin/edit-activity.html／admin/managers.html／admin/new-activity.html／
    admin/visit-log.html／admin/waitlist.html（共 10 個） */
-const ASSETS_VERSION = "20260728-23";
+const ASSETS_VERSION = "20260728-27";
 
 /* ============================================================
    設定區：只留「GAS Web App 網址」需要寫死在前端，
@@ -836,6 +836,37 @@ async function apiGetCheckinRound(activityId, roundNumber) {
 
 async function apiGetFirstCheckinBusConfig(activityId) {
   return apiGet("firstCheckinBusConfig", { activityId });
+}
+
+// 讀 GitHub 上的「第一次車輛設定」快照（不含個資，純靜態檔案，沒有 GAS 冷啟動）；
+// 讀不到就回傳 null，呼叫端會退回本機快取，再退回打 GAS。
+async function fetchFirstBusConfigFile(activityId) {
+  if (!RUNTIME.rawBaseUrl) await loadConfig();
+  if (!RUNTIME.rawBaseUrl) return null;
+  try {
+    const res = await fetch(`${RUNTIME.rawBaseUrl}/data/first-bus-config.json?_=${Date.now()}`, { cache: "no-store" });
+    if (!res.ok) return null;
+    const all = await res.json();
+    return all[activityId] || null;
+  } catch (e) {
+    return null;
+  }
+}
+
+// 讀 GitHub 上「某一輪報到調查」的完整設定快照（不含個資，純靜態檔案，沒有 GAS 冷啟動）；
+// 讀不到就回傳 null，呼叫端會退回打 GAS。這是「本機 → GitHub → GAS」優先順序的第二層，
+// 讓「同一輪但不同車、不同裝置」第一次打開也能秒開，不用侷限在本機快取有沒有存過。
+async function fetchCheckinRoundFile(activityId, roundNumber) {
+  if (!RUNTIME.rawBaseUrl) await loadConfig();
+  if (!RUNTIME.rawBaseUrl) return null;
+  try {
+    const res = await fetch(`${RUNTIME.rawBaseUrl}/data/checkin-rounds.json?_=${Date.now()}`, { cache: "no-store" });
+    if (!res.ok) return null;
+    const all = await res.json();
+    return all[`${activityId}:${roundNumber}`] || null;
+  } catch (e) {
+    return null;
+  }
 }
 
 async function apiGetCheckinStatus(requestedBy, activityId, roundNumber) {
