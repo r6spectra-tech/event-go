@@ -4,8 +4,8 @@
    依賴 ./flight-data.js（FLIGHT_SCHEDULE / AIRLINES / DIRECTION_LABEL）
    ============================================================ */
 
-/* FLIGHT_JS_VERSION: 20260728-4 */
-const FLIGHT_JS_VERSION = "20260728-4";
+/* FLIGHT_JS_VERSION: 20260728-5 */
+const FLIGHT_JS_VERSION = "20260728-5";
 
 // 透過 https://liff.line.me/{liffId}?activityId=xxx 這種網址帶參數時，LINE 不會把
 // ?activityId=xxx 直接透傳給我們的頁面，而是包成一個 liff.state 參數（例如
@@ -1147,6 +1147,21 @@ function flightWindowEndMs(map, activityId) {
 // 進頁面時走這支：本機有資料快取就直接用（秒開），沒有的話才第一次打 GAS。
 // 不管快取有沒有命中，都會順便讀一次 GitHub 版本檔（純靜態檔案，不打 GAS，很快），
 // 算出目前的節流窗口還剩多久，讓更新按鈕的冷卻狀態一開頁面就能正確反映。
+// 讀 GitHub 上的班機總覽快照（純靜態檔案，沒有 GAS 冷啟動），給「本機完全沒有快取」的
+// 第一次載入情境用；讀不到就回傳 null，呼叫端會退回打 GAS。
+async function fetchFlightOverviewFile(activityId) {
+  if (!RUNTIME.rawBaseUrl) await loadConfig();
+  if (!RUNTIME.rawBaseUrl) return null;
+  try {
+    const res = await fetch(`${RUNTIME.rawBaseUrl}/data/flight-overview.json?_=${Date.now()}`, { cache: "no-store" });
+    if (!res.ok) return null;
+    const all = await res.json();
+    return (all[activityId] && all[activityId].data) || null;
+  } catch (e) {
+    return null;
+  }
+}
+
 async function loadOverviewFromCacheOrFetch(activityId) {
   const cached = readCache(overviewCacheKey(activityId));
   let windowEndMs = 0;
@@ -1154,8 +1169,15 @@ async function loadOverviewFromCacheOrFetch(activityId) {
     const map = await fetchLastUpdatedMap();
     windowEndMs = flightWindowEndMs(map, activityId);
     if (!cached) {
-      const data = await apiGet("flightOverview", { activityId });
       const remoteVersion = flightEffectiveRemoteVersion(map, activityId);
+      // 本機完全沒有快取（第一次打開這個頁面）：先試著讀 GitHub 上的靜態快照，
+      // 讀得到就直接用、完全跳過 GAS；讀不到才退回原本呼叫 GAS 的方式。
+      const fromFile = await fetchFlightOverviewFile(activityId);
+      if (fromFile) {
+        writeCache(overviewCacheKey(activityId), fromFile, remoteVersion);
+        return { data: fromFile, fetchedAt: Date.now(), windowEndMs };
+      }
+      const data = await apiGet("flightOverview", { activityId });
       writeCache(overviewCacheKey(activityId), data, remoteVersion);
       return { data, fetchedAt: Date.now(), windowEndMs };
     }
