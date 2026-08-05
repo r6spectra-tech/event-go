@@ -7,7 +7,7 @@
    目前有引用的檔案：index.html／detail.html／confirm.html／me.html／share.html／
    admin/edit-activity.html／admin/managers.html／admin/new-activity.html／
    admin/visit-log.html／admin/waitlist.html（共 10 個） */
-const ASSETS_VERSION = "20260728-28";
+const ASSETS_VERSION = "20260728-30";
 
 /* ============================================================
    設定區：只留「GAS Web App 網址」需要寫死在前端，
@@ -172,12 +172,25 @@ const AMAP_URL_RE = /^(https?:\/\/)?(maps\.apple\.com|maps\.apple\.co|maps\.appl
 // 行程逐行解析：不管整行格式長怎樣，都直接找這一行裡有沒有網址，找到就抓出來當連結，
 // 其餘文字（含 | 或 ｜ 這種分隔符號）自動當標籤，比要求「整行必須剛好是網址」更不容易失敗
 // （例如從地圖 App 分享貼過來，網址前後常會帶看不見的字元，或用了全形｜）。
+// 只有整行「開頭」是嚴格的 HH:MM 格式後面接 | 才當作時間前綴，例如 "10:00|集合出發"；
+// 其他 | 的用法（文字|網址）完全不受影響，兩種可以疊加在同一行，例如
+// "10:00|集合出發|https://maps.app.goo.gl/xxx" 一樣先抓時間，剩下的文字再照舊解析。
+function extractTimePrefix(line) {
+  const m = line.match(/^([01]?\d|2[0-3]):([0-5]\d)[|｜]\s*(.*)$/);
+  if (!m) return { time: null, rest: line };
+  return { time: `${m[1].padStart(2, "0")}:${m[2]}`, rest: m[3] };
+}
+
 function parseItineraryLine(rawLine) {
-  const line = rawLine.trim();
-  if (!line) return null;
+  const trimmed = rawLine.trim();
+  if (!trimmed) return null;
+  const { time, rest } = extractTimePrefix(trimmed);
+  const line = rest.trim();
+  if (!line) return time ? { type: "text", text: "", time } : null;
+
   const urlRe = /(https?:\/\/\S+)/gi;
   const matches = [...line.matchAll(urlRe)];
-  if (matches.length === 0) return { type: "text", text: line };
+  if (matches.length === 0) return { type: "text", text: line, time };
 
   // 同一行可能同時有 Google Map／Apple Map／IG 好幾個網址，全部都要各自抓出來、
   // 各自判斷平台，不能只抓第一個——用位置切開整行，文字段落跟每個網址段落依序保留下來
@@ -200,7 +213,7 @@ function parseItineraryLine(rawLine) {
   const tail = line.slice(lastIndex).replace(/^[|｜]\s*/, "").trim();
   if (tail) segments.push({ kind: "text", text: tail });
 
-  return { type: "link", segments };
+  return { type: "link", segments, time };
 }
 
 function parseItineraryDayText(text) {
