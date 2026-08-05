@@ -33,8 +33,19 @@
     "updatedAt": "2026-08-05T14:10:49.672Z"
   },
   "trip009:8": {
-    "total": 0,
-    "byBus": {},
+    "total": 1,
+    "byBus": {
+      "A": [
+        {
+          "activityId": "trip009",
+          "roundNumber": 8,
+          "busLabel": "A",
+          "createdAt": "2026/8/5 22:13:22",
+          "rosterNumber": 33,
+          "serial": "1"
+        }
+      ]
+    },
     "delays": [
       {
         "activityId": "trip009",
@@ -45,6 +56,6 @@
         "serial": "1"
       }
     ],
-    "updatedAt": "2026-08-05T14:12:50.973Z"
+    "updatedAt": "2026-08-05T14:13:34.714Z"
   }
 }
