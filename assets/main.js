@@ -7,7 +7,7 @@
    目前有引用的檔案：index.html／detail.html／confirm.html／me.html／share.html／
    admin/edit-activity.html／admin/managers.html／admin/new-activity.html／
    admin/visit-log.html／admin/waitlist.html（共 10 個） */
-const ASSETS_VERSION = "20260728-17";
+const ASSETS_VERSION = "20260728-20";
 
 /* ============================================================
    設定區：只留「GAS Web App 網址」需要寫死在前端，
@@ -72,13 +72,40 @@ async function loadConfig() {
 /* ============================================================
    活動資料（改由 GAS 提供，GAS 內部才知道 SHEET_ID）
    ============================================================ */
+// 讀 GitHub 上的活動內容快照（純靜態檔案，沒有 GAS 冷啟動）；讀不到（還沒設定 GH_TOKEN、
+// 檔案還不存在、或網路問題）都回傳 null，讓呼叫端知道要退回原本呼叫 GAS 的方式。
+async function fetchActivitiesFile() {
+  if (!RUNTIME.rawBaseUrl) await loadConfig();
+  if (!RUNTIME.rawBaseUrl) return null;
+  try {
+    const res = await fetch(`${RUNTIME.rawBaseUrl}/data/activities.json?_=${Date.now()}`, { cache: "no-store" });
+    if (!res.ok) return null;
+    return await res.json();
+  } catch (e) {
+    return null;
+  }
+}
+
 async function fetchActivities(forceRefresh) {
+  if (!forceRefresh) {
+    const fromFile = await fetchActivitiesFile();
+    if (fromFile) return fromFile.map(normalizeActivity);
+  }
   const params = forceRefresh ? { forceRefresh: "1" } : {};
   const list = await apiGet("activities", params);
   return list.map(normalizeActivity);
 }
 
 async function getActivityById(id, forceRefresh) {
+  if (!forceRefresh) {
+    const fromFile = await fetchActivitiesFile();
+    if (fromFile) {
+      const found = fromFile.find(a => String(a.id) === String(id));
+      if (found) return normalizeActivity(found);
+      // 快照裡找不到這筆（可能是剛建立、快照還沒來得及更新），退回打 GAS 確認一次，
+      // 不要因為快照沒同步到就直接判斷「這個活動不存在」
+    }
+  }
   const params = forceRefresh ? { id, forceRefresh: "1" } : { id };
   const a = await apiGet("activity", params);
   return a ? normalizeActivity(a) : null;
@@ -795,12 +822,16 @@ async function sharePaymentNotice(activity) {
 /* ============================================================
    上車（出發）報到
    ============================================================ */
-async function apiCreateCheckinRound(activityId, checkinType, busCount, busLabelStyle, startTime, staggerMinutes, earlyMinutes, afterMinutes, requestedBy) {
-  return apiPost("createCheckinRound", { activityId, checkinType, busCount, busLabelStyle, startTime, staggerMinutes, earlyMinutes, afterMinutes, requestedBy });
+async function apiCreateCheckinRound(activityId, checkinType, busCount, busLabelStyle, startTime, staggerMinutes, earlyMinutes, afterMinutes, expectedCounts, requestedBy) {
+  return apiPost("createCheckinRound", { activityId, checkinType, busCount, busLabelStyle, startTime, staggerMinutes, earlyMinutes, afterMinutes, expectedCounts, requestedBy });
 }
 
 async function apiGetCheckinRound(activityId, roundNumber) {
   return apiGet("checkinRound", { activityId, roundNumber });
+}
+
+async function apiGetFirstCheckinBusConfig(activityId) {
+  return apiGet("firstCheckinBusConfig", { activityId });
 }
 
 async function apiGetCheckinStatus(requestedBy, activityId, roundNumber) {
@@ -817,6 +848,29 @@ async function apiGetMyCheckin(activityId, roundNumber, userId) {
 
 async function apiSubmitDelay(payload) {
   return apiPost("submitDelay", payload);
+}
+
+async function apiGetMyRosterNumber(activityId, busLabel, userId) {
+  const res = await apiGet("myRosterNumber", { activityId, busLabel, userId });
+  return res ? res.rosterNumber : null;
+}
+
+async function apiGetMissingRoster(requestedBy, activityId, roundNumber) {
+  return apiGet("missingRoster", { requestedBy, activityId, roundNumber });
+}
+
+// 用文字訊息（不是 flex）透過 LINE 的好友/群組選擇器傳送出去，讓管理者可以指定
+// 傳給特定一個人或某個群組（例如把未報到名單傳給某台車的車長）
+async function shareTextToTarget(text) {
+  const ok = await ensureLiff();
+  if (!ok || !liff.isApiAvailable("shareTargetPicker")) {
+    alert("目前環境不支援 LINE 分享，改為複製文字。");
+    try { await navigator.clipboard.writeText(text); alert("已複製到剪貼簿"); } catch (e) {}
+    return;
+  }
+  try {
+    await liff.shareTargetPicker([{ type: "text", text }]);
+  } catch (e) { console.error(e); }
 }
 
 // 讀 GitHub 上的登記情形快照（data/checkin-status.json），純靜態檔案、沒有 GAS 冷啟動，
