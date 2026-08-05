@@ -260,7 +260,7 @@
 </div>
 
 <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
-<script src="assets/main.js?v=20260728-27"></script>
+<script src="assets/main.js?v=20260728-28"></script>
 <script>
 const params = getRealQueryParams();
 const activityId = params.get("activityId");
@@ -925,10 +925,16 @@ async function renderCheckin(){
     if(busIndex > 0 && stagger > 0){
       busStartDate = new Date(busStartDate.getTime() + busIndex * stagger * 60000);
     }
+    // new Date(壞掉的字串) 在 JS 裡不是回傳 null，是回傳一個「內部無效」但依然是物件的
+    // Invalid Date——用 if(busStartDate) 判斷會誤判成「有效」，之後呼叫 .toISOString()
+    // 在 Safari 上會直接丟例外（Chrome 不會，這是為什麼手機上出現、電腦測試沒抓到）。
+    // 這裡明確檢查 isNaN，無效就當作沒有這個時間，不要讓後面的程式碼誤用。
+    if(isNaN(busStartDate.getTime())) busStartDate = null;
   }
   const early = Number(round.earlyMinutes) || 0;
   const actualOpenDate = busStartDate ? new Date(busStartDate.getTime() - early*60000) : null;
-  const endDate = round.endTime ? new Date(round.endTime) : null;
+  let endDate = round.endTime ? new Date(round.endTime) : null;
+  if(endDate && isNaN(endDate.getTime())) endDate = null;
   const now = new Date();
   const notYetOpen = actualOpenDate && now < actualOpenDate;
   const isExpired = endDate && now > endDate;
