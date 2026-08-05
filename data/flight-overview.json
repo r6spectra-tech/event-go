@@ -1,0 +1,863 @@
+{
+  "trip002": {
+    "data": {
+      "go": {
+        "byFlight": [
+          {
+            "date": "2026-09-24",
+            "flights": [
+              {
+                "airline": "bailey",
+                "flightNo": "-",
+                "depTime": "10:30",
+                "arrTime": "11:45",
+                "airport": "budai",
+                "names": [
+                  "阿汪🧸PP.果凍.保健食品歡迎私訊詢問"
+                ]
+              },
+              {
+                "airline": "mandarin",
+                "flightNo": "AE789",
+                "depTime": "14:50",
+                "arrTime": "15:35",
+                "airport": "rmq",
+                "names": [
+                  "🌹𝓜𝓢江將🌹𝓜𝓢",
+                  "烏諾"
+                ]
+              },
+              {
+                "airline": "mandarin",
+                "flightNo": "AE377",
+                "depTime": "18:40",
+                "arrTime": "19:40",
+                "airport": "tsa",
+                "names": [
+                  "Enriko"
+                ]
+              }
+            ]
+          },
+          {
+            "date": "2026-09-25",
+            "flights": [
+              {
+                "airline": "uni",
+                "flightNo": "B7-8601",
+                "depTime": "07:15",
+                "arrTime": "08:05",
+                "airport": "tsa",
+                "names": [
+                  "歐文.K",
+                  "阿清"
+                ]
+              },
+              {
+                "airline": "mandarin",
+                "flightNo": "AE365",
+                "depTime": "08:00",
+                "arrTime": "09:00",
+                "airport": "tsa",
+                "names": [
+                  "毛"
+                ]
+              },
+              {
+                "airline": "mandarin",
+                "flightNo": "AE333",
+                "depTime": "08:45",
+                "arrTime": "09:30",
+                "airport": "khh",
+                "names": [
+                  "龍",
+                  "Vito (仕祐)"
+                ]
+              },
+              {
+                "airline": "bailey",
+                "flightNo": "-",
+                "depTime": "11:00",
+                "arrTime": "12:15",
+                "airport": "budai",
+                "names": [
+                  "呂嘉峰"
+                ]
+              },
+              {
+                "airline": "uni",
+                "flightNo": "B7-8617",
+                "depTime": "13:55",
+                "arrTime": "14:45",
+                "airport": "tsa",
+                "names": [
+                  "HSIN",
+                  "勞㖮嘶이준현むらさき茈"
+                ]
+              },
+              {
+                "airline": "mandarin",
+                "flightNo": "AE373",
+                "depTime": "15:10",
+                "arrTime": "16:10",
+                "airport": "tsa",
+                "names": [
+                  "羅納德",
+                  "Edwin 沈偉業"
+                ]
+              },
+              {
+                "airline": "uni",
+                "flightNo": "B7-9119",
+                "depTime": "15:30",
+                "arrTime": "16:20",
+                "airport": "tsa",
+                "names": [
+                  "塏仔",
+                  "資訊分組-Wei仔",
+                  "江將"
+                ]
+              },
+              {
+                "airline": "mandarin",
+                "flightNo": "AE791",
+                "depTime": "16:05",
+                "arrTime": "16:50",
+                "airport": "rmq",
+                "names": [
+                  "阿均",
+                  "Ben叔"
+                ]
+              },
+              {
+                "airline": "uni",
+                "flightNo": "B7-8621",
+                "depTime": "16:20",
+                "arrTime": "17:20",
+                "airport": "tsa",
+                "names": [
+                  "誠꙼̈先̤̮生̤̫"
+                ]
+              },
+              {
+                "airline": "mandarin",
+                "flightNo": "AE793",
+                "depTime": "16:55",
+                "arrTime": "17:40",
+                "airport": "rmq",
+                "names": [
+                  "=sean="
+                ]
+              },
+              {
+                "airline": "mandarin",
+                "flightNo": "AE385",
+                "depTime": "19:50",
+                "arrTime": "20:50",
+                "airport": "tsa",
+                "names": [
+                  "大雄"
+                ]
+              }
+            ]
+          }
+        ],
+        "byHour": [
+          {
+            "date": "2026-09-24",
+            "hours": [
+              {
+                "hour": "11:00",
+                "airlines": [
+                  {
+                    "airline": "bailey",
+                    "total": 1,
+                    "flights": [
+                      {
+                        "flightNo": "-",
+                        "depTime": "10:30",
+                        "arrTime": "11:45",
+                        "airport": "budai",
+                        "names": [
+                          "阿汪🧸PP.果凍.保健食品歡迎私訊詢問"
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "hour": "15:00",
+                "airlines": [
+                  {
+                    "airline": "mandarin",
+                    "total": 2,
+                    "flights": [
+                      {
+                        "flightNo": "AE789",
+                        "depTime": "14:50",
+                        "arrTime": "15:35",
+                        "airport": "rmq",
+                        "names": [
+                          "🌹𝓜𝓢江將🌹𝓜𝓢",
+                          "烏諾"
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "hour": "19:00",
+                "airlines": [
+                  {
+                    "airline": "mandarin",
+                    "total": 1,
+                    "flights": [
+                      {
+                        "flightNo": "AE377",
+                        "depTime": "18:40",
+                        "arrTime": "19:40",
+                        "airport": "tsa",
+                        "names": [
+                          "Enriko"
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "date": "2026-09-25",
+            "hours": [
+              {
+                "hour": "08:00",
+                "airlines": [
+                  {
+                    "airline": "uni",
+                    "total": 2,
+                    "flights": [
+                      {
+                        "flightNo": "B7-8601",
+                        "depTime": "07:15",
+                        "arrTime": "08:05",
+                        "airport": "tsa",
+                        "names": [
+                          "歐文.K",
+                          "阿清"
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "hour": "09:00",
+                "airlines": [
+                  {
+                    "airline": "mandarin",
+                    "total": 3,
+                    "flights": [
+                      {
+                        "flightNo": "AE333",
+                        "depTime": "08:45",
+                        "arrTime": "09:30",
+                        "airport": "khh",
+                        "names": [
+                          "龍",
+                          "Vito (仕祐)"
+                        ]
+                      },
+                      {
+                        "flightNo": "AE365",
+                        "depTime": "08:00",
+                        "arrTime": "09:00",
+                        "airport": "tsa",
+                        "names": [
+                          "毛"
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "hour": "12:00",
+                "airlines": [
+                  {
+                    "airline": "bailey",
+                    "total": 1,
+                    "flights": [
+                      {
+                        "flightNo": "-",
+                        "depTime": "11:00",
+                        "arrTime": "12:15",
+                        "airport": "budai",
+                        "names": [
+                          "呂嘉峰"
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "hour": "14:00",
+                "airlines": [
+                  {
+                    "airline": "uni",
+                    "total": 2,
+                    "flights": [
+                      {
+                        "flightNo": "B7-8617",
+                        "depTime": "13:55",
+                        "arrTime": "14:45",
+                        "airport": "tsa",
+                        "names": [
+                          "HSIN",
+                          "勞㖮嘶이준현むらさき茈"
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "hour": "16:00",
+                "airlines": [
+                  {
+                    "airline": "mandarin",
+                    "total": 4,
+                    "flights": [
+                      {
+                        "flightNo": "AE373",
+                        "depTime": "15:10",
+                        "arrTime": "16:10",
+                        "airport": "tsa",
+                        "names": [
+                          "羅納德",
+                          "Edwin 沈偉業"
+                        ]
+                      },
+                      {
+                        "flightNo": "AE791",
+                        "depTime": "16:05",
+                        "arrTime": "16:50",
+                        "airport": "rmq",
+                        "names": [
+                          "阿均",
+                          "Ben叔"
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "airline": "uni",
+                    "total": 3,
+                    "flights": [
+                      {
+                        "flightNo": "B7-9119",
+                        "depTime": "15:30",
+                        "arrTime": "16:20",
+                        "airport": "tsa",
+                        "names": [
+                          "塏仔",
+                          "資訊分組-Wei仔",
+                          "江將"
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "hour": "17:00",
+                "airlines": [
+                  {
+                    "airline": "uni",
+                    "total": 1,
+                    "flights": [
+                      {
+                        "flightNo": "B7-8621",
+                        "depTime": "16:20",
+                        "arrTime": "17:20",
+                        "airport": "tsa",
+                        "names": [
+                          "誠꙼̈先̤̮生̤̫"
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "airline": "mandarin",
+                    "total": 1,
+                    "flights": [
+                      {
+                        "flightNo": "AE793",
+                        "depTime": "16:55",
+                        "arrTime": "17:40",
+                        "airport": "rmq",
+                        "names": [
+                          "=sean="
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "hour": "20:00",
+                "airlines": [
+                  {
+                    "airline": "mandarin",
+                    "total": 1,
+                    "flights": [
+                      {
+                        "flightNo": "AE385",
+                        "depTime": "19:50",
+                        "arrTime": "20:50",
+                        "airport": "tsa",
+                        "names": [
+                          "大雄"
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "return": {
+        "byFlight": [
+          {
+            "date": "2026-09-28",
+            "flights": [
+              {
+                "airline": "uni",
+                "flightNo": "B7-8690",
+                "depTime": "08:20",
+                "arrTime": "09:00",
+                "airport": "khh",
+                "names": [
+                  "阿均",
+                  "Ben叔",
+                  "Ivan 愛 ❤️"
+                ]
+              },
+              {
+                "airline": "mandarin",
+                "flightNo": "AE332",
+                "depTime": "09:00",
+                "arrTime": "09:40",
+                "airport": "khh",
+                "names": [
+                  "大雄"
+                ]
+              },
+              {
+                "airline": "uni",
+                "flightNo": "B7-8608",
+                "depTime": "09:50",
+                "arrTime": "10:45",
+                "airport": "tsa",
+                "names": [
+                  "誠꙼̈先̤̮生̤̫"
+                ]
+              },
+              {
+                "airline": "uni",
+                "flightNo": "B7-8638",
+                "depTime": "11:55",
+                "arrTime": "12:35",
+                "airport": "rmq",
+                "names": [
+                  "=Sean="
+                ]
+              },
+              {
+                "airline": "mandarin",
+                "flightNo": "AE368",
+                "depTime": "12:50",
+                "arrTime": "13:45",
+                "airport": "tsa",
+                "names": [
+                  "羅納德",
+                  "Edwin 沈偉業",
+                  "Enriko"
+                ]
+              },
+              {
+                "airline": "mandarin",
+                "flightNo": "AE370",
+                "depTime": "13:30",
+                "arrTime": "14:25",
+                "airport": "tsa",
+                "names": [
+                  "毛"
+                ]
+              },
+              {
+                "airline": "uni",
+                "flightNo": "B7-8622",
+                "depTime": "15:35",
+                "arrTime": "16:25",
+                "airport": "tsa",
+                "names": [
+                  "勞㖮嘶이준현むらさき茈"
+                ]
+              },
+              {
+                "airline": "bailey",
+                "flightNo": "-",
+                "depTime": "16:45",
+                "arrTime": "18:00",
+                "airport": "budai",
+                "names": [
+                  "呂嘉峰",
+                  "阿汪🧸PP.果凍.保健食品歡迎私訊詢問"
+                ]
+              },
+              {
+                "airline": "uni",
+                "flightNo": "B7-9172",
+                "depTime": "17:10",
+                "arrTime": "17:50",
+                "airport": "khh",
+                "names": [
+                  "龍",
+                  "Vito (仕祐)"
+                ]
+              },
+              {
+                "airline": "uni",
+                "flightNo": "B7-8618",
+                "depTime": "18:05",
+                "arrTime": "19:00",
+                "airport": "tsa",
+                "names": [
+                  "HSIN"
+                ]
+              },
+              {
+                "airline": "mandarin",
+                "flightNo": "AE798",
+                "depTime": "20:25",
+                "arrTime": "21:05",
+                "airport": "rmq",
+                "names": [
+                  "🌹𝓜𝓢江將🌹𝓜𝓢",
+                  "烏諾"
+                ]
+              },
+              {
+                "airline": "uni",
+                "flightNo": "B7-9120",
+                "depTime": "20:50",
+                "arrTime": "21:40",
+                "airport": "tsa",
+                "names": [
+                  "塏仔",
+                  "江將"
+                ]
+              }
+            ]
+          },
+          {
+            "date": "2026-09-29",
+            "flights": [
+              {
+                "airline": "uni",
+                "flightNo": "B7-8620",
+                "depTime": "19:20",
+                "arrTime": "20:15",
+                "airport": "tsa",
+                "names": [
+                  "歐文.K",
+                  "阿清",
+                  "資訊分組-Wei仔"
+                ]
+              }
+            ]
+          }
+        ],
+        "byHour": [
+          {
+            "date": "2026-09-28",
+            "hours": [
+              {
+                "hour": "08:00",
+                "airlines": [
+                  {
+                    "airline": "uni",
+                    "total": 3,
+                    "flights": [
+                      {
+                        "flightNo": "B7-8690",
+                        "depTime": "08:20",
+                        "arrTime": "09:00",
+                        "airport": "khh",
+                        "names": [
+                          "阿均",
+                          "Ben叔",
+                          "Ivan 愛 ❤️"
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "hour": "09:00",
+                "airlines": [
+                  {
+                    "airline": "mandarin",
+                    "total": 1,
+                    "flights": [
+                      {
+                        "flightNo": "AE332",
+                        "depTime": "09:00",
+                        "arrTime": "09:40",
+                        "airport": "khh",
+                        "names": [
+                          "大雄"
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "airline": "uni",
+                    "total": 1,
+                    "flights": [
+                      {
+                        "flightNo": "B7-8608",
+                        "depTime": "09:50",
+                        "arrTime": "10:45",
+                        "airport": "tsa",
+                        "names": [
+                          "誠꙼̈先̤̮生̤̫"
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "hour": "11:00",
+                "airlines": [
+                  {
+                    "airline": "uni",
+                    "total": 1,
+                    "flights": [
+                      {
+                        "flightNo": "B7-8638",
+                        "depTime": "11:55",
+                        "arrTime": "12:35",
+                        "airport": "rmq",
+                        "names": [
+                          "=Sean="
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "hour": "12:00",
+                "airlines": [
+                  {
+                    "airline": "mandarin",
+                    "total": 3,
+                    "flights": [
+                      {
+                        "flightNo": "AE368",
+                        "depTime": "12:50",
+                        "arrTime": "13:45",
+                        "airport": "tsa",
+                        "names": [
+                          "羅納德",
+                          "Edwin 沈偉業",
+                          "Enriko"
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "hour": "13:00",
+                "airlines": [
+                  {
+                    "airline": "mandarin",
+                    "total": 1,
+                    "flights": [
+                      {
+                        "flightNo": "AE370",
+                        "depTime": "13:30",
+                        "arrTime": "14:25",
+                        "airport": "tsa",
+                        "names": [
+                          "毛"
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "hour": "15:00",
+                "airlines": [
+                  {
+                    "airline": "uni",
+                    "total": 1,
+                    "flights": [
+                      {
+                        "flightNo": "B7-8622",
+                        "depTime": "15:35",
+                        "arrTime": "16:25",
+                        "airport": "tsa",
+                        "names": [
+                          "勞㖮嘶이준현むらさき茈"
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "hour": "16:00",
+                "airlines": [
+                  {
+                    "airline": "bailey",
+                    "total": 2,
+                    "flights": [
+                      {
+                        "flightNo": "-",
+                        "depTime": "16:45",
+                        "arrTime": "18:00",
+                        "airport": "budai",
+                        "names": [
+                          "呂嘉峰",
+                          "阿汪🧸PP.果凍.保健食品歡迎私訊詢問"
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "hour": "17:00",
+                "airlines": [
+                  {
+                    "airline": "uni",
+                    "total": 2,
+                    "flights": [
+                      {
+                        "flightNo": "B7-9172",
+                        "depTime": "17:10",
+                        "arrTime": "17:50",
+                        "airport": "khh",
+                        "names": [
+                          "龍",
+                          "Vito (仕祐)"
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "hour": "18:00",
+                "airlines": [
+                  {
+                    "airline": "uni",
+                    "total": 1,
+                    "flights": [
+                      {
+                        "flightNo": "B7-8618",
+                        "depTime": "18:05",
+                        "arrTime": "19:00",
+                        "airport": "tsa",
+                        "names": [
+                          "HSIN"
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "hour": "20:00",
+                "airlines": [
+                  {
+                    "airline": "uni",
+                    "total": 2,
+                    "flights": [
+                      {
+                        "flightNo": "B7-9120",
+                        "depTime": "20:50",
+                        "arrTime": "21:40",
+                        "airport": "tsa",
+                        "names": [
+                          "塏仔",
+                          "江將"
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "airline": "mandarin",
+                    "total": 2,
+                    "flights": [
+                      {
+                        "flightNo": "AE798",
+                        "depTime": "20:25",
+                        "arrTime": "21:05",
+                        "airport": "rmq",
+                        "names": [
+                          "🌹𝓜𝓢江將🌹𝓜𝓢",
+                          "烏諾"
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "date": "2026-09-29",
+            "hours": [
+              {
+                "hour": "19:00",
+                "airlines": [
+                  {
+                    "airline": "uni",
+                    "total": 3,
+                    "flights": [
+                      {
+                        "flightNo": "B7-8620",
+                        "depTime": "19:20",
+                        "arrTime": "20:15",
+                        "airport": "tsa",
+                        "names": [
+                          "歐文.K",
+                          "阿清",
+                          "資訊分組-Wei仔"
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    },
+    "updatedAt": "2026-08-05T08:10:21.268Z"
+  }
+}
