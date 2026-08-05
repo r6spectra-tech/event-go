@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>我的活動</title>
-<link rel="stylesheet" href="assets/style.css?v=20260728-20">
+<link rel="stylesheet" href="assets/style.css?v=20260728-23">
 <style>
   /* --- 現代化美化 CSS 擴充 --- */
   :root {
@@ -224,7 +224,7 @@
 </div>
 
 <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
-<script src="assets/main.js?v=20260728-20"></script>
+<script src="assets/main.js?v=20260728-23"></script>
 <script>
 const statusInfo = {
   joined:     { label: "已參加",   cls: "status-green" },
@@ -244,6 +244,58 @@ function resolveStatus(item){
   return statusInfo[item.category] || statusInfo.viewed;
 }
 
+// 用 GitHub 上的公開快照（id-map.json 找自己的 serial，registration-status.json／
+// waitlist-status.json 掃描哪些活動裡有自己）快速算出「已參加」「候補中」這兩類，
+// 不用等 GAS。這兩份快照只保留「還在進行中」的活動（過期活動會被排程自動清掉），
+// 所以掃描範圍本來就不大；查不到自己的 serial（代表這個人從沒被記錄過）就回傳 null，
+// 交給完整版 GAS 查詢處理。觀看/分享紀錄跟已過期活動不在這兩份快照裡，只有完整版
+// GAS 查詢（getMyActivities）才查得到，這是刻意的取捨：那些是低頻率、非共用的個人化
+// 查詢，搬到 GitHub 不划算（詳見前面討論）。
+async function getMyActivitiesFast(userId){
+  const [idMap, activities, regAll, waitAll] = await Promise.all([
+    fetchIdMapFile(),
+    fetchActivities(),
+    fetchRegistrationStatusFile(),
+    fetchWaitlistStatusFile(),
+  ]);
+  const mySerial = idMap[userId];
+  if(mySerial == null) return null;
+
+  const activityMap = {};
+  activities.forEach(a => { activityMap[a.id] = a; });
+
+  const joinedIds = new Set();
+  const waitlistMap = {};
+
+  Object.keys(regAll || {}).forEach(aid => {
+    const entry = regAll[aid];
+    if(entry && entry.list && entry.list.some(p => String(p.serial) === String(mySerial))) {
+      joinedIds.add(aid);
+    }
+  });
+  Object.keys(waitAll || {}).forEach(aid => {
+    const entry = waitAll[aid];
+    if(!entry || !entry.list) return;
+    const mine = entry.list.find(p => String(p.serial) === String(mySerial));
+    if(!mine) return;
+    if(mine.status === "joined") joinedIds.add(aid);
+    else waitlistMap[aid] = mine.status;
+  });
+
+  const today = new Date(); today.setHours(0,0,0,0);
+  const allIds = new Set([...joinedIds, ...Object.keys(waitlistMap)]);
+  const result = [];
+  allIds.forEach(aid => {
+    const act = activityMap[aid];
+    if(!act) return;
+    const category = joinedIds.has(aid) ? "joined" : "waitlisted";
+    let expired = false;
+    if(act.eventDate){ const d = new Date(act.eventDate); if(!isNaN(d)) expired = d < today; }
+    result.push({ activityId: aid, title: act.title, date: act.date, cover: act.cover, category, waitlistStatus: waitlistMap[aid] || null, expired });
+  });
+  return result;
+}
+
 function itemHtml(item){
   const info = resolveStatus(item);
   return `
@@ -261,53 +313,75 @@ function renderList(list){
   return `<div class="activity-grid">${list.map(itemHtml).join("")}</div>`;
 }
 
+function renderPanels(items, opts){
+  const joined   = items.filter(i => !i.expired && i.category === "joined");
+  const waitlist = items.filter(i => !i.expired && i.category === "waitlisted");
+  const viewed   = items.filter(i => !i.expired && i.category === "viewed");
+  const shared   = items.filter(i => !i.expired && i.category === "shared");
+  const expired  = items.filter(i => i.expired);
+
+  const noteHtml = (opts && opts.fromFastCheck)
+    ? `<p style="font-size:0.75rem;color:#94a3b8;text-align:center;margin-bottom:12px;">⚡ 已參加／候補中先用 GitHub 快取顯示，完整記錄（含觀看、分享、已過期活動）背景載入中…</p>`
+    : "";
+
+  document.getElementById("content").innerHTML = noteHtml + `
+    <div class="panel">
+      <p class="panel-title">✅ 已參加的活動</p>
+      <div>${renderList(joined)}</div>
+    </div>
+
+    <div class="panel">
+      <p class="panel-title">⏳ 候補中的活動</p>
+      <div>${renderList(waitlist)}</div>
+    </div>
+
+    <div class="panel">
+      <p class="panel-title">👀 觀看紀錄</p>
+      <div>${opts && opts.fromFastCheck ? `<div class="loading">載入中…</div>` : renderList(viewed)}</div>
+    </div>
+
+    <div class="panel">
+      <p class="panel-title">🔗 分享紀錄</p>
+      <div>${opts && opts.fromFastCheck ? `<div class="loading">載入中…</div>` : renderList(shared)}</div>
+    </div>
+
+    <div class="panel expired-panel">
+      <p class="panel-title">🗄️ 已過期活動</p>
+      <div>${opts && opts.fromFastCheck ? `<div class="loading">載入中…</div>` : renderList(expired)}</div>
+    </div>
+  `;
+}
+
 async function main(){
+  let profile;
   try{
-    await requireLogin();
+    profile = await requireLogin();
   }catch(e){
     console.error(e);
     document.getElementById("content").innerHTML = `<div class="empty">⚠️ 需要 LINE 登入才能查看個人紀錄（${e.message || e}）</div>`;
     return;
   }
 
+  // 先嘗試用 GitHub 快照秒開「已參加」「候補中」這兩類，有結果就先畫出來
+  try{
+    const fast = await getMyActivitiesFast(profile.userId);
+    if(fast && fast.length){
+      renderPanels(fast, { fromFastCheck: true });
+    }
+  }catch(e){
+    console.warn("快速查詢失敗，直接等完整版查詢", e);
+  }
+
+  // 不管快速查詢有沒有結果，都會再打一次完整版 GAS 查詢，補上觀看/分享紀錄跟已過期活動
+  // （這些不在 GitHub 快照裡），也順便用這份最終資料校正一次前面快速查詢的結果
   try{
     const items = await getMyActivities();
-
-    const joined   = items.filter(i => !i.expired && i.category === "joined");
-    const waitlist = items.filter(i => !i.expired && i.category === "waitlisted");
-    const viewed   = items.filter(i => !i.expired && i.category === "viewed");
-    const shared   = items.filter(i => !i.expired && i.category === "shared");
-    const expired  = items.filter(i => i.expired);
-
-    document.getElementById("content").innerHTML = `
-      <div class="panel">
-        <p class="panel-title">✅ 已參加的活動</p>
-        <div>${renderList(joined)}</div>
-      </div>
-
-      <div class="panel">
-        <p class="panel-title">⏳ 候補中的活動</p>
-        <div>${renderList(waitlist)}</div>
-      </div>
-
-      <div class="panel">
-        <p class="panel-title">👀 觀看紀錄</p>
-        <div>${renderList(viewed)}</div>
-      </div>
-
-      <div class="panel">
-        <p class="panel-title">🔗 分享紀錄</p>
-        <div>${renderList(shared)}</div>
-      </div>
-
-      <div class="panel expired-panel">
-        <p class="panel-title">🗄️ 已過期活動</p>
-        <div>${renderList(expired)}</div>
-      </div>
-    `;
+    renderPanels(items, { fromFastCheck: false });
   }catch(e){
     console.error(e);
-    document.getElementById("content").innerHTML = `<div class="empty">❌ 載入失敗：${e.message}</div>`;
+    if(!document.querySelector(".activity-grid")){
+      document.getElementById("content").innerHTML = `<div class="empty">❌ 載入失敗：${e.message}</div>`;
+    }
   }
 }
 

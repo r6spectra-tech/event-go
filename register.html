@@ -260,7 +260,7 @@
 </div>
 
 <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
-<script src="assets/main.js?v=20260728-20"></script>
+<script src="assets/main.js?v=20260728-23"></script>
 <script>
 const params = getRealQueryParams();
 const activityId = params.get("activityId");
@@ -446,6 +446,71 @@ async function renderPayForm(){
   });
 }
 
+/* ---- view=registrations：報名名單（管理端） ---- */
+let regListNameMap = {};
+
+function paintRegistrationList(list){
+  const listEl = document.getElementById("regList");
+  if(!list || !list.length){
+    listEl.innerHTML = `<div class="empty" style="border:none;">目前還沒有人報名</div>`;
+    return;
+  }
+  listEl.innerHTML = `<div style="background: #f9f9f9; padding: 8px 16px; font-size: 0.8rem; color: var(--text-secondary); border-bottom: 1px solid var(--border);">共 ${list.length} 人已報名</div>` + list.map(p => `
+    <div class="waitlist-row">
+      <div>
+        <div class="name">${resolveDisplayName(p, regListNameMap)}</div>
+        <div class="meta">報名時間：${p.joinedAt}</div>
+      </div>
+    </div>
+  `).join("");
+}
+
+async function loadRegistrationList(forceOnly){
+  const listEl = document.getElementById("regList");
+  if(!forceOnly){
+    const [cached, freshNameMap] = await Promise.all([
+      fetchRegistrationStatusFile(activityId),
+      fetchNameMapFile(),
+    ]);
+    regListNameMap = freshNameMap;
+    if(cached && cached.list){
+      paintRegistrationList(cached.list);
+      listEl.insertAdjacentHTML("afterbegin", `<p style="font-size:0.75rem;color:#999;padding:6px 16px 0;">⚡ 這是 GitHub 上的快取資料，背景正在向伺服器確認最新狀態…</p>`);
+    }else{
+      listEl.innerHTML = `<div class="welcome-loader" style="padding: 20px;"><div class="spinner-pulse"></div></div>`;
+    }
+  }else{
+    listEl.innerHTML = `<div class="welcome-loader" style="padding: 20px;"><div class="spinner-pulse"></div></div>`;
+  }
+  try{
+    const list = await apiGetRegistrations(profile.userId, activityId);
+    paintRegistrationList(list);
+  }catch(e){
+    if(forceOnly || !document.querySelector(".waitlist-row")){
+      listEl.innerHTML = `<div class="empty" style="border:none; color:var(--stamp);">讀取失敗：${e.message}</div>`;
+    }
+  }
+}
+
+async function renderRegistrations(){
+  const app = document.getElementById("app");
+  const { status } = await checkIsManager(profile.userId);
+  if(status !== "approved"){
+    app.innerHTML = `<div class="empty">🔒 此頁面僅限核准管理者使用</div>`;
+    return;
+  }
+  app.innerHTML = `
+    <div class="panel">
+      <h3 class="panel-title">📝 報名名單</h3>
+      <div class="text-small" style="margin-bottom: 12px;">${activity.date}｜${activity.title}</div>
+      <button class="btn btn-ghost btn-block" id="refreshRegBtn">🔄 重新整理（強制向伺服器查詢最新）</button>
+      <div id="regList" style="margin-top:16px; border: 1px solid var(--border); border-radius: var(--radius-sm); overflow:hidden;"></div>
+    </div>
+  `;
+  document.getElementById("refreshRegBtn").addEventListener("click", ()=> loadRegistrationList(true));
+  loadRegistrationList(false);
+}
+
 /* ---- view=payAdmin：管理端，發通知＋看名單 ---- */
 async function renderPayAdmin(){
   const app = document.getElementById("app");
@@ -467,29 +532,56 @@ async function renderPayAdmin(){
     </div>
   `;
   document.getElementById("sendBtn").addEventListener("click", ()=> sharePaymentNotice(activity));
-  document.getElementById("refreshBtn").addEventListener("click", loadPaymentList);
+  document.getElementById("refreshBtn").addEventListener("click", ()=> loadPaymentList(true));
   loadPaymentList();
 }
 
-async function loadPaymentList(){
+let payListNameMap = {};
+
+function paintPaymentList(list){
   const listEl = document.getElementById("list");
-  listEl.innerHTML = `<div class="welcome-loader" style="padding: 20px;"><div class="spinner-pulse"></div></div>`;
+  if(!list || !list.length){
+    listEl.innerHTML = `<div class="empty" style="border:none;">目前還沒有人登記支付</div>`;
+    return;
+  }
+  listEl.innerHTML = `<div style="background: #f9f9f9; padding: 8px 16px; font-size: 0.8rem; color: var(--text-secondary); border-bottom: 1px solid var(--border);">共 ${list.length} 人已登記</div>` + list.map(p => `
+    <div class="waitlist-row">
+      <div>
+        <div class="name">${resolveDisplayName(p, payListNameMap)}</div>
+        <div class="meta">${methodLabel(p.method)}${p.last4 ? "／末 4 碼 <span style='font-family:monospace; font-weight:bold; color:#333;'>" + p.last4 + "</span>" : ""}｜${p.updatedAt}</div>
+      </div>
+    </div>
+  `).join("");
+}
+
+// 先讀 GitHub 的支付快照（純靜態檔案，沒有 GAS 冷啟動）秒開；不管有沒有讀到，
+// 都會接著打 GAS 拿真正最新的資料再覆蓋畫面一次。GitHub 快照裡的名字是去識別化過的
+// serial，要另外讀 name-map.json 才能解析回顯示名稱；GAS 直接回傳的資料本來就有
+// 真實姓名，不需要靠 name-map 解析。
+async function loadPaymentList(forceOnly){
+  const listEl = document.getElementById("list");
+  if(!forceOnly){
+    const [cached, freshNameMap] = await Promise.all([
+      fetchPaymentStatusFile(activityId),
+      fetchNameMapFile(),
+    ]);
+    payListNameMap = freshNameMap;
+    if(cached && cached.list){
+      paintPaymentList(cached.list);
+      listEl.insertAdjacentHTML("afterbegin", `<p style="font-size:0.75rem;color:#999;padding:6px 16px 0;">⚡ 這是 GitHub 上的快取資料，背景正在向伺服器確認最新狀態…</p>`);
+    }else{
+      listEl.innerHTML = `<div class="welcome-loader" style="padding: 20px;"><div class="spinner-pulse"></div></div>`;
+    }
+  }else{
+    listEl.innerHTML = `<div class="welcome-loader" style="padding: 20px;"><div class="spinner-pulse"></div></div>`;
+  }
   try{
     const list = await apiGetPayments(profile.userId, activityId);
-    if(!list.length){
-      listEl.innerHTML = `<div class="empty" style="border:none;">目前還沒有人登記支付</div>`;
-      return;
-    }
-    listEl.innerHTML = `<div style="background: #f9f9f9; padding: 8px 16px; font-size: 0.8rem; color: var(--text-secondary); border-bottom: 1px solid var(--border);">共 ${list.length} 人已登記</div>` + list.map(p => `
-      <div class="waitlist-row">
-        <div>
-          <div class="name">${p.displayName || "(未提供名稱)"}</div>
-          <div class="meta">${methodLabel(p.method)}${p.last4 ? "／末 4 碼 <span style='font-family:monospace; font-weight:bold; color:#333;'>" + p.last4 + "</span>" : ""}｜${p.updatedAt}</div>
-        </div>
-      </div>
-    `).join("");
+    paintPaymentList(list);
   }catch(e){
-    listEl.innerHTML = `<div class="empty" style="border:none; color:var(--stamp);">讀取失敗：${e.message}</div>`;
+    if(forceOnly || !document.querySelector(".waitlist-row")){
+      listEl.innerHTML = `<div class="empty" style="border:none; color:var(--stamp);">讀取失敗：${e.message}</div>`;
+    }
   }
 }
 
@@ -861,6 +953,7 @@ async function renderCheckin(){
 async function renderCheckinStatus(){
   const app = document.getElementById("app");
   const roundNumber = params.get("round");
+  let nameMap = {};
   if(!roundNumber){
     app.innerHTML = `<div class="empty">❌ 缺少報到調查次別參數</div>`;
     return;
@@ -903,7 +996,7 @@ async function renderCheckinStatus(){
              ${data.delays.map(p => `
                <div class="waitlist-row">
                  <div>
-                   <div class="name">${p.displayName || "(未提供名稱)"}</div>
+                   <div class="name">${resolveDisplayName(p, nameMap)}</div>
                    <div class="meta">晚到約 ${p.delayMinutes} 分鐘｜回報時間：${p.createdAt}</div>
                  </div>
                </div>
@@ -917,7 +1010,7 @@ async function renderCheckinStatus(){
             ${sortByRoster(data.byBus[bus]).map(p => `
               <div class="waitlist-row">
                 <div>
-                  <div class="name">${p.rosterNumber ? `項次${p.rosterNumber}｜` : ""}${p.displayName || "(未提供名稱)"}</div>
+                  <div class="name">${p.rosterNumber ? `項次${p.rosterNumber}｜` : ""}${resolveDisplayName(p, nameMap)}</div>
                   <div class="meta">報到調查時間：${p.createdAt}</div>
                 </div>
               </div>
@@ -971,7 +1064,11 @@ async function renderCheckinStatus(){
   async function loadStatus(forceOnly){
     const body = document.getElementById("statusBody");
     if(!forceOnly){
-      const cached = await fetchCheckinStatusFile(activityId, roundNumber);
+      const [cached, freshNameMap] = await Promise.all([
+        fetchCheckinStatusFile(activityId, roundNumber),
+        fetchNameMapFile(),
+      ]);
+      nameMap = freshNameMap;
       if(cached){
         paintStatus(cached, { fromCache: true });
       }else{
@@ -1014,6 +1111,7 @@ async function main(){
     const titleMap = {
       payAdmin: "匯款通知管理", payForm: "已支付登記", payInfo: "支付說明",
       checkinAdmin: "建立上車報到調查", checkin: "上車登記", checkinStatus: "報到調查情形",
+      registrations: "報名名單",
     };
     document.getElementById("pageTitle").textContent = titleMap[view] || "支付登記";
 
@@ -1022,6 +1120,7 @@ async function main(){
     else if(view === "checkinAdmin") await renderCheckinAdmin();
     else if(view === "checkin"){ await renderCheckin(); flushPendingCheckins(); }
     else if(view === "checkinStatus") await renderCheckinStatus();
+    else if(view === "registrations") await renderRegistrations();
     else renderPayInfo();
   }catch(e){
     document.getElementById("app").innerHTML = `<div class="empty">載入失敗：${e.message}</div>`;
