@@ -260,7 +260,7 @@
 </div>
 
 <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
-<script src="assets/main.js?v=20260728-28"></script>
+<script src="assets/main.js?v=20260728-30"></script>
 <script>
 const params = getRealQueryParams();
 const activityId = params.get("activityId");
@@ -814,9 +814,11 @@ async function renderCheckinAdmin(){
         <a class="btn btn-ghost btn-block mt-2" href="register.html?activityId=${encodeURIComponent(activityId)}&view=checkinStatus&round=${res.roundNumber}">查看登記情形 →</a>
       `;
       document.getElementById("shareRoundBtn").addEventListener("click", ()=> shareCheckinRound(activity, round));
+      // 建立成功後按鈕保持灰掉，避免手滑重複點擊又建立出下一輪（例如原本要的是第3次，
+      // 不小心多按一次變成建立了第4次）；要再建立新一輪的話，重新整理頁面即可。
+      btn.textContent = "✅ 已建立第 " + res.roundNumber + " 次";
     }catch(e){
       alert("建立失敗：" + e.message);
-    }finally{
       btn.disabled = false;
       btn.textContent = "建立並分享";
     }

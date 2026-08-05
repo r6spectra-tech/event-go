@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>活動詳情</title>
-<link rel="stylesheet" href="assets/style.css?v=20260728-28">
+<link rel="stylesheet" href="assets/style.css?v=20260728-30">
 </head>
 <body>
 
@@ -38,7 +38,7 @@
 </div>
 
 <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
-<script src="assets/main.js?v=20260728-28"></script>
+<script src="assets/main.js?v=20260728-30"></script>
 <script>
 // YouTube / Google Map 都用同一種「文字 chip，點了才跳轉」的呈現方式，多筆就並排、超出邊界自動換行
 function chipRow(items, icon){
@@ -105,7 +105,8 @@ function joinBlock(a){
 // 換成對應小圖示，認不出來的網址也換成 🔗 圖示（多網址情境下不再區分「有沒有寫說明文字」，
 // 一律圖示化，文字段落單純當文字顯示，不會被吃進連結裡）；點圖示開新分頁打開網址。
 function itineraryLineHtml(item){
-  if(item.type === "text") return `<li>${item.text}</li>`;
+  const timeHtml = item.time ? `<span class="itinerary-time">${item.time}</span>` : "";
+  if(item.type === "text") return `<li>${timeHtml}${item.text}</li>`;
 
   const parts = item.segments.map(seg => {
     if (seg.kind === "text") return seg.text;
@@ -116,7 +117,7 @@ function itineraryLineHtml(item){
     else if(seg.isAppleMap) icon = "🗺️";
     return `<a class="itinerary-inline-link" href="${seg.url}" target="_blank" rel="noopener">${icon}</a>`;
   });
-  return `<li class="link-line">${parts.join(" ")}</li>`;
+  return `<li class="link-line">${timeHtml}${parts.join(" ")}</li>`;
 }
 
 function itineraryBlock(a){
