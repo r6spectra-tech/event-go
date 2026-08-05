@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>編輯活動</title>
-<link rel="stylesheet" href="../assets/style.css?v=20260728-28">
+<link rel="stylesheet" href="../assets/style.css?v=20260728-30">
 </head>
 <body>
 
@@ -24,7 +24,7 @@
 </div>
 
 <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
-<script src="../assets/main.js?v=20260728-28"></script>
+<script src="../assets/main.js?v=20260728-30"></script>
 <script>
 let currentProfile = null;
 let activityMap = {};
@@ -47,7 +47,7 @@ function renderDayFields(){
   const wrap = document.getElementById("itineraryDaysWrap");
   wrap.innerHTML = Array.from({length: days}, (_, i) => `
     <div class="field">
-      <label>第 ${i+1} 天行程（換行就斷行，可用「文字|網址」插入 YouTube/Google Map 連結）</label>
+      <label>第 ${i+1} 天行程（換行就斷行，可用「文字|網址」插入 YouTube/Google Map 連結，開頭寫「HH:MM|文字」可以把時間顯示在左側，例如「10:00|西門捷運站集合」）</label>
       <textarea class="dayTextarea itinerary-day-textarea" data-day="${i+1}">${dayTexts[i] || ""}</textarea>
     </div>
   `).join("");
