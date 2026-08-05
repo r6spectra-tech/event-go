@@ -7,7 +7,7 @@
    目前有引用的檔案：index.html／detail.html／confirm.html／me.html／share.html／
    admin/edit-activity.html／admin/managers.html／admin/new-activity.html／
    admin/visit-log.html／admin/waitlist.html（共 10 個） */
-const ASSETS_VERSION = "20260728-20";
+const ASSETS_VERSION = "20260728-23";
 
 /* ============================================================
    設定區：只留「GAS Web App 網址」需要寫死在前端，
@@ -761,6 +761,10 @@ async function adminSyncManagersFile(requestedBy) {
   return apiPost("syncManagersFile", { requestedBy });
 }
 
+async function adminSyncActivitiesFile(requestedBy) {
+  return apiPost("syncActivitiesFile", { requestedBy });
+}
+
 /* ============================================================
    支付登記（匯款/LINE Pay/現金）
    ============================================================ */
@@ -886,6 +890,88 @@ async function fetchCheckinStatusFile(activityId, roundNumber) {
   } catch (e) {
     return null;
   }
+}
+
+// 讀 GitHub 上的支付登記快照（純靜態檔案，沒有 GAS 冷啟動），給「匯款通知管理」頁面
+// 第一次載入時秒開用；讀不到就回傳 null，呼叫端會退回打 GAS。
+async function fetchPaymentStatusFile(activityId) {
+  if (!RUNTIME.rawBaseUrl) await loadConfig();
+  if (!RUNTIME.rawBaseUrl) return null;
+  try {
+    const res = await fetch(`${RUNTIME.rawBaseUrl}/data/payment-status.json?_=${Date.now()}`, { cache: "no-store" });
+    if (!res.ok) return null;
+    const all = await res.json();
+    return all[activityId] || null;
+  } catch (e) {
+    return null;
+  }
+}
+
+// 讀 GitHub 上的候補/報名快照。傳 activityId 只回傳那一筆；不傳就回傳整份檔案
+// （給「我的活動」掃描用，因為要找的是「哪些活動裡有我」，不是特定一個活動）。
+async function fetchWaitlistStatusFile(activityId) {
+  if (!RUNTIME.rawBaseUrl) await loadConfig();
+  if (!RUNTIME.rawBaseUrl) return activityId ? null : {};
+  try {
+    const res = await fetch(`${RUNTIME.rawBaseUrl}/data/waitlist-status.json?_=${Date.now()}`, { cache: "no-store" });
+    if (!res.ok) return activityId ? null : {};
+    const all = await res.json();
+    return activityId ? (all[activityId] || null) : all;
+  } catch (e) {
+    return activityId ? null : {};
+  }
+}
+
+async function fetchRegistrationStatusFile(activityId) {
+  if (!RUNTIME.rawBaseUrl) await loadConfig();
+  if (!RUNTIME.rawBaseUrl) return activityId ? null : {};
+  try {
+    const res = await fetch(`${RUNTIME.rawBaseUrl}/data/registration-status.json?_=${Date.now()}`, { cache: "no-store" });
+    if (!res.ok) return activityId ? null : {};
+    const all = await res.json();
+    return activityId ? (all[activityId] || null) : all;
+  } catch (e) {
+    return activityId ? null : {};
+  }
+}
+
+async function apiGetRegistrations(requestedBy, activityId) {
+  return apiGet("registrations", { requestedBy, activityId });
+}
+
+// 讀 GitHub 上的「userId → serial」對照表，給「我的活動」用來找出自己的 serial 是什麼
+async function fetchIdMapFile() {
+  if (!RUNTIME.rawBaseUrl) await loadConfig();
+  if (!RUNTIME.rawBaseUrl) return {};
+  try {
+    const res = await fetch(`${RUNTIME.rawBaseUrl}/data/id-map.json?_=${Date.now()}`, { cache: "no-store" });
+    if (!res.ok) return {};
+    return await res.json();
+  } catch (e) {
+    return {};
+  }
+}
+
+// 讀 GitHub 上的「serial → displayName」對照表；支付/報到的公開快照裡只有 serial，
+// 要靠這份檔案才能在畫面上顯示出名字。讀不到就回傳空物件，畫面會退化成只顯示序號。
+async function fetchNameMapFile() {
+  if (!RUNTIME.rawBaseUrl) await loadConfig();
+  if (!RUNTIME.rawBaseUrl) return {};
+  try {
+    const res = await fetch(`${RUNTIME.rawBaseUrl}/data/name-map.json?_=${Date.now()}`, { cache: "no-store" });
+    if (!res.ok) return {};
+    return await res.json();
+  } catch (e) {
+    return {};
+  }
+}
+
+// 統一解析「這筆資料要顯示的名字」：真實資料本來就有 displayName 就直接用；
+// 只有 serial（來自去識別化過的公開快照）就查 nameMap，查不到就顯示序號本身。
+function resolveDisplayName(entry, nameMap) {
+  if (entry.displayName) return entry.displayName;
+  if (entry.serial != null) return (nameMap && nameMap[entry.serial]) || `序號 ${entry.serial}`;
+  return "(未提供名稱)";
 }
 
 function checkinTypeLabel(t) { return t === "departure" ? "出發報到調查" : "上車報到調查"; }
