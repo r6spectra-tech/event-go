@@ -7,7 +7,7 @@
    目前有引用的檔案：index.html／detail.html／confirm.html／me.html／share.html／
    admin/edit-activity.html／admin/managers.html／admin/new-activity.html／
    admin/visit-log.html／admin/waitlist.html（共 10 個） */
-const ASSETS_VERSION = "20260728-30";
+const ASSETS_VERSION = "20260728-31";
 
 /* ============================================================
    設定區：只留「GAS Web App 網址」需要寫死在前端，
