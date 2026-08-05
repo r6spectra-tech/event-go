@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>編輯活動</title>
-<link rel="stylesheet" href="../assets/style.css?v=20260728-20">
+<link rel="stylesheet" href="../assets/style.css?v=20260728-23">
 </head>
 <body>
 
@@ -24,7 +24,7 @@
 </div>
 
 <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
-<script src="../assets/main.js?v=20260728-20"></script>
+<script src="../assets/main.js?v=20260728-23"></script>
 <script>
 let currentProfile = null;
 let activityMap = {};
@@ -108,6 +108,7 @@ const formHtml = `
     </div>
 
     <button class="btn btn-primary btn-block" id="submitBtn">儲存變更</button>
+    <button class="btn btn-ghost btn-block" id="syncActivitiesBtn" style="margin-top:8px;">🔄 手動重新同步所有活動內容到 GitHub</button>
     <p id="msg" class="join-note"></p>
   </div>
 `;
@@ -209,6 +210,20 @@ function renderContent(profile){
   document.getElementById("activitySelect").addEventListener("change", (e)=> selectActivity(e.target.value));
   document.getElementById("days").addEventListener("change", renderDayFields);
   document.getElementById("reshuffleCoverBtn").addEventListener("click", renderCoverPicker);
+  document.getElementById("syncActivitiesBtn").addEventListener("click", async ()=>{
+    const btn = document.getElementById("syncActivitiesBtn");
+    btn.disabled = true;
+    btn.textContent = "同步中…";
+    try{
+      await adminSyncActivitiesFile(currentProfile.userId);
+      alert("已重新同步到 GitHub 的 data/activities.json");
+    }catch(e){
+      alert("同步失敗：" + e.message);
+    }finally{
+      btn.disabled = false;
+      btn.textContent = "🔄 手動重新同步所有活動內容到 GitHub";
+    }
+  });
 
   document.getElementById("submitBtn").addEventListener("click", async ()=>{
     const id = document.getElementById("activitySelect").value;
