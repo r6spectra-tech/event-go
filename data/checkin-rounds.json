@@ -1,0 +1,23 @@
+{
+  "trip009:9": {
+    "activityId": "trip009",
+    "roundNumber": 9,
+    "checkinType": "departure",
+    "busCount": 3,
+    "busLabelStyle": "ABC",
+    "busLabels": [
+      "A",
+      "B",
+      "C"
+    ],
+    "startTime": "2026-08-06T01:31:00.000Z",
+    "endTime": "2026-08-06T01:41:00.000Z",
+    "staggerMinutes": 2,
+    "earlyMinutes": 5,
+    "expectedCounts": {
+      "A": 40,
+      "B": 40,
+      "C": 40
+    }
+  }
+}
