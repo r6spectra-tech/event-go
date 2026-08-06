@@ -4,8 +4,8 @@
    依賴 ./flight-data.js（FLIGHT_SCHEDULE / AIRLINES / DIRECTION_LABEL）
    ============================================================ */
 
-/* FLIGHT_JS_VERSION: 20260728-6 */
-const FLIGHT_JS_VERSION = "20260728-6";
+/* FLIGHT_JS_VERSION: 20260728-7 */
+const FLIGHT_JS_VERSION = "20260728-7";
 
 // 透過 https://liff.line.me/{liffId}?activityId=xxx 這種網址帶參數時，LINE 不會把
 // ?activityId=xxx 直接透傳給我們的頁面，而是包成一個 liff.state 參數（例如
@@ -1093,6 +1093,27 @@ async function exportCsv() {
     const a = document.createElement("a");
     a.href = url;
     a.download = `flight-${ADMIN.activityId}-${direction}-${Date.now()}.csv`;
+    const filename = a.download;
+
+    // LINE 的內建瀏覽器對 <a download> 這種下載方式支援很差（常常跳出「開啟外部應用程式」
+    // 之後就沒反應），改用瀏覽器原生的分享功能（Web Share API）優先分享「真正的檔案」——
+    // 這個會跳出手機系統的分享選單，LINE（可以選指定好友或群組）、存到檔案 App、Mail、
+    // AirDrop 都會是選項之一，在 iPhone 的 LINE 內建瀏覽器上支援度不錯。
+    // 注意：LIFF 的 shareTargetPicker 沒辦法送出檔案附件（只能送文字/Flex/圖片），
+    // 所以沒辦法做成「跳出 LINE 好友清單直接分享檔案」，只能靠這個系統層級的分享選單。
+    const file = new File([blob], filename, { type: "text/csv" });
+    if (navigator.canShare && navigator.canShare({ files: [file] })) {
+      try {
+        await navigator.share({ files: [file], title: filename });
+        URL.revokeObjectURL(url);
+        return;
+      } catch (shareErr) {
+        // 使用者自己取消分享（例如按了取消）不算錯誤，安靜結束就好，不用退回下載連結
+        if (shareErr && shareErr.name === "AbortError") { URL.revokeObjectURL(url); return; }
+        console.warn("分享檔案失敗，改用下載連結", shareErr);
+      }
+    }
+    // 不支援檔案分享的環境（少數舊版 Android WebView），退回原本的下載連結方式
     document.body.appendChild(a);
     a.click();
     a.remove();
