@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>支付與報到調查登記</title>
+<title>支付與報到登記</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&family=IBM+Plex+Mono:wght@400;600&display=swap" rel="stylesheet">
 <style>
     :root {
@@ -260,7 +260,7 @@
 </div>
 
 <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
-<script src="assets/main.js?v=20260728-30"></script>
+<script src="assets/main.js?v=20260728-34"></script>
 <script>
 const params = getRealQueryParams();
 const activityId = params.get("activityId");
@@ -691,7 +691,7 @@ async function renderCheckinAdmin(){
         <input id="staggerMinutes" type="number" min="0" max="30" value="2">
       </div>
       <div class="field">
-        <label class="field-label">各車預期人數（用逗號分隔，順序對應車次；填了才會產生「未報到名單」，不填就跳過這個功能）</label>
+        <label class="field-label">各車預期人數（用逗號分隔，順序對應車次；不填的話會改用「這個活動之前所有輪次記錄過的不重複人數」當基礎名單來產生未報到名單）</label>
         <input id="expectedCounts" placeholder="例如 42,43">
         <p class="text-small" id="busOrderHint" style="margin-top:4px;"></p>
       </div>
@@ -876,7 +876,7 @@ async function renderCheckin(){
   const roundNumber = params.get("round");
   const bus = params.get("bus") || "";
   if(!roundNumber){
-    app.innerHTML = `<div class="empty">❌ 缺少報到調查次別參數</div>`;
+    app.innerHTML = `<div class="empty">❌ 缺少報到次別參數</div>`;
     return;
   }
 
@@ -890,7 +890,7 @@ async function renderCheckin(){
         <div class="text-small" style="margin-bottom: 6px;">${activity.date}｜${activity.title}</div>
         <div style="font-size:0.9rem; color:var(--text-secondary); margin-bottom: 16px;">第 ${roundNumber} 次${doneCached.checkinTypeLabel ? "｜" + doneCached.checkinTypeLabel : ""}</div>
         <span class="success-icon">✅</span>
-        <p style="font-weight:700; font-size:1.1rem;">已完成報到調查登記（${doneCached.busLabel || bus} 車${doneCached.rosterNumber ? "｜項次 " + doneCached.rosterNumber : ""}）</p>
+        <p style="font-weight:700; font-size:1.1rem;">已完成報到登記（${doneCached.busLabel || bus} 車${doneCached.rosterNumber ? "｜項次 " + doneCached.rosterNumber : ""}）</p>
       </div>
     `;
     return;
@@ -911,7 +911,7 @@ async function renderCheckin(){
     app.innerHTML = `
       <div class="panel" style="text-align:center; padding: 32px 20px;">
         <div class="text-small" style="margin-bottom: 6px;">${activity.date}｜${activity.title}</div>
-        <p style="font-weight:700; font-size:1.1rem; color:var(--text-secondary);">🚫 目前未發起上車報到調查</p>
+        <p style="font-weight:700; font-size:1.1rem; color:var(--text-secondary);">🚫 目前未發起上車報到</p>
       </div>
     `;
     return;
@@ -947,8 +947,8 @@ async function renderCheckin(){
       <div class="panel" style="text-align:center; padding: 32px 20px;">
         <div class="text-small" style="margin-bottom: 6px;">${activity.date}｜${activity.title}</div>
         <div style="font-size:0.9rem; color:var(--text-secondary); margin-bottom: 16px;">第 ${roundNumber} 次｜${checkinTypeLabel(round.checkinType)}</div>
-        <p style="font-weight:700; font-size:1.1rem; color:var(--stamp);">⏰ 已超過調查時間</p>
-        <p class="text-small" style="margin-top:6px;">報到調查時間：${fmtCheckinDateTime(round.startTime)} ~ ${fmtCheckinDateTime(round.endTime)}</p>
+        <p style="font-weight:700; font-size:1.1rem; color:var(--stamp);">⏰ 已超過報到時間</p>
+        <p class="text-small" style="margin-top:6px;">報到時間：${fmtCheckinDateTime(round.startTime)} ~ ${fmtCheckinDateTime(round.endTime)}</p>
       </div>
     `;
     return;
@@ -1013,7 +1013,7 @@ async function renderCheckin(){
     }
     btn.disabled = true;
     document.getElementById("onWayBtn").disabled = true;
-    document.getElementById("checkinResult").innerHTML = `<span style="color:var(--teal); font-weight:700; font-size:1.1rem;">✅ 報到調查登記完成！一路順風</span>`;
+    document.getElementById("checkinResult").innerHTML = `<span style="color:var(--teal); font-weight:700; font-size:1.1rem;">✅ 報到登記完成！一路順風</span>`;
     writeLocalJson(checkinDoneCacheKey(activityId, roundNumber), {
       doneAt: Date.now(), busLabel: bus, rosterNumber, checkinTypeLabel: checkinTypeLabel(round.checkinType),
     });
@@ -1120,19 +1120,23 @@ async function renderCheckinStatus(){
       const data = await apiGetMissingRoster(profile.userId, activityId, roundNumber);
       const buses = Object.keys(data.byBus || {});
       if(!buses.length){
-        body.innerHTML = `<div class="text-small">目前沒有未報到名單（可能是全員已到齊，或建立這次報到調查時沒有填「各車預期人數」）</div>`;
+        body.innerHTML = `<div class="text-small">目前沒有未報到名單（可能是全員已到齊，或這是這個活動第一次報到調查、還沒有歷史名單可以比對）</div>`;
         return;
       }
       body.innerHTML = buses.map(bus => {
         const list = data.byBus[bus];
-        const lines = list.map(m => m.displayName ? `項次${m.rosterNumber} ${m.displayName} 未報到` : `項次${m.rosterNumber} 未報到`);
-        const text = `【${activity.title}】第${roundNumber}次報到調查｜${bus}車未報到名單\n` + lines.join("\n");
+        const lines = list.map(m => m.rosterNumber
+          ? (m.displayName ? `項次${m.rosterNumber} ${m.displayName} 未報到` : `項次${m.rosterNumber} 未報到`)
+          : `${m.displayName || "(未提供名稱)"} 未報到`);
+        const text = `【${activity.title}】第${roundNumber}次上車報到｜${bus}車未報到名單\n` + lines.join("\n");
         return `
           <div class="waitlist-activity-section" style="border-color:var(--stamp);">
             <p class="waitlist-activity-title" style="background:#ffece5;">🚌 ${bus} 車（${list.length} 人未報到）</p>
             ${list.map(m => `
               <div class="waitlist-row">
-                <div class="name">${m.displayName ? `項次${m.rosterNumber} ${m.displayName} 未報到` : `項次${m.rosterNumber} 未報到`}</div>
+                <div class="name">${m.rosterNumber
+                  ? (m.displayName ? `項次${m.rosterNumber} ${m.displayName} 未報到` : `項次${m.rosterNumber} 未報到`)
+                  : `${m.displayName || "(未提供名稱)"} 未報到`}</div>
               </div>
             `).join("")}
             <div style="padding:10px 16px;">
