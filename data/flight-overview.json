@@ -146,7 +146,7 @@
                 "arrTime": "17:40",
                 "airport": "rmq",
                 "names": [
-                  "=sean="
+                  "Sean"
                 ]
               },
               {
@@ -400,7 +400,7 @@
                         "arrTime": "17:40",
                         "airport": "rmq",
                         "names": [
-                          "=sean="
+                          "Sean"
                         ]
                       }
                     ]
@@ -475,7 +475,7 @@
                 "arrTime": "12:35",
                 "airport": "rmq",
                 "names": [
-                  "=Sean="
+                  "Sean"
                 ]
               },
               {
@@ -658,7 +658,7 @@
                         "arrTime": "12:35",
                         "airport": "rmq",
                         "names": [
-                          "=Sean="
+                          "Sean"
                         ]
                       }
                     ]
@@ -858,6 +858,6 @@
         ]
       }
     },
-    "updatedAt": "2026-08-06T08:10:07.366Z"
+    "updatedAt": "2026-08-06T08:13:15.374Z"
   }
 }
