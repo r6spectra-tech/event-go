@@ -7,7 +7,7 @@
    目前有引用的檔案：index.html／detail.html／confirm.html／me.html／share.html／
    admin/edit-activity.html／admin/managers.html／admin/new-activity.html／
    admin/visit-log.html／admin/waitlist.html（共 10 個） */
-const ASSETS_VERSION = "20260728-32";
+const ASSETS_VERSION = "20260728-34";
 
 /* ============================================================
    設定區：只留「GAS Web App 網址」需要寫死在前端，
@@ -75,7 +75,7 @@ async function loadConfig() {
 // 讀 GitHub 上的活動內容快照（純靜態檔案，沒有 GAS 冷啟動）；讀不到（還沒設定 GH_TOKEN、
 // 檔案還不存在、或網路問題）都回傳 null，讓呼叫端知道要退回原本呼叫 GAS 的方式。
 async function fetchActivitiesFile() {
-  if (!RUNTIME.rawBaseUrl) await loadConfig();
+  if (!RUNTIME.rawBaseUrl) { try { await loadConfig(); } catch (e) { /* 讀不到設定值也沒關係，下一行會用 rawBaseUrl 還是空的去判斷要不要提早返回 */ } }
   if (!RUNTIME.rawBaseUrl) return null;
   try {
     const res = await fetch(`${RUNTIME.rawBaseUrl}/data/activities.json?_=${Date.now()}`, { cache: "no-store" });
@@ -587,7 +587,7 @@ function writeCache(name, data, remoteVersion) {
 // 讀 GitHub 上的輕量版本檔，回傳 { activityId: ISO時間字串, ... }；讀不到就回傳空物件
 // （檔案還不存在、或還沒設定 GH_TOKEN 導致從沒寫過，都算正常情況，不當作錯誤）
 async function fetchLastUpdatedMap() {
-  if (!RUNTIME.rawBaseUrl) await loadConfig();
+  if (!RUNTIME.rawBaseUrl) { try { await loadConfig(); } catch (e) { /* 讀不到設定值也沒關係，下一行會用 rawBaseUrl 還是空的去判斷要不要提早返回 */ } }
   if (!RUNTIME.rawBaseUrl) return {};
   try {
     const res = await fetch(`${RUNTIME.rawBaseUrl}/data/last-updated.json?_=${Date.now()}`, { cache: "no-store" });
@@ -662,7 +662,7 @@ async function applyManager() {
 // 讀 GitHub 上的輕量管理者名單檔；讀不到（還沒設定 GH_TOKEN、檔案還不存在、或網路問題）
 // 都回傳 null，讓呼叫端知道要退回原本呼叫 GAS 的方式，不當作真正的錯誤。
 async function fetchManagersFile() {
-  if (!RUNTIME.rawBaseUrl) await loadConfig();
+  if (!RUNTIME.rawBaseUrl) { try { await loadConfig(); } catch (e) { /* 讀不到設定值也沒關係，下一行會用 rawBaseUrl 還是空的去判斷要不要提早返回 */ } }
   if (!RUNTIME.rawBaseUrl) return null;
   try {
     const res = await fetch(`${RUNTIME.rawBaseUrl}/data/managers.json?_=${Date.now()}`, { cache: "no-store" });
@@ -854,7 +854,7 @@ async function apiGetFirstCheckinBusConfig(activityId) {
 // 讀 GitHub 上的「第一次車輛設定」快照（不含個資，純靜態檔案，沒有 GAS 冷啟動）；
 // 讀不到就回傳 null，呼叫端會退回本機快取，再退回打 GAS。
 async function fetchFirstBusConfigFile(activityId) {
-  if (!RUNTIME.rawBaseUrl) await loadConfig();
+  if (!RUNTIME.rawBaseUrl) { try { await loadConfig(); } catch (e) { /* 讀不到設定值也沒關係，下一行會用 rawBaseUrl 還是空的去判斷要不要提早返回 */ } }
   if (!RUNTIME.rawBaseUrl) return null;
   try {
     const res = await fetch(`${RUNTIME.rawBaseUrl}/data/first-bus-config.json?_=${Date.now()}`, { cache: "no-store" });
@@ -870,7 +870,7 @@ async function fetchFirstBusConfigFile(activityId) {
 // 讀不到就回傳 null，呼叫端會退回打 GAS。這是「本機 → GitHub → GAS」優先順序的第二層，
 // 讓「同一輪但不同車、不同裝置」第一次打開也能秒開，不用侷限在本機快取有沒有存過。
 async function fetchCheckinRoundFile(activityId, roundNumber) {
-  if (!RUNTIME.rawBaseUrl) await loadConfig();
+  if (!RUNTIME.rawBaseUrl) { try { await loadConfig(); } catch (e) { /* 讀不到設定值也沒關係，下一行會用 rawBaseUrl 還是空的去判斷要不要提早返回 */ } }
   if (!RUNTIME.rawBaseUrl) return null;
   try {
     const res = await fetch(`${RUNTIME.rawBaseUrl}/data/checkin-rounds.json?_=${Date.now()}`, { cache: "no-store" });
@@ -924,7 +924,7 @@ async function shareTextToTarget(text) {
 // 讀 GitHub 上的登記情形快照（data/checkin-status.json），純靜態檔案、沒有 GAS 冷啟動，
 // 給「登記情形」頁面第一次載入時秒開用；讀不到就回傳 null，呼叫端會退回打 GAS。
 async function fetchCheckinStatusFile(activityId, roundNumber) {
-  if (!RUNTIME.rawBaseUrl) await loadConfig();
+  if (!RUNTIME.rawBaseUrl) { try { await loadConfig(); } catch (e) { /* 讀不到設定值也沒關係，下一行會用 rawBaseUrl 還是空的去判斷要不要提早返回 */ } }
   if (!RUNTIME.rawBaseUrl) return null;
   try {
     const res = await fetch(`${RUNTIME.rawBaseUrl}/data/checkin-status.json?_=${Date.now()}`, { cache: "no-store" });
@@ -939,7 +939,7 @@ async function fetchCheckinStatusFile(activityId, roundNumber) {
 // 讀 GitHub 上的支付登記快照（純靜態檔案，沒有 GAS 冷啟動），給「匯款通知管理」頁面
 // 第一次載入時秒開用；讀不到就回傳 null，呼叫端會退回打 GAS。
 async function fetchPaymentStatusFile(activityId) {
-  if (!RUNTIME.rawBaseUrl) await loadConfig();
+  if (!RUNTIME.rawBaseUrl) { try { await loadConfig(); } catch (e) { /* 讀不到設定值也沒關係，下一行會用 rawBaseUrl 還是空的去判斷要不要提早返回 */ } }
   if (!RUNTIME.rawBaseUrl) return null;
   try {
     const res = await fetch(`${RUNTIME.rawBaseUrl}/data/payment-status.json?_=${Date.now()}`, { cache: "no-store" });
@@ -954,7 +954,7 @@ async function fetchPaymentStatusFile(activityId) {
 // 讀 GitHub 上的候補/報名快照。傳 activityId 只回傳那一筆；不傳就回傳整份檔案
 // （給「我的活動」掃描用，因為要找的是「哪些活動裡有我」，不是特定一個活動）。
 async function fetchWaitlistStatusFile(activityId) {
-  if (!RUNTIME.rawBaseUrl) await loadConfig();
+  if (!RUNTIME.rawBaseUrl) { try { await loadConfig(); } catch (e) { /* 讀不到設定值也沒關係，下一行會用 rawBaseUrl 還是空的去判斷要不要提早返回 */ } }
   if (!RUNTIME.rawBaseUrl) return activityId ? null : {};
   try {
     const res = await fetch(`${RUNTIME.rawBaseUrl}/data/waitlist-status.json?_=${Date.now()}`, { cache: "no-store" });
@@ -967,7 +967,7 @@ async function fetchWaitlistStatusFile(activityId) {
 }
 
 async function fetchRegistrationStatusFile(activityId) {
-  if (!RUNTIME.rawBaseUrl) await loadConfig();
+  if (!RUNTIME.rawBaseUrl) { try { await loadConfig(); } catch (e) { /* 讀不到設定值也沒關係，下一行會用 rawBaseUrl 還是空的去判斷要不要提早返回 */ } }
   if (!RUNTIME.rawBaseUrl) return activityId ? null : {};
   try {
     const res = await fetch(`${RUNTIME.rawBaseUrl}/data/registration-status.json?_=${Date.now()}`, { cache: "no-store" });
@@ -985,7 +985,7 @@ async function apiGetRegistrations(requestedBy, activityId) {
 
 // 讀 GitHub 上的「userId → serial」對照表，給「我的活動」用來找出自己的 serial 是什麼
 async function fetchIdMapFile() {
-  if (!RUNTIME.rawBaseUrl) await loadConfig();
+  if (!RUNTIME.rawBaseUrl) { try { await loadConfig(); } catch (e) { /* 讀不到設定值也沒關係，下一行會用 rawBaseUrl 還是空的去判斷要不要提早返回 */ } }
   if (!RUNTIME.rawBaseUrl) return {};
   try {
     const res = await fetch(`${RUNTIME.rawBaseUrl}/data/id-map.json?_=${Date.now()}`, { cache: "no-store" });
@@ -999,7 +999,7 @@ async function fetchIdMapFile() {
 // 讀 GitHub 上的「serial → displayName」對照表；支付/報到的公開快照裡只有 serial，
 // 要靠這份檔案才能在畫面上顯示出名字。讀不到就回傳空物件，畫面會退化成只顯示序號。
 async function fetchNameMapFile() {
-  if (!RUNTIME.rawBaseUrl) await loadConfig();
+  if (!RUNTIME.rawBaseUrl) { try { await loadConfig(); } catch (e) { /* 讀不到設定值也沒關係，下一行會用 rawBaseUrl 還是空的去判斷要不要提早返回 */ } }
   if (!RUNTIME.rawBaseUrl) return {};
   try {
     const res = await fetch(`${RUNTIME.rawBaseUrl}/data/name-map.json?_=${Date.now()}`, { cache: "no-store" });
@@ -1018,7 +1018,7 @@ function resolveDisplayName(entry, nameMap) {
   return "(未提供名稱)";
 }
 
-function checkinTypeLabel(t) { return t === "departure" ? "出發報到調查" : "上車報到調查"; }
+function checkinTypeLabel(t) { return t === "departure" ? "出發報到" : "上車報到"; }
 
 // "HH:MM" 字串加上幾分鐘，回傳新的 "HH:MM" 字串（單純字串運算，不用建立完整 Date 物件）
 function addMinutesToTimeStr(hhmm, minutes) {
@@ -1055,7 +1055,7 @@ function buildCheckinBubble(activity, round, busLabel, busIndex) {
     { type: "text", text: `第 ${round.roundNumber} 次｜${checkinTypeLabel(round.checkinType)}`, size: "sm", color: "#666666", margin: "sm" },
     { type: "text", text: `${busLabel} 車`, weight: "bold", size: "xxl", color: "#2F7A72", margin: "md" },
   ];
-  if (timeText) bodyContents.push({ type: "text", text: `報到調查時間：${timeText}`, size: "sm", color: "#666666", margin: "md" });
+  if (timeText) bodyContents.push({ type: "text", text: `報到時間：${timeText}`, size: "sm", color: "#666666", margin: "md" });
   return {
     type: "bubble",
     body: { type: "box", layout: "vertical", spacing: "sm", contents: bodyContents },
@@ -1063,7 +1063,7 @@ function buildCheckinBubble(activity, round, busLabel, busIndex) {
       type: "box", layout: "vertical", spacing: "sm",
       contents: [
         { type: "button", style: "primary", color: "#17233D",
-          action: { type: "uri", label: "上車報到調查", uri: registerUrl(activity.id, "checkin", { round: round.roundNumber, bus: busLabel }) } },
+          action: { type: "uri", label: "上車報到", uri: registerUrl(activity.id, "checkin", { round: round.roundNumber, bus: busLabel }) } },
         { type: "box", layout: "horizontal", spacing: "sm", contents: [
           { type: "button", style: "secondary", height: "sm",
             action: { type: "uri", label: "登記情形", uri: registerUrl(activity.id, "checkinStatus", { round: round.roundNumber }) } },
