@@ -181,11 +181,12 @@ button:disabled, .btn:disabled, button[disabled], .btn[disabled]{
 .itinerary-list{ list-style:none; margin:0 0 0 62px; padding:0; border-left:2px dashed var(--line); }
 .itinerary-list li{ position:relative; padding: 6px 0 14px 22px; font-size:0.95rem; line-height:1.5; }
 .itinerary-list li::before{
-  content:""; position:absolute; left:-6px; top:50%; margin-top:-5px; width:10px; height:10px;
+  content:""; position:absolute; left:-6px; top: calc(6px + (0.95rem * 1.5 - 10px) / 2);
+  width:10px; height:10px;
   border-radius:50%; background: var(--teal); box-shadow: 0 0 0 3px rgba(47,122,114,0.15);
 }
 .itinerary-time{
-  position:absolute; left:-62px; top:50%; transform:translateY(-50%); width:44px; text-align:right;
+  position:absolute; left:-62px; top:6px; width:44px; text-align:right; line-height:1.5;
   font-family:'IBM Plex Mono', monospace; font-size:0.75rem; font-weight:600; color: var(--teal);
 }
 .itinerary-day{ margin-bottom: 24px; }
