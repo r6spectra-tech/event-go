@@ -4,8 +4,8 @@
    依賴 ./flight-data.js（FLIGHT_SCHEDULE / AIRLINES / DIRECTION_LABEL）
    ============================================================ */
 
-/* FLIGHT_JS_VERSION: 20260728-5 */
-const FLIGHT_JS_VERSION = "20260728-5";
+/* FLIGHT_JS_VERSION: 20260728-6 */
+const FLIGHT_JS_VERSION = "20260728-6";
 
 // 透過 https://liff.line.me/{liffId}?activityId=xxx 這種網址帶參數時，LINE 不會把
 // ?activityId=xxx 直接透傳給我們的頁面，而是包成一個 liff.state 參數（例如
@@ -1150,7 +1150,7 @@ function flightWindowEndMs(map, activityId) {
 // 讀 GitHub 上的班機總覽快照（純靜態檔案，沒有 GAS 冷啟動），給「本機完全沒有快取」的
 // 第一次載入情境用；讀不到就回傳 null，呼叫端會退回打 GAS。
 async function fetchFlightOverviewFile(activityId) {
-  if (!RUNTIME.rawBaseUrl) await loadConfig();
+  if (!RUNTIME.rawBaseUrl) { try { await loadConfig(); } catch (e) { /* 讀不到設定值也沒關係，下一行會用 rawBaseUrl 還是空的去判斷要不要提早返回 */ } }
   if (!RUNTIME.rawBaseUrl) return null;
   try {
     const res = await fetch(`${RUNTIME.rawBaseUrl}/data/flight-overview.json?_=${Date.now()}`, { cache: "no-store" });
