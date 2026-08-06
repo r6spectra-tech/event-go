@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>編輯活動</title>
-<link rel="stylesheet" href="../assets/style.css?v=20260728-30">
+<link rel="stylesheet" href="../assets/style.css?v=20260728-34">
 </head>
 <body>
 
@@ -24,7 +24,7 @@
 </div>
 
 <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
-<script src="../assets/main.js?v=20260728-30"></script>
+<script src="../assets/main.js?v=20260728-34"></script>
 <script>
 let currentProfile = null;
 let activityMap = {};
@@ -74,7 +74,7 @@ const formHtml = `
       <div class="field"><label>日期文字（顯示用）</label><input id="date_text"></div>
       <div class="field"><label>活動日期（yyyy-mm-dd，判斷過期用）</label><input id="event_date" type="date"></div>
       <div class="field"><label>價格</label><input id="price" type="number"></div>
-      <div class="field"><label>總名額</label><input id="capacity" type="number"></div>
+      <div class="field"><label>總名額（填 0 代表無上限，不會顯示目前報名人數）</label><input id="capacity" type="number"></div>
       <div class="field">
         <label>候補功能</label>
         <select id="waitlist_status">
