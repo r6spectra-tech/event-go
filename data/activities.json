@@ -361,5 +361,38 @@
     "organizerLineUrl": "https://line.me/ti/p/3gpMcU90Bx",
     "groupUrl": "https://line.me/R/ti/g/qePdaucs8C",
     "bankInfo": "812(台新) / 20161000215239"
+  },
+  {
+    "id": "trip012",
+    "title": "即將成真火舞團表演",
+    "cover": "https://i.meee.com.tw/tICwUqd.png",
+    "area": "",
+    "date": "8/14(五)",
+    "eventDate": "2026-08-14",
+    "price": "",
+    "capacity": 0,
+    "joined": 0,
+    "waitlistOpen": true,
+    "notes": "☆要一起參加的人18:45在榮星花園入口集合(遲到的就自行進入會場)",
+    "itinerary": "",
+    "days": 1,
+    "itineraryDays": [
+      "#ERROR!",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      ""
+    ],
+    "youtubeLinks": "",
+    "mapLinks": "",
+    "organizerName": "陳文清",
+    "organizerLineUrl": "https://line.me/ti/p/3gpMcU90Bx",
+    "groupUrl": "https://line.me/R/ti/g/pBW43TtmrA",
+    "bankInfo": ""
   }
 ]
