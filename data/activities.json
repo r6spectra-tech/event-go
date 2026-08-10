@@ -328,5 +328,38 @@
     "organizerLineUrl": "https://line.me/ti/p/3gpMcU90Bx",
     "groupUrl": "",
     "bankInfo": ""
+  },
+  {
+    "id": "trip011",
+    "title": "元旦連假台東跨年晚會及環島",
+    "cover": "https://i.meee.com.tw/tfTlHGX.png",
+    "area": "台東市",
+    "date": "12／30～1／2",
+    "eventDate": "2026-12-30",
+    "price": 5900,
+    "capacity": 0,
+    "joined": 0,
+    "waitlistOpen": true,
+    "notes": "☆12／30晚上7點出發\n☆12／31要請假1天\n☆費用：5900( 4人房費用)\n☆因每家飯店房型不同 如有被安排到雙人房每天加200(台東千富大飯店住宿皆為4人房)\n☆第一天不住宿減700\n☆台北台中嘉義高雄可上車 其他地區再看人數決定(可先告知)",
+    "itinerary": "",
+    "days": 4,
+    "itineraryDays": [
+      "19:00|西門捷運6號出口集合出發\n台中國光號站\n德爾芙快捷酒店(近嘉義火車站)\n嘉義文化夜市",
+      "飯店早餐\n09:00|退房\n漯底山自然公園\n彌陀漁港海岸光廊\n12:00|萬有食堂午餐合菜\n大武之心南迴驛站\n台東紅藜\n太麻里田區\n台東千富大飯店(近台東火車站)\n跨年晚會現場\n晚餐在會場自理\n跨年晚會後遊覽車接送回飯店\n阿妹部落豐年祭請自理",
+      "飯店早餐\n10:30|退房\n琵琶湖\n12:00|海靖甕仔雞午餐合菜\n杉原灣沙灘\n金樽漁港\n走路到金樽漁港貓洞(退潮才有)\n三仙台\n堺橋休息區\n花蓮石門海蝕洞\n大石鼻山步道\n花蓮TC慢旅(近東大門夜市)",
+      "飯店早餐\n09:30|退房\n花蓮文化創意產業園區\n松園別館\n12:00|藍藍飲食店午餐合菜\n清水斷崖景觀點\n宜蘭餅發明館\n羅東運動公園東丘 落羽松\n羅東夜市\n西門",
+      "",
+      "",
+      "",
+      "",
+      "",
+      ""
+    ],
+    "youtubeLinks": "",
+    "mapLinks": "☆德爾芙快捷酒店 https://maps.app.goo.gl/P2dpoT3c6NWeHAW59?g_st=al\n☆千富大飯店 https://maps.app.goo.gl/crJiDnAZBR4mQeQy8?g_st=al\n☆Tc慢旅花蓮店 https://maps.app.goo.gl/8Sz5iKuz7u6MLAKC7?g_st=al\n☆漯底山自然公園 https://maps.app.goo.gl/7tv5UMmq6hFCq9hQ7?g_st=al\n☆彌陀漁港海岸光廊 https://maps.app.goo.gl/1PMfJNmcApcAhnE59?g_st=al\n☆大石鼻山步道 https://maps.app.goo.gl/hsdAghEE6dHGzUFa6?g_st=al",
+    "organizerName": "陳文清",
+    "organizerLineUrl": "https://line.me/ti/p/3gpMcU90Bx",
+    "groupUrl": "https://line.me/R/ti/g/qePdaucs8C",
+    "bankInfo": "812(台新) / 20161000215239"
   }
 ]
