@@ -331,10 +331,10 @@
   },
   {
     "id": "trip011",
-    "title": "元旦連假台東跨年晚會及環島",
+    "title": "元旦連假台東跨年晚會及環島四日遊",
     "cover": "https://i.meee.com.tw/tfTlHGX.png",
     "area": "台東市",
-    "date": "12／30～1／2",
+    "date": "12／30～1／2(三～六)",
     "eventDate": "2026-12-30",
     "price": 5900,
     "capacity": 0,
@@ -364,9 +364,9 @@
   },
   {
     "id": "trip012",
-    "title": "即將成真火舞團表演",
+    "title": "即將成真火舞團台北市區表演",
     "cover": "https://i.meee.com.tw/tICwUqd.png",
-    "area": "",
+    "area": "台北市",
     "date": "8/14(五)",
     "eventDate": "2026-08-14",
     "price": "",
@@ -377,7 +377,7 @@
     "itinerary": "",
     "days": 1,
     "itineraryDays": [
-      "#ERROR!",
+      "演出時間：8/14(五)19:00\n演出地點：台北榮星花園公園(臺北市中山 區行仁里民權東路三段1號) https://maps.app.goo.gl/meuA6v2zHpzyTW51A?g_st=al",
       "",
       "",
       "",
@@ -393,6 +393,39 @@
     "organizerName": "陳文清",
     "organizerLineUrl": "https://line.me/ti/p/3gpMcU90Bx",
     "groupUrl": "https://line.me/R/ti/g/pBW43TtmrA",
+    "bankInfo": ""
+  },
+  {
+    "id": "trip013",
+    "title": "二手拍賣會",
+    "cover": "https://i.meee.com.tw/Xd1TWjD.png",
+    "area": "西門町",
+    "date": "8／22(六)",
+    "eventDate": "2026-08-22",
+    "price": 100,
+    "capacity": 0,
+    "joined": 0,
+    "waitlistOpen": false,
+    "notes": "地點:西門Ark Taipei(新的地址)\nhttps://maps.app.goo.gl/nikGADqMrjDrUhy4A?g_st=al\n☆低消100元 附飲料。\n☆不可帶飲料入場 請參加的朋友們遵守規定。\n☆時間:下午2點～5點半\n※請大家將家裡用不到的物品拿出來拍賣(新品或舊品皆可)。\n※沒東西拍賣也可以參加。\n※請不要花錢買東西來拍賣。\n※要撿便宜的,請多帶一些現金。\n※沒事也可以來喝喝飲料看看菜。\n#進行中的活動",
+    "itinerary": "",
+    "days": 1,
+    "itineraryDays": [
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      ""
+    ],
+    "youtubeLinks": "",
+    "mapLinks": "",
+    "organizerName": "陳文清",
+    "organizerLineUrl": "https://line.me/ti/p/3gpMcU90Bx",
+    "groupUrl": "",
     "bankInfo": ""
   }
 ]
