@@ -74,5 +74,24 @@
     "staggerMinutes": 2,
     "earlyMinutes": 10,
     "expectedCounts": {}
+  },
+  "trip005:1": {
+    "activityId": "trip005",
+    "roundNumber": 1,
+    "checkinType": "departure",
+    "busCount": 2,
+    "busLabelStyle": "ABC",
+    "busLabels": [
+      "A",
+      "B"
+    ],
+    "startTime": "2026-08-29T00:00:00.000Z",
+    "endTime": "2026-08-29T00:10:00.000Z",
+    "staggerMinutes": 2,
+    "earlyMinutes": 10,
+    "expectedCounts": {
+      "A": 44,
+      "B": 44
+    }
   }
 }
