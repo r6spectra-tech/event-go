@@ -85,10 +85,10 @@
       "A",
       "B"
     ],
-    "startTime": "2026-08-29T00:00:00.000Z",
-    "endTime": "2026-08-29T00:10:00.000Z",
-    "staggerMinutes": 2,
-    "earlyMinutes": 10,
+    "startTime": "2026-08-29T00:02:00.000Z",
+    "endTime": "2026-08-29T00:22:00.000Z",
+    "staggerMinutes": 1,
+    "earlyMinutes": 0,
     "expectedCounts": {
       "A": 44,
       "B": 44
