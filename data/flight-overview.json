@@ -7,6 +7,16 @@
             "date": "2026-09-24",
             "flights": [
               {
+                "airline": "uni",
+                "flightNo": "B7-8691",
+                "depTime": "07:25",
+                "arrTime": "08:10",
+                "airport": "khh",
+                "names": [
+                  "Ivan 愛 ❤️"
+                ]
+              },
+              {
                 "airline": "bailey",
                 "flightNo": "-",
                 "depTime": "10:30",
@@ -61,6 +71,16 @@
                 "airport": "tsa",
                 "names": [
                   "毛"
+                ]
+              },
+              {
+                "airline": "mandarin",
+                "flightNo": "AE783",
+                "depTime": "08:30",
+                "arrTime": "09:15",
+                "airport": "rmq",
+                "names": [
+                  "#ERROR!"
                 ]
               },
               {
@@ -141,16 +161,6 @@
               },
               {
                 "airline": "mandarin",
-                "flightNo": "AE793",
-                "depTime": "16:55",
-                "arrTime": "17:40",
-                "airport": "rmq",
-                "names": [
-                  "Sean"
-                ]
-              },
-              {
-                "airline": "mandarin",
                 "flightNo": "AE385",
                 "depTime": "19:50",
                 "arrTime": "20:50",
@@ -166,6 +176,26 @@
           {
             "date": "2026-09-24",
             "hours": [
+              {
+                "hour": "08:00",
+                "airlines": [
+                  {
+                    "airline": "uni",
+                    "total": 1,
+                    "flights": [
+                      {
+                        "flightNo": "B7-8691",
+                        "depTime": "07:25",
+                        "arrTime": "08:10",
+                        "airport": "khh",
+                        "names": [
+                          "Ivan 愛 ❤️"
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              },
               {
                 "hour": "11:00",
                 "airlines": [
@@ -258,7 +288,7 @@
                 "airlines": [
                   {
                     "airline": "mandarin",
-                    "total": 3,
+                    "total": 4,
                     "flights": [
                       {
                         "flightNo": "AE333",
@@ -277,6 +307,15 @@
                         "airport": "tsa",
                         "names": [
                           "毛"
+                        ]
+                      },
+                      {
+                        "flightNo": "AE783",
+                        "depTime": "08:30",
+                        "arrTime": "09:15",
+                        "airport": "rmq",
+                        "names": [
+                          "#ERROR!"
                         ]
                       }
                     ]
@@ -386,21 +425,6 @@
                         "airport": "tsa",
                         "names": [
                           "誠꙼̈先̤̮生̤̫"
-                        ]
-                      }
-                    ]
-                  },
-                  {
-                    "airline": "mandarin",
-                    "total": 1,
-                    "flights": [
-                      {
-                        "flightNo": "AE793",
-                        "depTime": "16:55",
-                        "arrTime": "17:40",
-                        "airport": "rmq",
-                        "names": [
-                          "Sean"
                         ]
                       }
                     ]
@@ -858,6 +882,6 @@
         ]
       }
     },
-    "updatedAt": "2026-08-06T08:14:27.065Z"
+    "updatedAt": "2026-09-27T07:57:03.476Z"
   }
 }
