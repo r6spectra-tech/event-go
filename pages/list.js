@@ -1,0 +1,301 @@
+/* 頁面：list（原 index.html）
+   由 index.html 的路由在 ?page=list 時呼叫 mount()。
+   mount 裡的 document 是「只看這一頁畫面」的版本：離開這頁後，還在跑的背景工作
+   不會改到下一頁同 id 的元素。 */
+window.PAGES = window.PAGES || {};
+window.PAGES["list"] = {
+  title: "旅行揪團・活動列表",
+  style: "",
+  html: "<div class=\"topbar\">\n  <div>\n    <span class=\"eyebrow\">Boarding List</span>\n    <h1 id=\"appTitle\" class=\"clickable-title\">旅行揪團活動 <span class=\"share-hint\">📤</span></h1>\n  </div>\n  <div id=\"managerArea\"></div>\n</div>\n\n<div class=\"share-bar\">\n  已選 <span id=\"selCount\">0</span> / <span id=\"selMax\">5</span>（選 2~5 個活動，會包成一則可左右滑動的訊息分享）\n  <button class=\"btn-teal\" id=\"shareSelectedBtn\" disabled>分享所選</button>\n</div>\n\n<div class=\"sort-bar\">\n  <label for=\"sortSelect\">排序：</label>\n  <select id=\"sortSelect\">\n    <option value=\"date\">依活動日期排序（預設）</option>\n    <option value=\"notFull\">尚未滿人優先</option>\n    <option value=\"waitlistOpen\">額滿但開放候補優先</option>\n  </select>\n</div>\n\n<div class=\"cache-bar\">\n  <span id=\"cacheTimeLabel\">頁面更新時間：尚未讀取</span>\n  <span id=\"cacheStatusMsg\" class=\"cache-status-msg\"></span>\n  <button class=\"btn btn-ghost\" id=\"refreshBtn\">更新</button>\n</div>\n\n<div id=\"grid\" class=\"grid\">\n  <div class=\"spinner-wrap\"><div class=\"spinner\"></div></div>\n</div>\n\n<button type=\"button\" id=\"managerFab\" class=\"manager-fab\" style=\"display:none;\">⚙️</button>\n<div id=\"managerPopover\" class=\"manager-popover\" style=\"display:none;\">\n  <div id=\"managerPopoverContent\"></div>\n</div>",
+  mount: function (root, document) {
+    const selected = new Map(); // id -> activity
+    let allActivities = [];
+
+    function dateValue(a){
+      if(!a.eventDate) return Infinity; // 沒填活動日期的排最後
+      const d = new Date(a.eventDate);
+      return isNaN(d) ? Infinity : d.getTime();
+    }
+
+    // 活動日期是「今天」以前（不含今天）就算過期，沒填日期的一律不算過期（避免漏填就被誤藏）
+    function isExpired(a){
+      if(!a.eventDate) return false;
+      const d = new Date(a.eventDate);
+      if(isNaN(d)) return false;
+      const today = new Date();
+      today.setHours(0,0,0,0);
+      return d < today;
+    }
+
+    // 三種排序擇一：
+    // date         依活動日期排序（預設，不管人數/候補狀態）
+    // notFull      尚未滿人的活動優先，其餘依日期排序
+    // waitlistOpen 額滿但開放候補的活動優先，其餘依日期排序
+    const SORTERS = {
+      date: (a, b) => dateValue(a) - dateValue(b),
+      notFull: (a, b) => {
+        const ta = a.isFull ? 1 : 0, tb = b.isFull ? 1 : 0;
+        return ta !== tb ? ta - tb : dateValue(a) - dateValue(b);
+      },
+      waitlistOpen: (a, b) => {
+        const ta = (a.isFull && a.waitlistOpen) ? 0 : 1;
+        const tb = (b.isFull && b.waitlistOpen) ? 0 : 1;
+        return ta !== tb ? ta - tb : dateValue(a) - dateValue(b);
+      },
+    };
+
+    function statusHtml(a){
+      if(Number(a.capacity) <= 0){
+        return `<span class="status open">尚可報名</span>`;
+      }
+      return a.isFull
+        ? `<span class="status full">候補中 ${a.joined}/${a.capacity}</span>`
+        : `<span class="status open">尚可報名 ${a.joined}/${a.capacity}</span>`;
+    }
+
+    function cardHtml(a, checked){
+      return `
+      <div class="ticket" data-id="${a.id}">
+        ${a.isFull ? `<div class="stamp">已額滿・候補中</div>` : ""}
+        ${a.cover ? `<img class="cover" src="${a.cover}" alt="${a.title}">` : ""}
+        <div class="main">
+          <p class="title">${a.title}</p>
+          <p class="meta">${a.area}｜${a.date}</p>
+          ${a.price ? `<p class="price">NT$ ${a.price}</p>` : ""}
+        </div>
+        <div class="perforation"></div>
+        <div class="stub">
+          ${statusHtml(a)}
+          <span>#${a.id}</span>
+        </div>
+        <div class="select-row">
+          <label><input type="checkbox" class="pick" data-id="${a.id}" ${checked ? "checked" : ""}> 加入分享清單</label>
+        </div>
+        <div class="actions">
+          <a class="btn btn-ghost" href="index.html?page=detail&id=${encodeURIComponent(a.id)}">活動詳情</a>
+          <button class="btn btn-primary shareOneBtn" data-id="${a.id}">分享</button>
+        </div>
+      </div>`;
+    }
+
+    function updateShareBar(){
+      document.getElementById("selCount").textContent = selected.size;
+      document.getElementById("shareSelectedBtn").disabled = selected.size < 2;
+    }
+
+    function renderGrid(){
+      const grid = document.getElementById("grid");
+      const visible = allActivities.filter(a => !isExpired(a));
+      if(!visible.length){
+        grid.innerHTML = `<div class="empty">目前尚無活動</div>`;
+        return;
+      }
+      const sortMode = document.getElementById("sortSelect").value;
+      const sorted = [...visible].sort(SORTERS[sortMode] || SORTERS.date);
+      grid.innerHTML = sorted.map(a => cardHtml(a, selected.has(a.id))).join("");
+
+      grid.querySelectorAll(".shareOneBtn").forEach(btn=>{
+        btn.addEventListener("click", ()=>{
+          const a = allActivities.find(x=>x.id===btn.dataset.id);
+          shareOne(a);
+        });
+      });
+
+      grid.querySelectorAll(".pick").forEach(cb=>{
+        cb.addEventListener("change", ()=>{
+          const a = allActivities.find(x=>x.id===cb.dataset.id);
+          if(cb.checked){
+            if(selected.size >= CONFIG.MAX_SHARE_ITEMS){
+              cb.checked = false;
+              alert(`一次最多只能分享 ${CONFIG.MAX_SHARE_ITEMS} 個活動（LINE shareTargetPicker 限制）`);
+              return;
+            }
+            selected.set(a.id, a);
+          }else{
+            selected.delete(a.id);
+          }
+          updateShareBar();
+        });
+      });
+    }
+
+    async function setupManagerArea(){
+      const area = document.getElementById("managerArea");
+      const fab = document.getElementById("managerFab");
+      const popoverContent = document.getElementById("managerPopoverContent");
+      try{
+        const ok = await ensureLiff();
+        if(!ok || !liff.isLoggedIn()) return; // 外部瀏覽器或未登入時，不顯示管理相關按鈕
+        const profile = await liff.getProfile();
+        const { status } = await checkIsManager(profile.userId);
+
+        if(status === "approved"){
+          // 核准管理者的選單改成浮動齒輪（跟 detail.html 一致），不占用頁首空間，
+          // 頁首的 managerArea 這裡就清空、不放東西
+          area.innerHTML = "";
+          popoverContent.innerHTML = `
+            <div class="manager-toolbar">
+              <a class="btn btn-ghost" href="admin/new-activity.html">新增活動</a>
+              <a class="btn btn-ghost" href="admin/edit-activity.html">編輯活動</a>
+              <a class="btn btn-ghost" href="admin/waitlist.html">候補管理</a>
+              <a class="btn btn-ghost" href="admin/visit-log.html">閱讀記錄</a>
+              <a class="btn btn-ghost" href="admin/managers.html">管理申請</a>
+            </div>
+          `;
+          fab.style.display = "flex";
+        }else if(status === "pending"){
+          area.innerHTML = `<span style="font-size:0.75rem;color:#E7C77A;">管理者申請審核中…</span>`;
+        }else{
+          area.innerHTML = `<button class="btn btn-ghost" id="applyManagerBtn" style="color:#F6F1E4;border-color:#F6F1E4;">申請管理</button>`;
+          document.getElementById("applyManagerBtn").addEventListener("click", async ()=>{
+            if(!confirm("要申請成為活動管理者嗎？送出後要等現有管理者審核通過才能使用管理功能。")) return;
+            try{
+              const res = await applyManager();
+              if(res.status === "approved"){
+                area.innerHTML = "";
+                popoverContent.innerHTML = `
+                  <div class="manager-toolbar">
+                    <a class="btn btn-ghost" href="admin/new-activity.html">新增活動</a>
+                    <a class="btn btn-ghost" href="admin/edit-activity.html">編輯活動</a>
+                    <a class="btn btn-ghost" href="admin/waitlist.html">候補管理</a>
+                    <a class="btn btn-ghost" href="admin/visit-log.html">閱讀記錄</a>
+                    <a class="btn btn-ghost" href="admin/managers.html">管理申請</a>
+                  </div>
+                `;
+                fab.style.display = "flex";
+              }else{
+                area.innerHTML = `<span style="font-size:0.75rem;color:#E7C77A;">已送出申請，請等待審核</span>`;
+              }
+            }catch(e){
+              alert("申請失敗：" + e.message);
+            }
+          });
+        }
+      }catch(e){
+        console.warn("管理者狀態載入失敗", e);
+      }
+    }
+
+    const ACTIVITIES_LIST_CACHE_KEY = "activities_list";
+
+    // 整份列表的「版本」用 GitHub 版本檔裡所有活動時間戳記的最大值代表——
+    // 只要有任何一支活動被更新過，這個最大值就會往前推進，代表列表也該重新讀取。
+    // 只看「純活動代碼」的 key（例如 trip002），忽略帶冒號的子系統擴充 key
+    // （例如 flight-liff 寫的 trip002:flight）。這兩種 key 分開存在同一個 last-updated.json
+    // 裡是刻意的設計，但活動列表在意的是「有沒有新增/編輯活動」，不是「機票登記有沒有異動」，
+    // 沒有這層過濾的話，只要有人動一下機票登記，這裡就會誤判活動列表變了，
+    // 每次打開都強制重新呼叫 GAS，完全用不到本機快取。
+    function maxTimestamp(map){
+      let max = null;
+      Object.entries(map || {}).forEach(([key, ts]) => {
+        if(key.indexOf(":") !== -1) return; // 子系統擴充 key，跳過
+        if(!max || new Date(ts) > new Date(max)) max = ts;
+      });
+      return max;
+    }
+
+    async function loadActivitiesFromCacheOrFetch(){
+      const cached = readCache(ACTIVITIES_LIST_CACHE_KEY);
+      if(cached){
+        return { activities: cached.data, fetchedAt: cached.fetchedAt };
+      }
+      const activities = await fetchActivities();
+      let remoteVersion = null;
+      try{
+        remoteVersion = maxTimestamp(await fetchLastUpdatedMap());
+      }catch(e){ console.warn("讀取 GitHub 版本檔失敗", e); }
+      writeCache(ACTIVITIES_LIST_CACHE_KEY, activities, remoteVersion);
+      return { activities, fetchedAt: Date.now() };
+    }
+
+    // 按「更新」：使用者主動要求，直接向 GAS 讀 Sheet 最新列表。
+    // （原本只看 GitHub 版本檔，但如果 GitHub 同步沒跑成功，版本檔不會變，新活動就永遠出不來）
+    async function refreshActivitiesList(){
+      const cached = readCache(ACTIVITIES_LIST_CACHE_KEY);
+      const activities = await fetchActivities(true);
+      let remoteVersion = cached ? cached.remoteVersion : null;
+      try{ remoteVersion = maxTimestamp(await fetchLastUpdatedMap()) || remoteVersion; }catch(e){}
+      writeCache(ACTIVITIES_LIST_CACHE_KEY, activities, remoteVersion);
+      const changed = !cached || JSON.stringify(cached.data) !== JSON.stringify(activities);
+      return { changed, activities, fetchedAt: Date.now() };
+    }
+
+    // 背景核對：列表先用快取／GitHub 快照秒開，再（最多每 30 分鐘一次）向 GAS 確認 Sheet 上的活動，
+    // 有新增或刪除的活動就更新列表。避免 GitHub 快照沒同步到時，新活動在列表上看不到。
+    const RECONCILE_KEY = "activities_list_reconciled_at";
+    const RECONCILE_INTERVAL_MS = 30 * 60 * 1000;
+    async function reconcileWithSheet(onChanged){
+      try{
+        const last = Number(localStorage.getItem(RECONCILE_KEY) || 0);
+        if(Date.now() - last < RECONCILE_INTERVAL_MS) return;
+      }catch(e){}
+      try{
+        const fresh = await fetchActivities(true);
+        try{ localStorage.setItem(RECONCILE_KEY, String(Date.now())); }catch(e){}
+        const ids = list => list.map(a => a.id).sort().join(",");
+        if(ids(fresh) !== ids(allActivities)){
+          const cached = readCache(ACTIVITIES_LIST_CACHE_KEY);
+          writeCache(ACTIVITIES_LIST_CACHE_KEY, fresh, cached ? cached.remoteVersion : null);
+          onChanged(fresh);
+        }
+      }catch(e){ console.warn("背景核對 Sheet 活動列表失敗", e); }
+    }
+
+    async function main(){
+      scheduleIdle(() => setupManagerArea()); // 管理員檢查排到閒置時段，不拖慢一般使用者看到列表的速度
+      await ensureLiff().catch(()=>{});
+
+      document.getElementById("appTitle").addEventListener("click", ()=>{
+        shareApp("揪你一起去玩！", "點開看看最近有哪些揪團行程，晚了要候補囉 →");
+      });
+
+      let fetchedAt;
+      try{
+        const result = await loadActivitiesFromCacheOrFetch();
+        allActivities = result.activities;
+        fetchedAt = result.fetchedAt;
+      }catch(e){
+        document.getElementById("grid").innerHTML = `<div class="empty">活動資料讀取失敗：${e.message || e}</div>`;
+        console.error(e);
+        return;
+      }
+
+      renderGrid();
+      document.getElementById("sortSelect").addEventListener("change", renderGrid);
+
+      scheduleIdle(() => reconcileWithSheet(fresh => {
+        allActivities = fresh;
+        renderGrid();
+        document.getElementById("cacheTimeLabel").textContent = "頁面更新時間：剛剛（已同步 Sheet 最新活動）";
+      }));
+
+      setupRefreshButton(document.getElementById("refreshBtn"), document.getElementById("cacheTimeLabel"), fetchedAt, async ()=>{
+        const statusEl = document.getElementById("cacheStatusMsg");
+        const result = await refreshActivitiesList();
+        if(!result.changed){
+          statusEl.textContent = "（已是最新，未重新讀取）";
+          setTimeout(()=>{ statusEl.textContent = ""; }, 4000);
+          return null;
+        }
+        statusEl.textContent = "（已更新）";
+        setTimeout(()=>{ statusEl.textContent = ""; }, 4000);
+        allActivities = result.activities;
+        renderGrid();
+        return result.fetchedAt;
+      });
+
+      document.getElementById("shareSelectedBtn").addEventListener("click", ()=>{
+        shareMany(Array.from(selected.values()));
+      });
+    }
+
+    function toggleManagerPopover(){
+      const popover = document.getElementById("managerPopover");
+      const isOpen = popover.style.display !== "none";
+      popover.style.display = isOpen ? "none" : "block";
+    }
+    document.getElementById("managerFab").addEventListener("click", toggleManagerPopover);
+
+    main();
+  },
+};
