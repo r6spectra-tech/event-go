@@ -1,0 +1,402 @@
+/* 頁面：detail（原 detail.html）
+   由 index.html 的路由在 ?page=detail 時呼叫 mount()。
+   mount 裡的 document 是「只看這一頁畫面」的版本：離開這頁後，還在跑的背景工作
+   不會改到下一頁同 id 的元素。 */
+window.PAGES = window.PAGES || {};
+window.PAGES["detail"] = {
+  title: "活動詳情",
+  style: "",
+  html: "<div class=\"topbar topbar-compact\">\n  <div>\n    <span class=\"eyebrow\">Itinerary</span>\n  </div>\n</div>\n\n<div class=\"cache-bar\">\n  <span id=\"cacheTimeLabel\">頁面更新時間：尚未讀取</span>\n  <span id=\"cacheStatusMsg\" class=\"cache-status-msg\"></span>\n  <button class=\"btn btn-ghost\" id=\"refreshBtn\">更新</button>\n</div>\n\n<div class=\"detail-wrap\" id=\"content\">\n  <div class=\"spinner-wrap\"><div class=\"spinner\"></div></div>\n</div>\n\n<div id=\"rsvpModal\" class=\"modal-overlay\" style=\"display:none;\">\n  <div class=\"modal-card modal-card-half\">\n    <button type=\"button\" class=\"modal-close\" id=\"rsvpModalClose\">✕</button>\n    <p class=\"big\" style=\"text-align:left;\">報名情形</p>\n    <div id=\"rsvpModalBody\" style=\"text-align:left;\"></div>\n  </div>\n</div>\n\n<button type=\"button\" id=\"managerFab\" class=\"manager-fab\" style=\"display:none;\">⚙️</button>\n<div id=\"managerPopover\" class=\"manager-popover\" style=\"display:none;\">\n  <div id=\"managerPopoverContent\"></div>\n</div>",
+  mount: function (root, document) {
+    // YouTube / Google Map 都用同一種「文字 chip，點了才跳轉」的呈現方式，多筆就並排、超出邊界自動換行
+    function chipRow(items, icon){
+      if(!items.length) return "";
+      return `<div class="chip-row">
+        ${items.map(item => `<a class="chip-link" href="${item.url}" target="_blank" rel="noopener">${icon} ${item.label}</a>`).join("")}
+      </div>`;
+    }
+
+    function videoBlock(a){
+      if(!a.youtubeItems.length) return "";
+      return `<span class="section-label">活動影片</span>${chipRow(a.youtubeItems, "▶")}`;
+    }
+
+    function mapBlock(a){
+      if(!a.mapItems.length) return "";
+      return `<span class="section-label">地點 / Google Map</span>${chipRow(a.mapItems, "📍")}`;
+    }
+
+    function joinBlock(a){
+      const myStatus = a.myStatus || {};
+      if(!a.isFull){
+        if(myStatus.joined){
+          return `
+          <p class="join-note">您已經參加這個活動了！</p>
+          ${a.groupUrl
+            ? `<a class="btn btn-teal btn-block" href="${a.groupUrl}" target="_blank" rel="noopener">加入揪團群組 →</a>`
+            : `<p class="join-note">主辦人尚未提供群組連結，請透過主辦人 LINE 聯繫。</p>`}`;
+        }
+        return `
+        ${Number(a.capacity) > 0 ? `<p class="join-note">目前已報名 ${a.joined} / ${a.capacity} 人，尚有名額。</p>` : ""}
+        <button class="btn btn-teal btn-block" id="joinBtn">參加活動</button>
+        <div id="joinResult" style="margin-top:10px;"></div>`;
+      }
+      if(!a.waitlistOpen){
+        return `<p class="join-note">此活動人數已滿（${a.joined}/${a.capacity}），目前未開放候補，請直接聯繫主辦人。</p>`;
+      }
+      if(myStatus.waitlistStatus === "waiting" || myStatus.waitlistStatus === "notified"){
+        return `<p class="join-note">您已經在候補名單中，請耐心等候 LINE 通知（記得先加官方帳號好友，不然收不到通知）。</p>`;
+      }
+      if(myStatus.waitlistStatus === "expired"){
+        return `<p class="join-note">您先前收到的候補通知已逾期，如果還想候補請直接聯繫主辦人。</p>`;
+      }
+      if(myStatus.waitlistStatus === "cancelled"){
+        return `<p class="join-note">您先前已選擇不加入這個活動的候補。如果想更改決定，請直接聯繫主辦人。</p>`;
+      }
+      return `
+        <p class="join-note">此活動人數已滿（${a.joined}/${a.capacity}），可加入候補名單排隊。有名額釋出時，
+        主辦人會透過 LINE 通知您，請於通知後 24 小時內回覆，逾時視為放棄名額。</p>
+        <div class="oa-reminder">
+          ⚠️ <b>請務必先加 LINE 官方帳號好友</b>，候補通知是用官方帳號推播的，沒加好友會收不到通知！
+          <a class="btn btn-teal btn-block" href="${CONFIG.OA_LINE_URL}" target="_blank" rel="noopener" style="margin-top:8px;">加 LINE 官方帳號好友</a>
+        </div>
+        <button class="btn btn-stamp btn-block" id="waitlistBtn" style="margin-top:10px;">加入候補名單</button>
+        <p class="join-note" id="waitlistStatus"></p>`;
+    }
+
+    // 行程逐行渲染：文字行照常顯示（綠點），連結行改用豎線標記；
+    // 偵測到 YouTube／Instagram／Google Map／Apple Map 這幾種連結，只把「網址」本身換成小圖示連結，
+    // 網址前後原本寫的說明文字照樣顯示，不會整行只剩圖示；點圖示開新分頁打開網址。
+    // 其他沒辨識出來的網址，維持舊行為：有文字就整段文字變連結，沒文字才用 🔗 圖示。
+    // 行程逐行渲染：文字行照常顯示（綠點），連結行改用豎線標記；
+    // 一行裡不管有幾個網址，每一個都各自處理：認得的（YouTube／Instagram／Google Map／Apple Map）
+    // 換成對應小圖示，認不出來的網址也換成 🔗 圖示（多網址情境下不再區分「有沒有寫說明文字」，
+    // 一律圖示化，文字段落單純當文字顯示，不會被吃進連結裡）；點圖示開新分頁打開網址。
+    function itineraryLineHtml(item){
+      const timeHtml = item.time ? `<span class="itinerary-time">${item.time}</span>` : "";
+      if(item.type === "text") return `<li>${timeHtml}${item.text}</li>`;
+
+      const parts = item.segments.map(seg => {
+        if (seg.kind === "text") return seg.text;
+        let icon = "🔗";
+        if(seg.isYoutube) icon = "▶️";
+        else if(seg.isMap) icon = "📍";
+        else if(seg.isInstagram) icon = "📷";
+        else if(seg.isAppleMap) icon = "🗺️";
+        return `<a class="itinerary-inline-link" href="${seg.url}" target="_blank" rel="noopener">${icon}</a>`;
+      });
+      return `<li class="link-line">${timeHtml}${parts.join(" ")}</li>`;
+    }
+
+    function itineraryBlock(a){
+      // 新格式：有指定天數，每天各自一個區塊
+      if(a.days > 0 && a.itineraryDays.length){
+        return a.itineraryDays.map(day => `
+          <div class="itinerary-day">
+            <span class="section-label itinerary-day-title">第 ${day.dayNumber} 天行程</span>
+            <ul class="itinerary-list">
+              ${day.lines.length ? day.lines.map(itineraryLineHtml).join("") : "<li>行程資訊準備中</li>"}
+            </ul>
+          </div>
+        `).join("");
+      }
+      // 舊格式：單一欄位用 || 分隔
+      return `<ul class="itinerary-list">
+        ${a.itinerary.length ? a.itinerary.map(step=>`<li>${step}</li>`).join("") : "<li>行程資訊準備中</li>"}
+      </ul>`;
+    }
+
+    function render(a){
+      // 標題只靠 LIFF 彈窗自己的原生標題列顯示，頁面裡不再重複顯示一次活動標題
+      document.title = a.title;
+      document.getElementById("content").innerHTML = `
+        ${a.cover ? `<img class="hero-img" src="${a.cover}" alt="${a.title}">` : ""}
+        <p class="detail-title">${a.title}</p>
+        <p class="detail-meta">${a.area}｜${a.date}${a.price ? `｜NT$ ${a.price}` : ""}</p>
+
+        ${a.notes ? `<span class="section-label">備註</span><div class="notes-box">${a.notes.split("\n").map(l=>`<p>${l}</p>`).join("")}</div>` : ""}
+
+        <span class="section-label">活動行程</span>
+        ${itineraryBlock(a)}
+
+        ${videoBlock(a)}
+        ${mapBlock(a)}
+
+        <div class="footer-card">
+          <div class="organizer-row">
+            <div class="organizer-avatar"></div>
+            <div>
+              <strong>${a.organizerName}</strong><br>
+              <span style="font-size:0.8rem;color:#777;">活動主辦人</span>
+            </div>
+          </div>
+          ${a.organizerLineUrl ? `<a class="btn btn-ghost btn-block" href="${a.organizerLineUrl}" target="_blank" rel="noopener">加主辦人 LINE 好友</a>` : ""}
+          <div style="margin-top:16px; display:flex; gap:10px; flex-wrap:wrap;">
+            <button type="button" class="btn btn-teal btn-block" id="openRsvpBtn">查看本活動的報名情形</button>
+            <a class="btn btn-ghost btn-block" href="index.html?page=me">我的活動</a>
+          </div>
+        </div>
+
+        <div class="actions" style="padding:20px 0 0;">
+          <button class="btn btn-primary" id="shareBtn">分享這個行程</button>
+        </div>
+      `;
+      document.getElementById("shareBtn").addEventListener("click", ()=> shareOne(a));
+      document.getElementById("openRsvpBtn").addEventListener("click", ()=> openRsvpModal(a));
+    }
+
+    function openRsvpModal(a){
+      document.getElementById("rsvpModalBody").innerHTML = joinBlock(a);
+      document.getElementById("rsvpModal").style.display = "flex";
+      wireJoinButtons(a);
+    }
+
+    function closeRsvpModal(){
+      document.getElementById("rsvpModal").style.display = "none";
+    }
+
+    function wireJoinButtons(a){
+      const joinBtn = document.getElementById("joinBtn");
+      if(joinBtn){
+        joinBtn.addEventListener("click", async ()=>{
+          joinBtn.disabled = true;
+          joinBtn.textContent = "處理中…";
+          const resultEl = document.getElementById("joinResult");
+          try{
+            const res = await joinActivity(a.id);
+            joinBtn.style.display = "none";
+            a.myStatus = a.myStatus || {};
+            a.myStatus.joined = true;
+            resultEl.innerHTML = `
+              <p class="join-note">${res.already ? "您已經參加這個活動了！" : "已為您報名這個活動！"}</p>
+              ${res.groupUrl
+                ? `<a class="btn btn-teal btn-block" href="${res.groupUrl}" target="_blank" rel="noopener">加入揪團群組 →</a>`
+                : `<p class="join-note">主辦人尚未提供群組連結，請透過主辦人 LINE 聯繫。</p>`}
+            `;
+          }catch(e){
+            console.error(e);
+            resultEl.innerHTML = `<p class="join-note">報名失敗：${e.message}</p>`;
+            joinBtn.disabled = false;
+            joinBtn.textContent = "參加活動";
+          }
+        });
+      }
+
+      const waitlistBtn = document.getElementById("waitlistBtn");
+      if(waitlistBtn){
+        waitlistBtn.addEventListener("click", async ()=>{
+          waitlistBtn.disabled = true;
+          waitlistBtn.textContent = "處理中…";
+          const statusEl = document.getElementById("waitlistStatus");
+          try{
+            const res = await joinWaitlist(a.id);
+            a.myStatus = a.myStatus || {};
+            a.myStatus.waitlistStatus = "waiting";
+            statusEl.innerHTML = res.already
+              ? "您已經在候補名單中，請耐心等候通知。"
+              : `已加入候補名單！有名額釋出時，主辦人會用 LINE 通知您（通知後請於 24 小時內回覆）。<br>
+                 <b>別忘了加 LINE 官方帳號好友</b>，不然收不到通知：
+                 <a href="${CONFIG.OA_LINE_URL}" target="_blank" rel="noopener">點此加好友</a>`;
+            waitlistBtn.textContent = "已加入候補";
+          }catch(e){
+            console.error(e);
+            statusEl.textContent = "加入候補失敗，請稍後再試或聯繫主辦人。";
+            waitlistBtn.disabled = false;
+            waitlistBtn.textContent = "加入候補名單";
+          }
+        });
+      }
+    }
+
+    async function loadManagerToolbar(a, userId){
+      const fab = document.getElementById("managerFab");
+      const content = document.getElementById("managerPopoverContent");
+      if(!fab || !content) return;
+      try{
+        const { status } = await checkIsManager(userId);
+        if(status !== "approved") return; // 不是管理者就完全不顯示 FAB，一般使用者不受影響
+        content.innerHTML = `
+          <div class="manager-toolbar">
+            <a class="btn btn-ghost" href="index.html">← 回清單</a>
+            <a class="btn btn-ghost" href="admin/edit-activity.html?id=${encodeURIComponent(a.id)}">✏️ 編輯此活動</a>
+            <a class="btn btn-ghost" href="register.html?activityId=${encodeURIComponent(a.id)}&view=registrations">📝 報名名單</a>
+            <a class="btn btn-ghost" href="register.html?activityId=${encodeURIComponent(a.id)}&view=payAdmin">💰 匯款通知</a>
+            <a class="btn btn-ghost" href="register.html?activityId=${encodeURIComponent(a.id)}&view=checkinAdmin">🚌 上車報到調查</a>
+            <a class="btn btn-ghost" id="waitlistCountLink" href="admin/waitlist.html?id=${encodeURIComponent(a.id)}">候補 … 人</a>
+            <a class="btn btn-ghost" id="visitLogLink" href="admin/visit-log.html?activityId=${encodeURIComponent(a.id)}">閱讀記錄 …</a>
+            <button type="button" class="btn waitlist-toggle" id="waitlistToggleBtn"></button>
+          </div>
+        `;
+        fab.style.display = "flex"; // 背景驗證完成、確定是管理者，才把 FAB 顯示出來
+        try{
+          const { count } = await adminGetWaitlistCount(a.id, userId);
+          document.getElementById("waitlistCountLink").textContent = `候補 ${count} 人 →`;
+        }catch(e){ console.warn("候補人數載入失敗", e); }
+        try{
+          const log = await adminGetVisitLog(userId, a.id);
+          document.getElementById("visitLogLink").textContent = `閱讀記錄 (${log.length}) →`;
+        }catch(e){ console.warn("閱讀記錄筆數載入失敗", e); }
+
+        renderWaitlistToggle(a, userId);
+      }catch(e){
+        console.warn("管理者狀態載入失敗", e);
+      }
+    }
+
+    function toggleManagerPopover(){
+      const popover = document.getElementById("managerPopover");
+      const isOpen = popover.style.display !== "none";
+      popover.style.display = isOpen ? "none" : "block";
+    }
+
+    function renderWaitlistToggle(a, userId){
+      const btn = document.getElementById("waitlistToggleBtn");
+      if(!btn) return;
+      function paint(){
+        btn.textContent = a.waitlistOpen ? "候補：開放中 ⇄" : "候補：已關閉 ⇄";
+        btn.classList.toggle("waitlist-toggle-on", a.waitlistOpen);
+        btn.classList.toggle("waitlist-toggle-off", !a.waitlistOpen);
+      }
+      paint();
+      btn.addEventListener("click", async ()=>{
+        btn.disabled = true;
+        const newValue = a.waitlistOpen ? "closed" : "";
+        try{
+          await adminUpdateActivity({ id: a.id, waitlist_status: newValue }, userId);
+          a.waitlistOpen = !a.waitlistOpen;
+          paint();
+          // 候補開關會影響「加入候補名單」區塊是否顯示，如果報名情形彈窗現在是開著的就重新畫一次
+          const modalBody = document.getElementById("rsvpModalBody");
+          if(modalBody && document.getElementById("rsvpModal").style.display !== "none"){
+            modalBody.innerHTML = joinBlock(a);
+            wireJoinButtons(a);
+          }
+        }catch(e){
+          alert("切換失敗：" + e.message);
+        }finally{
+          btn.disabled = false;
+        }
+      });
+    }
+
+    function activityCacheKey(id){ return `activity:${id}`; }
+
+    // 只快取活動本身的顯示資料（標題/行程/連結/名額等），不快取「我的狀態」跟任何寫入動作
+    async function loadActivityFromCacheOrFetch(id){
+      const cached = readCache(activityCacheKey(id));
+      if(cached){
+        return { activity: cached.data, fetchedAt: cached.fetchedAt };
+      }
+      const a = await getActivityById(id);
+      if(a){
+        // 第一次讀取，順便去 GitHub 建立這筆活動的版本基準值，之後按更新才有東西可以比對
+        let remoteVersion = null;
+        try{
+          const map = await fetchLastUpdatedMap();
+          remoteVersion = map[id] || null;
+        }catch(e){ console.warn("讀取 GitHub 版本檔失敗", e); }
+        writeCache(activityCacheKey(id), a, remoteVersion);
+      }
+      return { activity: a, fetchedAt: Date.now() };
+    }
+
+    // 按「更新」：先讀 GitHub 的輕量版本檔（沒有 GAS 冷啟動），只有真的偵測到比本地新的時間戳記，
+    // 或本地根本沒有版本基準值可比對，才呼叫 GAS 重新讀取；沒有變動就直接跳過、不驚動 GAS。
+    async function refreshActivity(id){
+      const cached = readCache(activityCacheKey(id));
+      const localVersion = cached ? cached.remoteVersion : null;
+
+      let remoteVersion = null;
+      try{
+        const map = await fetchLastUpdatedMap();
+        remoteVersion = map[id] || null;
+      }catch(e){
+        console.warn("讀取 GitHub 版本檔失敗，保守起見還是呼叫 GAS 重新讀取", e);
+      }
+
+      const hasNewVersion = !localVersion || (remoteVersion && new Date(remoteVersion) > new Date(localVersion));
+      if(!hasNewVersion){
+        return { changed: false, fetchedAt: cached ? cached.fetchedAt : Date.now() };
+      }
+
+      const a = await getActivityById(id);
+      if(a) writeCache(activityCacheKey(id), a, remoteVersion);
+      return { changed: true, activity: a, fetchedAt: Date.now() };
+    }
+
+    // 先把頁面主要內容渲染出來，不等任何額外的 API 呼叫——一般使用者馬上就能看到活動內容跟照片。
+    // 個人狀態（已參加/候補中...）在背景抓，抓到才局部更新「報名情形」彈窗（如果剛好開著）；
+    // 管理員權限檢查完全排到背景執行（idle 時段），不會拖慢一般使用者的載入體驗。
+    function renderActivity(a, profile){
+      render(a);
+
+      if(profile){
+        getMyActivityStatus(a.id).then(status => {
+          a.myStatus = status;
+          const modal = document.getElementById("rsvpModal");
+          if(modal && modal.style.display !== "none"){
+            document.getElementById("rsvpModalBody").innerHTML = joinBlock(a);
+            wireJoinButtons(a);
+          }
+        }).catch(e => console.warn("讀取個人狀態失敗", e));
+
+        scheduleIdle(() => loadManagerToolbar(a, profile.userId));
+      }
+    }
+
+    async function main(){
+      // 開啟本頁一律先登入 LINE，取得 userId（候補/參加/進站記錄都需要識別使用者）
+      let profile = null;
+      try{
+        profile = await requireLogin();
+      }catch(e){
+        console.warn("LINE 登入未完成，部分功能將無法使用", e);
+      }
+
+      const id = getRealQueryParams().get("id");
+      if(!id){
+        document.getElementById("content").innerHTML = `<div class="empty">缺少活動 id</div>`;
+        return;
+      }
+      try{
+        const { activity: a, fetchedAt } = await loadActivityFromCacheOrFetch(id);
+        if(!a){
+          document.getElementById("content").innerHTML = `<div class="empty">找不到這個活動</div>`;
+          return;
+        }
+        renderActivity(a, profile);
+
+        // 如果是點了別人分享的連結進來（網址帶 refId/refName），記錄下來給「閱讀記錄」頁用
+        const params = getRealQueryParams();
+        const refUserId = params.get("refId");
+        const refDisplayName = params.get("refName");
+        recordVisit(a.id, refUserId ? { refUserId, refDisplayName } : null);
+
+        setupRefreshButton(document.getElementById("refreshBtn"), document.getElementById("cacheTimeLabel"), fetchedAt, async ()=>{
+          const statusEl = document.getElementById("cacheStatusMsg");
+          const result = await refreshActivity(id);
+          if(!result.changed){
+            statusEl.textContent = "（已是最新，未重新讀取）";
+            setTimeout(()=>{ statusEl.textContent = ""; }, 4000);
+            return null; // 沒有變動，時間戳記維持原樣不用更新畫面文字
+          }
+          statusEl.textContent = "（已更新）";
+          setTimeout(()=>{ statusEl.textContent = ""; }, 4000);
+          if(result.activity) renderActivity(result.activity, profile);
+          return result.fetchedAt;
+        });
+      }catch(e){
+        console.error(e);
+        document.getElementById("content").innerHTML = `<div class="empty">活動資料讀取失敗：${e.message || e}</div>`;
+      }
+    }
+
+    main();
+
+    document.getElementById("rsvpModalClose").addEventListener("click", closeRsvpModal);
+    document.getElementById("rsvpModal").addEventListener("click", (e)=>{
+      if(e.target.id === "rsvpModal") closeRsvpModal(); // 點背景遮罩也能關閉
+    });
+    document.getElementById("managerFab").addEventListener("click", toggleManagerPopover);
+  },
+};
